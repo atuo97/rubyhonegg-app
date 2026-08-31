@@ -3,32 +3,50 @@ import { useState, useEffect, useRef } from "react";
 // ─────────────────────────────────────────────
 // Google Sheets API 設定
 // ─────────────────────────────────────────────
-// Cloudflare Worker 代理（解決 CORS 問題）
-const WORKER_URL = "https://royal-hat-f2df.atuo97.workers.dev";
+// Cloudflare Worker 代理(解決 CORS)
+const API_URL = "https://royal-hat-f2df.atuo97.workers.dev";
 
 async function apiGet(params) {
-  const qs = new URLSearchParams(params).toString();
   try {
-    const res = await fetch(`${WORKER_URL}?${qs}`);
-    const text = await res.text();
-    return JSON.parse(text);
-  } catch(e) {
-    return { error: "連線失敗：" + e.message };
-  }
+    const qs = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_URL}?${qs}`);
+    return JSON.parse(await res.text());
+  } catch(e) { return { error: "連線失敗:" + e.message }; }
 }
 
 async function apiPost(data) {
   try {
-    const res = await fetch(WORKER_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain" },
       body: JSON.stringify(data),
     });
-    const text = await res.text();
-    return JSON.parse(text);
-  } catch(e) {
-    return { error: "連線失敗：" + e.message };
-  }
+    return JSON.parse(await res.text());
+  } catch(e) { return { error: "連線失敗:" + e.message }; }
+}
+
+// 照片壓縮(長邊800px JPEG)→ base64
+function compressPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const max = 800;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const cv = document.createElement("canvas");
+      cv.width = img.width * scale; cv.height = img.height * scale;
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      resolve(cv.toDataURL("image/jpeg", 0.7).split(",")[1]);
+    };
+    img.onerror = () => reject("照片讀取失敗");
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// 上傳照片到 Google Drive,回傳檔案連結
+async function uploadPhoto(file, meta) {
+  const b64 = await compressPhoto(file);
+  const res = await apiPost({ action:"uploadPhoto", base64:b64, ...meta });
+  return res.success ? res.url : "";
 }
 
 // ─────────────────────────────────────────────
@@ -101,6 +119,8 @@ export default function App(){
   const [announcements, setAnnouncements] = useState([]);
   const [schedule, setSchedule] = useState([]);
   const [salary, setSalary]   = useState([]);
+  const [quota, setQuota]     = useState(null);
+  const [locations, setLocations] = useState({});
   const [loading, setLoading] = useState(false);
 
   // 登入後載入資料
@@ -112,16 +132,20 @@ export default function App(){
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [infoRes, annRes, schedRes, salRes] = await Promise.all([
+      const [infoRes, annRes, schedRes, salRes, quotaRes, locRes] = await Promise.all([
         apiGet({ action:"getStaffInfo", empId:user.id }),
         apiGet({ action:"getAnnouncements" }),
         apiGet({ action:"getSchedule", empId:user.id, ym:ymStr() }),
         apiGet({ action:"getSalary", empId:user.id }),
+        apiGet({ action:"getQuota", empId:user.id, ym:ymStr() }),
+        apiGet({ action:"getLocations" }),
       ]);
       if (infoRes.success) setStaffInfo(infoRes.data);
       if (annRes.success)  setAnnouncements(annRes.data || []);
       if (schedRes.success) setSchedule(schedRes.data || []);
       if (salRes.success)  setSalary(salRes.data || []);
+      if (quotaRes.success) setQuota(quotaRes.data);
+      if (locRes.success)  setLocations(locRes.data || {});
     } catch(e) { console.error(e); }
     setLoading(false);
   };
@@ -166,11 +190,12 @@ export default function App(){
       <div style={{ padding:"14px 14px 80px" }}>
         {tab==="home"  && <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    punchState={punchState} checklistDone={checklistDone}
-                                   todaySchedule={todaySchedule} />}
+                                   todaySchedule={todaySchedule} quota={quota} schedule={schedule} />}
         {tab==="punch" && <PunchTab user={user} punchState={punchState}
                                     setPunchState={setPunchState} todaySchedule={todaySchedule} />}
         {tab==="ops"   && <OpsTab user={user} checklistDone={checklistDone}
-                                   setChecklistDone={setChecklistDone} todaySchedule={todaySchedule} />}
+                                   setChecklistDone={setChecklistDone} todaySchedule={todaySchedule}
+                                   locations={locations} />}
         {tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData} />}
         {tab==="guide" && <GuideTab />}
@@ -269,7 +294,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, todaySchedule }) {
+function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, todaySchedule, quota, schedule }) {
   const time = useTime();
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const urgentAnn = announcements.filter(a => a.urgent);
@@ -280,6 +305,26 @@ function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, to
     punchState.inTime && checklistDone.open && !checklistDone.close && { icon:"🌙", label:"記得收店盤點", color:C.blue },
     checkupDays <= 30 && checkupDays > 0 && { icon:"🩺", label:`體檢將於 ${checkupDays} 天後到期`, color:C.red },
   ].filter(Boolean);
+
+  const Bar = ({ label, cur, max, unit, color }) => {
+    const pct = Math.min(100, Math.round(cur / max * 100));
+    const ok = cur >= max;
+    return (
+      <div style={{ marginBottom:10 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:4 }}>
+          <span style={{ color:C.muted }}>{label}</span>
+          <span style={{ fontWeight:800, color: ok ? C.green : color }}>
+            {cur} / {max} {unit} {ok ? "✅" : ""}
+          </span>
+        </div>
+        <div style={{ height:8, background:C.border, borderRadius:4, overflow:"hidden" }}>
+          <div style={{ width:pct+"%", height:"100%", borderRadius:4,
+            background: ok ? C.green : `linear-gradient(90deg,${color},${color}cc)`,
+            transition:"width .4s" }}/>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -328,6 +373,24 @@ function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, to
         </div>
       )}
 
+      {/* 本月達標進度 */}
+      {quota && (
+        <div style={{ ...s.card, marginBottom:12 }}>
+          <div style={s.sectionTitle}>📊 本月達標進度({quota.identity})</div>
+          <Bar label="工時" cur={quota.hours} max={quota.hourTarget} unit="hr" color={C.gold} />
+          <Bar label="假日出勤" cur={quota.holidayDays} max={quota.holidayTarget} unit="天" color={C.blue} />
+          {quota.hours >= quota.hourTarget && quota.holidayDays >= quota.holidayTarget
+            ? <div style={{ fontSize:12, color:C.green, fontWeight:800, textAlign:"center", marginTop:4 }}>
+                🎉 本月已達標!年終資格保住了
+              </div>
+            : <div style={{ fontSize:11, color:C.muted, textAlign:"center", marginTop:4 }}>
+                還差 {Math.max(0, quota.hourTarget - quota.hours).toFixed(1)}hr
+                {quota.holidayDays < quota.holidayTarget && ` + ${quota.holidayTarget - quota.holidayDays}天假日班`}
+                ,加油!💪
+              </div>}
+        </div>
+      )}
+
       {/* Quick stats */}
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
         {[
@@ -354,6 +417,9 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [groomFile, setGroomFile] = useState(null);   // 儀容照檔案
+  const [groomPreview, setGroomPreview] = useState(""); // 預覽
+  const groomRef = useRef();
 
   const getGPS = () => new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject("此裝置不支援GPS"); return; }
@@ -364,12 +430,33 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
     );
   });
 
+  const handleGroomPhoto = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setGroomFile(f);
+    setGroomPreview(URL.createObjectURL(f));
+  };
+
   const doPunch = async (type) => {
+    if (type === "in" && !groomFile) {
+      setErr("請先拍攝儀容照(帽子、口罩、制服)再打卡");
+      return;
+    }
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
+      // 上班:先上傳儀容照
+      let photoUrl = "";
+      if (type === "in" && groomFile) {
+        setMsg("儀容照上傳中…");
+        photoUrl = await uploadPhoto(groomFile, {
+          folder:"儀容照片", date:todayStr(),
+          loc:todaySchedule?.location||"", name:user.name,
+        });
+        setMsg("");
+      }
       const data = {
         action: "punch",
         date: todayStr(),
@@ -382,6 +469,7 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
         lng: coords.lng,
         location: todaySchedule?.location || "未知地點",
         offline: false,
+        photoUrl,
       };
       const res = await apiPost(data);
       if (res.success) {
@@ -445,10 +533,35 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
         <div style={{ fontSize:13, color:C.red }}>{err}</div>
       </div>}
 
+      {/* 儀容照(上班打卡前必拍) */}
+      {!punchState.inTime && (
+        <div style={{ ...s.card, marginBottom:12 }}>
+          <div style={s.sectionTitle}>儀容照 <span style={{ color:C.accent }}>*上班必拍</span></div>
+          <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>
+            請確認帽子、口罩、制服穿戴整齊後自拍
+          </div>
+          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+            {groomPreview && (
+              <img src={groomPreview} alt="" style={{ width:72, height:72,
+                objectFit:"cover", borderRadius:12, border:`2px solid ${C.green}` }}/>
+            )}
+            <input ref={groomRef} type="file" accept="image/*" capture="user"
+              onChange={handleGroomPhoto} style={{ display:"none" }}/>
+            <button onClick={()=>groomRef.current.click()} style={{
+              ...s.btn("ghost"), flex:1, gap:8,
+              border:`2px dashed ${groomFile?C.green:C.border}`,
+              color:groomFile?C.green:C.muted }}>
+              🤳 {groomFile ? "重新拍攝" : "拍攝儀容照"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display:"flex", gap:10 }}>
         <button disabled={!!punchState.inTime || loading} onClick={()=>doPunch("in")}
-          style={{ ...s.btn("green"), flex:1, opacity:punchState.inTime?.5:1 }}>
-          {loading && !punchState.inTime ? "定位中…" : punchState.inTime ? "✓ 已打卡" : "⬆ 上班打卡"}
+          style={{ ...s.btn("green"), flex:1,
+                   opacity:(punchState.inTime||(!groomFile&&!punchState.inTime))?.5:1 }}>
+          {loading && !punchState.inTime ? "處理中…" : punchState.inTime ? "✓ 已打卡" : "⬆ 上班打卡"}
         </button>
         <button disabled={!punchState.inTime || !!punchState.outTime || loading}
           onClick={()=>doPunch("out")}
@@ -470,7 +583,7 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
 // ─────────────────────────────────────────────
 // OPS TAB
 // ─────────────────────────────────────────────
-function OpsTab({ user, checklistDone, setChecklistDone, todaySchedule }) {
+function OpsTab({ user, checklistDone, setChecklistDone, todaySchedule, locations }) {
   const [view, setView] = useState("menu");
   return (
     <div>
@@ -479,6 +592,7 @@ function OpsTab({ user, checklistDone, setChecklistDone, todaySchedule }) {
                             onDone={()=>{ setChecklistDone(p=>({...p,open:true})); setView("menu"); }}
                             onBack={()=>setView("menu")} />}
       {view==="close" && <CloseChecklist user={user} todaySchedule={todaySchedule}
+                            locations={locations}
                             onDone={()=>{ setChecklistDone(p=>({...p,close:true})); setView("menu"); }}
                             onBack={()=>setView("menu")} />}
     </div>
@@ -588,17 +702,23 @@ function OpenChecklist({ user, todaySchedule, onDone, onBack }) {
   );
 }
 
-function CloseChecklist({ user, todaySchedule, onDone, onBack }) {
+function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
   const flavors = ["原味","可可","紅玉","抹茶"];
   const [amounts, setAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
+  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0" });
   const [revenue, setRevenue] = useState("");
   const [cash, setCash] = useState("");
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState("");
   const [done, setDone] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef();
+
+  // 依櫃位類型切換業績輸入(C份數 → 輸入份數)
+  const locInfo = (locations || {})[todaySchedule?.location] || {};
+  const isCount = locInfo.type === "C份數";
 
   const handlePhoto = (e) => {
     const files = Array.from(e.target.files);
@@ -611,6 +731,17 @@ function CloseChecklist({ user, todaySchedule, onDone, onBack }) {
   const handleSubmit = async () => {
     setSubmitting(true); setErr("");
     try {
+      // 逐張上傳清潔照片到 Google Drive
+      const urls = [];
+      for (let i = 0; i < photos.length; i++) {
+        setProgress(`照片上傳中 ${i+1}/${photos.length}…`);
+        const u = await uploadPhoto(photos[i].file, {
+          folder:"清潔照片", date:todayStr(),
+          loc:todaySchedule?.location||"", name:user.name,
+        });
+        if (u) urls.push(u);
+      }
+      setProgress("資料送出中…");
       const res = await apiPost({
         action: "closeStore",
         date: todayStr(),
@@ -619,14 +750,16 @@ function CloseChecklist({ user, todaySchedule, onDone, onBack }) {
         location: todaySchedule?.location || "",
         remOriginal: amounts["原味"], remCocoa: amounts["可可"],
         remRuby: amounts["紅玉"], remMatcha: amounts["抹茶"],
-        startOriginal: 0, startCocoa: 0, startRuby: 0, startMatcha: 0,
+        rsOriginal: restock["原味"], rsCocoa: restock["可可"],
+        rsRuby: restock["紅玉"], rsMatcha: restock["抹茶"],
         revenue, cash,
-        photoUrl: `已上傳${photos.length}張`,
+        photoUrl: urls.join(" , "),
         handoverNote: note,
       });
+      setProgress("");
       if (res.success) { setDone(true); setTimeout(onDone, 1400); }
       else setErr("送出失敗：" + (res.error || "請重試"));
-    } catch(e) { setErr("網路錯誤，請重試"); }
+    } catch(e) { setErr("網路錯誤，請重試"); setProgress(""); }
     setSubmitting(false);
   };
 
@@ -658,11 +791,30 @@ function CloseChecklist({ user, todaySchedule, onDone, onBack }) {
         ))}
       </div>
 
+      {/* 當日進貨 */}
       <div style={s.card}>
-        <div style={s.sectionTitle}>營業數據</div>
+        <div style={s.sectionTitle}>當日進貨量（kg,無進貨免填）</div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {flavors.map(f => (
+            <div key={f}>
+              <label style={s.label}>{f}進貨</label>
+              <input type="number" placeholder="0"
+                value={restock[f]} onChange={e=>setRestock(p=>({...p,[f]:e.target.value}))}
+                style={s.input}/>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize:11, color:C.muted, marginTop:8 }}>
+          ※ 消耗計算:開店量 ＋ 進貨 − 剩餘 = 實際消耗
+        </div>
+      </div>
+
+      <div style={s.card}>
+        <div style={s.sectionTitle}>營業數據{isCount && <span style={{ color:C.accent }}>(份數櫃位)</span>}</div>
         <div style={{ marginBottom:12 }}>
-          <label style={s.label}>當日營業額（元）</label>
-          <input type="number" placeholder="請輸入今日實際營業額"
+          <label style={s.label}>{isCount ? "當日販售份數(份)" : "當日營業額（元）"}</label>
+          <input type="number"
+            placeholder={isCount ? `請輸入份數(每份$${locInfo.unitPrice||70}自動換算)` : "請輸入今日實際營業額"}
             value={revenue} onChange={e=>setRevenue(e.target.value)} style={s.input}/>
         </div>
         <div>
@@ -726,7 +878,7 @@ function CloseChecklist({ user, todaySchedule, onDone, onBack }) {
       )}
       <button onClick={handleSubmit} disabled={!allFilled||submitting}
         style={{ ...s.btn("primary"), opacity:allFilled&&!submitting?1:.5 }}>
-        {submitting ? "送出中…" : "確認送出收店盤點"}
+        {submitting ? (progress || "送出中…") : "確認送出收店盤點"}
       </button>
     </div>
   );
