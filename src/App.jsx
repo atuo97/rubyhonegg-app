@@ -255,27 +255,36 @@ function LoginScreen({ onLogin }) {
   };
 
   return (
-    <div style={{ ...s.app, display:"flex", flexDirection:"column",
-                  background:`linear-gradient(160deg,#1a0804,#2e1208,#1a0804)`,
-                  minHeight:"100vh" }}>
+    <div style={{ ...s.app, display:"flex", flexDirection:"column", minHeight:"100vh",
+                  background:`
+                    radial-gradient(ellipse 80% 50% at 50% 0%, rgba(200,73,10,0.45), transparent 70%),
+                    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(120,20,0,0.5), transparent 70%),
+                    repeating-linear-gradient(0deg, rgba(255,80,20,0.06) 0 1px, transparent 1px 32px),
+                    repeating-linear-gradient(90deg, rgba(255,80,20,0.06) 0 1px, transparent 1px 32px),
+                    #050505` }}>
       <div style={{ flex:1, display:"flex", flexDirection:"column",
                     justifyContent:"center", padding:28 }}>
         <div style={{ textAlign:"center", marginBottom:40 }}>
           <img src={LOGO_WHITE} alt="紅玉滿赤心雞蛋糕" style={{ width:"86%", maxWidth:340, marginBottom:6 }}/>
-          <div style={{ fontSize:13, color:"#a07060", marginTop:4 }}>雞蛋糕品牌 · 員工系統</div>
+          <div style={{ fontSize:14, fontWeight:800, color:"#ff9a6a", marginTop:8, letterSpacing:1 }}>台灣最有型雞蛋糕品牌 - 夥伴系統</div>
+          <div style={{ fontSize:13, color:"#f0d0b8", marginTop:8, letterSpacing:2 }}>願食雞蛋糕，常保赤子心</div>
+          <div style={{ fontSize:11, color:"#a08070", marginTop:6, lineHeight:1.7, padding:"0 8px" }}>
+            確保食品安全、烤出漂亮造型，以同理心服務每位顧客，與夥伴互相扶持成長
+          </div>
         </div>
 
-        <div style={{ background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,200,150,0.15)",
-                      borderRadius:20, padding:24 }}>
+        <div style={{ background:"rgba(20,8,4,0.75)", border:"1px solid rgba(255,120,60,0.35)",
+                      boxShadow:"0 0 30px rgba(200,73,10,0.25), inset 0 0 20px rgba(200,73,10,0.08)",
+                      backdropFilter:"blur(6px)", borderRadius:20, padding:24 }}>
           <div style={{ marginBottom:16 }}>
-            <label style={{ ...s.label, color:"#c09080" }}>手機號碼</label>
+            <label style={{ ...s.label, color:"#c09080" }}>帳號(預設為手機號碼)</label>
             <input value={phone} onChange={e=>setPhone(e.target.value)}
-              placeholder="請輸入手機號碼"
+              placeholder="請輸入帳號"
               style={{ ...s.input, background:"rgba(255,255,255,0.08)",
                        border:"1px solid rgba(255,200,150,0.2)", color:"#f0e0d0" }}/>
           </div>
           <div style={{ marginBottom:20 }}>
-            <label style={{ ...s.label, color:"#c09080" }}>密碼</label>
+            <label style={{ ...s.label, color:"#c09080" }}>密碼(預設為夥伴生日，如6月7日為0607)</label>
             <input type="password" value={pw} onChange={e=>setPw(e.target.value)}
               placeholder="請輸入密碼"
               onKeyDown={e=>e.key==="Enter"&&handleLogin()}
@@ -290,7 +299,7 @@ function LoginScreen({ onLogin }) {
         </div>
 
         <div style={{ textAlign:"center", marginTop:16, fontSize:11, color:"#705040" }}>
-          忘記密碼請聯絡大隊長
+          忘記或要修改密碼請聯絡門市總監、營運總監
         </div>
       </div>
     </div>
