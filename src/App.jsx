@@ -122,6 +122,7 @@ export default function App(){
   const [salary, setSalary]   = useState([]);
   const [quota, setQuota]     = useState(null);
   const [locations, setLocations] = useState({});
+  const [workLoc, setWorkLoc] = useState("");
   const [loading, setLoading] = useState(false);
 
   // 登入後載入資料
@@ -162,7 +163,6 @@ export default function App(){
   ];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
-  const [workLoc, setWorkLoc] = useState("");
   const effLoc = workLoc || baseSchedule?.location || "";
   const todaySchedule = effLoc ? { ...(baseSchedule||{ id:"", start:"", end:"" }), location: effLoc } : baseSchedule;
 
