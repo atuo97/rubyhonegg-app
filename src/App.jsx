@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 // ─────────────────────────────────────────────
 // Cloudflare Worker 代理(解決 CORS)
 const API_URL = "https://royal-hat-f2df.atuo97.workers.dev";
+const LOGO_WHITE = "/logo_white.png";
 
 async function apiGet(params) {
   try {
@@ -172,7 +173,7 @@ export default function App(){
                     padding:"14px 18px 12px", display:"flex",
                     justifyContent:"space-between", alignItems:"center" }}>
         <div>
-          <div style={{ fontSize:10, color:"#a07060", letterSpacing:2 }}>紅玉滿赤心雞蛋糕</div>
+          <img src={LOGO_WHITE} alt="" style={{ height:18, marginBottom:4, opacity:.9 }}/>
           <div style={{ fontSize:16, fontWeight:900, color:"#f0d0b8" }}>
             {user.name}
             <span style={{ fontSize:11, fontWeight:400, color:"#d09078", marginLeft:6 }}>
@@ -258,8 +259,7 @@ function LoginScreen({ onLogin }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column",
                     justifyContent:"center", padding:28 }}>
         <div style={{ textAlign:"center", marginBottom:40 }}>
-          <div style={{ fontSize:56, marginBottom:8 }}>🥚</div>
-          <div style={{ fontSize:22, fontWeight:900, color:"#f0d0b8", letterSpacing:1 }}>紅玉滿赤心</div>
+          <img src={LOGO_WHITE} alt="紅玉滿赤心雞蛋糕" style={{ width:"86%", maxWidth:340, marginBottom:6 }}/>
           <div style={{ fontSize:13, color:"#a07060", marginTop:4 }}>雞蛋糕品牌 · 員工系統</div>
         </div>
 
