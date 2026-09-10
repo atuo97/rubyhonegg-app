@@ -160,7 +160,10 @@ export default function App(){
     { id:"guide", icon:"📖", label:"制度" },
   ];
 
-  const todaySchedule = schedule.find(s => s.date === todayStr());
+  const baseSchedule = schedule.find(s => s.date === todayStr());
+  const [workLoc, setWorkLoc] = useState("");
+  const effLoc = workLoc || baseSchedule?.location || "";
+  const todaySchedule = effLoc ? { ...(baseSchedule||{ id:"", start:"", end:"" }), location: effLoc } : baseSchedule;
 
   return (
     <div style={s.app}>
@@ -192,7 +195,8 @@ export default function App(){
                                    punchState={punchState} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule} />}
         {tab==="punch" && <PunchTab user={user} punchState={punchState}
-                                    setPunchState={setPunchState} todaySchedule={todaySchedule} />}
+                                    setPunchState={setPunchState} todaySchedule={todaySchedule}
+                                    locations={locations} workLoc={effLoc} setWorkLoc={setWorkLoc} />}
         {tab==="ops"   && <OpsTab user={user} checklistDone={checklistDone}
                                    setChecklistDone={setChecklistDone} todaySchedule={todaySchedule}
                                    locations={locations} />}
@@ -412,7 +416,7 @@ function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, to
 // ─────────────────────────────────────────────
 // PUNCH TAB
 // ─────────────────────────────────────────────
-function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
+function PunchTab({ user, punchState, setPunchState, todaySchedule, locations, workLoc, setWorkLoc }) {
   const time = useTime();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
@@ -438,6 +442,7 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
   };
 
   const doPunch = async (type) => {
+    if (type === "in" && !workLoc) { setErr("請先選擇今日上班地點"); return; }
     if (type === "in" && !groomFile) {
       setErr("請先拍攝儀容照(帽子、口罩、制服)再打卡");
       return;
@@ -532,6 +537,21 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule }) {
                              background:C.redBg, border:`1px solid ${C.red}44` }}>
         <div style={{ fontSize:13, color:C.red }}>{err}</div>
       </div>}
+
+      {/* 上班地點選擇(含活動) */}
+      {!punchState.inTime && (
+        <div style={{ ...s.card, marginBottom:12 }}>
+          <div style={s.sectionTitle}>今日上班地點</div>
+          <select value={workLoc} onChange={e=>setWorkLoc(e.target.value)} style={s.input}>
+            <option value="">請選擇地點</option>
+            {Object.entries(locations||{}).map(([name,info]) => (
+              <option key={name} value={name}>
+                {info.kind==="活動" ? "🎪 " : "🏪 "}{name}{info.kind==="活動" ? "(活動 +$500)" : ""}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* 儀容照(上班打卡前必拍) */}
       {!punchState.inTime && (
@@ -677,11 +697,11 @@ function OpenChecklist({ user, todaySchedule, onDone, onBack }) {
         <div style={{ fontSize:16, fontWeight:800 }}>🌅 開店盤點</div>
       </div>
       <div style={s.card}>
-        <div style={s.sectionTitle}>面糊起始數量（kg）</div>
+        <div style={s.sectionTitle}>面糊起始數量（包）</div>
         {flavors.map(f => (
           <div key={f} style={{ marginBottom:12 }}>
             <label style={s.label}>{f}面糊</label>
-            <input type="number" placeholder="請輸入公斤數"
+            <input type="number" placeholder="請輸入包數"
               value={amounts[f]} onChange={e=>setAmounts(p=>({...p,[f]:e.target.value}))}
               style={s.input}/>
           </div>
@@ -780,11 +800,11 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
       </div>
 
       <div style={s.card}>
-        <div style={s.sectionTitle}>面糊剩餘數量（kg）</div>
+        <div style={s.sectionTitle}>面糊剩餘數量（包）</div>
         {flavors.map(f => (
           <div key={f} style={{ marginBottom:12 }}>
             <label style={s.label}>{f}面糊剩餘</label>
-            <input type="number" placeholder="請輸入剩餘公斤數"
+            <input type="number" placeholder="請輸入剩餘包數"
               value={amounts[f]} onChange={e=>setAmounts(p=>({...p,[f]:e.target.value}))}
               style={s.input}/>
           </div>
@@ -793,7 +813,7 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
 
       {/* 當日進貨 */}
       <div style={s.card}>
-        <div style={s.sectionTitle}>當日進貨量（kg,無進貨免填）</div>
+        <div style={s.sectionTitle}>當日進貨量（包,無進貨免填）</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           {flavors.map(f => (
             <div key={f}>
