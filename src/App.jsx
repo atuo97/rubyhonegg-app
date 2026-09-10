@@ -160,6 +160,7 @@ export default function App(){
     { id:"ops",   icon:"📋", label:"盤點" },
     { id:"info",  icon:"👤", label:"我的" },
     { id:"guide", icon:"📖", label:"制度" },
+    ...(user.role>=2 ? [{ id:"admin", icon:"📊", label:"管理" }] : []),
   ];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
@@ -204,6 +205,7 @@ export default function App(){
         {tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData} />}
         {tab==="guide" && <GuideTab />}
+        {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
       </div>
 
       {/* BOTTOM NAV */}
@@ -1112,6 +1114,112 @@ function GuideTab() {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────
+// ADMIN TAB(分隊長/管理員)
+// ─────────────────────────────────────────────
+function AdminTab({ user }) {
+  const [ym, setYm] = useState(ymStr());
+  const [d, setD] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const load = async (m) => {
+    setLoading(true); setErr("");
+    const res = await apiGet({ action:"getAdminDashboard", empId:user.id, ym:m });
+    if (res.success) setD(res.data); else setErr(res.error||"讀取失敗");
+    setLoading(false);
+  };
+  useEffect(()=>{ load(ym); }, [ym]);
+
+  const months = [];
+  for (let i=0;i<6;i++){ const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()-i);
+    months.push(dt.toISOString().slice(0,7)); }
+  const fmt = n => "$"+Number(n||0).toLocaleString();
+  const Pct = ({v}) => v===null||v===undefined ? <span style={{ color:C.light, fontSize:11 }}>無上月資料</span>
+    : <span style={{ fontSize:11, fontWeight:800, color: v>=0?C.green:C.red }}>{v>=0?"▲":"▼"} {Math.abs(v)}%</span>;
+
+  return (
+    <div>
+      <div style={{ ...s.card, background:`linear-gradient(135deg,#1a0a04,#2e1608)`, border:`1px solid #5a2010` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div>
+            <div style={{ fontSize:11, color:"#a07060" }}>📊 管理儀表板 · {user.role>=3?"全部櫃位":"負責櫃位"}</div>
+            <div style={{ fontSize:12, color:"#c09070", marginTop:2 }}>{d?.asOf||"—"}累積營業額</div>
+          </div>
+          <select value={ym} onChange={e=>setYm(e.target.value)}
+            style={{ ...s.input, width:"auto", padding:"6px 10px", fontSize:12 }}>
+            {months.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div style={{ fontSize:38, fontWeight:900, color:"#f0d0b8", marginTop:8, letterSpacing:1 }}>
+          {loading?"…":fmt(d?.total)}
+        </div>
+        {d && <div style={{ fontSize:12, color:"#c09070" }}>上月同期 {fmt(d.totalPrev)} &nbsp;<Pct v={d.totalPct}/></div>}
+      </div>
+
+      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
+
+      {d && d.today.length>0 && (
+        <div style={s.card}>
+          <div style={s.sectionTitle}>今日即時(已收店)</div>
+          {d.today.map(t=>(
+            <div key={t.name} style={{ display:"flex", justifyContent:"space-between", padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
+              <span style={{ fontSize:13 }}>{t.name}</span>
+              <span style={{ fontSize:13, fontWeight:800, color:C.green }}>{fmt(t.rev)} ✅</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {d && (
+        <div style={s.card}>
+          <div style={s.sectionTitle}>各櫃位累積({d.asOf})</div>
+          {d.locations.length===0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>本月尚無營業資料</div>}
+          {d.locations.map(l=>{
+            const w = d.locations[0].rev>0 ? Math.round(l.rev/d.locations[0].rev*100) : 0;
+            return (
+              <div key={l.name} style={{ marginBottom:10 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3 }}>
+                  <span>{l.kind==="活動"?"🎪 ":"🏪 "}{l.name}</span>
+                  <span><b>{fmt(l.rev)}</b> &nbsp;<Pct v={l.pct}/></span>
+                </div>
+                <div style={{ height:8, background:C.border, borderRadius:4, overflow:"hidden" }}>
+                  <div style={{ width:w+"%", height:"100%", background:`linear-gradient(90deg,${C.accent},${C.accentL})`, borderRadius:4 }}/>
+                </div>
+                <div style={{ fontSize:10, color:C.light, marginTop:2 }}>上月同期 {fmt(l.prevRev)}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {d && (
+        <div style={s.card}>
+          <div style={s.sectionTitle}>夥伴出勤時數({ym})</div>
+          {d.staff.length===0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無出勤資料</div>}
+          {d.staff.map(p=>{
+            const pct=Math.min(100,Math.round(p.hours/p.target*100)); const ok=p.hours>=p.target;
+            return (
+              <div key={p.id} style={{ marginBottom:8 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:12, marginBottom:3 }}>
+                  <span>{p.name}</span>
+                  <span style={{ fontWeight:800, color: ok?C.green:C.gold }}>{p.hours} / {p.target} hr {ok?"✅":""}</span>
+                </div>
+                <div style={{ height:6, background:C.border, borderRadius:3, overflow:"hidden" }}>
+                  <div style={{ width:pct+"%", height:"100%", background: ok?C.green:C.gold, borderRadius:3 }}/>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button onClick={()=>load(ym)} style={{ ...s.btn(), marginTop:4 }}>🔄 重新整理</button>
     </div>
   );
 }
