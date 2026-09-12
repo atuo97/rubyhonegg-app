@@ -160,7 +160,8 @@ export default function App(){
     { id:"ops",   icon:"📋", label:"盤點" },
     { id:"info",  icon:"👤", label:"我的" },
     { id:"guide", icon:"📖", label:"制度" },
-    ...(user.role>=2 ? [{ id:"admin", icon:"📊", label:"管理" }] : []),
+    ...(user.role>=2 ? [{ id:"schedule_mgr", icon:"🗓", label:"排班" },
+                         { id:"admin", icon:"📊", label:"管理" }] : []),
   ];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
@@ -206,6 +207,7 @@ export default function App(){
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData} />}
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
+        {tab==="schedule_mgr" && user.role>=2 && <ScheduleManagerTab user={user} />}
       </div>
 
       {/* BOTTOM NAV */}
@@ -1229,6 +1231,185 @@ function AdminTab({ user }) {
       )}
 
       <button onClick={()=>load(ym)} style={{ ...s.btn(), marginTop:4 }}>🔄 重新整理</button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SCHEDULE MANAGER TAB(分隊長/管理員排班)
+// ─────────────────────────────────────────────
+function ScheduleManagerTab({ user }) {
+  const [ym, setYm] = useState(ymStr());
+  const [rows, setRows] = useState([]);
+  const [managed, setManaged] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+  const [editing, setEditing] = useState(null); // null=關閉, {}=新增, {...}=編輯
+
+  const load = async () => {
+    setLoading(true); setErr("");
+    const [schedRes, staffRes] = await Promise.all([
+      apiGet({ action:"getManagedSchedule", empId:user.id, ym }),
+      apiGet({ action:"getStaffList", empId:user.id }),
+    ]);
+    if (schedRes.success) { setRows(schedRes.data); setManaged(schedRes.managed||[]); }
+    else setErr(schedRes.error||"讀取失敗");
+    if (staffRes.success) setStaffList(staffRes.data);
+    setLoading(false);
+  };
+  useEffect(()=>{ load(); }, [ym]);
+
+  const months = [];
+  for (let i=-1;i<3;i++){ const dt=new Date(); dt.setDate(1); dt.setMonth(dt.getMonth()+i);
+    months.push(dt.toISOString().slice(0,7)); }
+
+  const grouped = {};
+  rows.forEach(r => { (grouped[r.date] = grouped[r.date]||[]).push(r); });
+  const dates = Object.keys(grouped).sort();
+
+  const handleDelete = async (row) => {
+    if (!confirm("確定刪除這筆排班?")) return;
+    const res = await apiPost({ action:"deleteSchedule", managerId:user.id, row });
+    if (res.success) load(); else alert("刪除失敗:"+(res.error||""));
+  };
+
+  return (
+    <div>
+      <div style={{ ...s.card, background:`linear-gradient(135deg,#0a1220,#101c30)`, border:`1px solid #1a3050` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <div style={{ fontSize:14, fontWeight:800, color:"#b0d0f0" }}>🗓 排班管理</div>
+          <select value={ym} onChange={e=>setYm(e.target.value)}
+            style={{ ...s.input, width:"auto", padding:"6px 10px", fontSize:12 }}>
+            {months.map(m=><option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div style={{ fontSize:11, color:"#7090b0", marginTop:6 }}>
+          負責櫃位:{managed.join("、")||"—"}
+        </div>
+      </div>
+
+      <button onClick={()=>setEditing({})} style={{ ...s.btn("blue"), marginBottom:12 }}>
+        ＋ 新增排班
+      </button>
+
+      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
+      {loading && <div style={{ textAlign:"center", color:C.muted, fontSize:13, padding:10 }}>載入中…</div>}
+
+      {dates.map(d => (
+        <div key={d} style={s.card}>
+          <div style={{ ...s.sectionTitle, display:"flex", justifyContent:"space-between" }}>
+            <span>{d} ({["日","一","二","三","四","五","六"][new Date(d).getDay()]})</span>
+          </div>
+          {grouped[d].map(r => (
+            <div key={r.row} style={{ display:"flex", alignItems:"center", gap:8,
+                                       padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:700 }}>{r.name} · {r.location}</div>
+                <div style={{ fontSize:11, color:C.muted }}>
+                  {r.start}–{r.end} ({r.hours}hr) {r.type==="double"?"👥雙人":""} {r.holiday==="是"?"🎉假日":""}
+                </div>
+              </div>
+              <button onClick={()=>setEditing(r)} style={{ ...s.btn("ghost"), width:"auto", padding:"6px 12px", fontSize:11 }}>編輯</button>
+              <button onClick={()=>handleDelete(r.row)} style={{ ...s.btn("ghost"), width:"auto", padding:"6px 12px", fontSize:11, color:C.red, borderColor:C.red+"55" }}>刪除</button>
+            </div>
+          ))}
+        </div>
+      ))}
+      {!loading && dates.length===0 && (
+        <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>本月尚無排班,點上方新增</div>
+      )}
+
+      {editing && (
+        <ScheduleEditModal user={user} managed={managed} staffList={staffList} initial={editing}
+          onClose={()=>setEditing(null)} onSaved={()=>{ setEditing(null); load(); }} />
+      )}
+    </div>
+  );
+}
+
+function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved }) {
+  const isEdit = !!initial.row;
+  const [date, setDate] = useState(initial.date || todayStr());
+  const [empId, setEmpId] = useState(initial.empId || "");
+  const [location, setLocation] = useState(initial.location || managed[0] || "");
+  const [start, setStart] = useState(initial.start || "10:00");
+  const [end, setEnd] = useState(initial.end || "20:00");
+  const [type, setType] = useState(initial.type || "single");
+  const [holiday, setHoliday] = useState(initial.holiday === "是");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  const handleSave = async () => {
+    const emp = staffList.find(s => s.id === empId);
+    if (!empId || !location || !date) { setErr("請完整填寫日期、地點、夥伴"); return; }
+    setSaving(true); setErr("");
+    const res = await apiPost({
+      action: "saveSchedule", managerId: user.id, row: initial.row || "",
+      date, empId, name: emp?.name || "", location, start, end, type,
+      holiday, status: "已發布",
+    });
+    if (res.success) onSaved();
+    else setErr(res.error || "儲存失敗");
+    setSaving(false);
+  };
+
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.6)", zIndex:200,
+                  display:"flex", alignItems:"flex-end" }} onClick={onClose}>
+      <div style={{ background:C.card, borderRadius:"20px 20px 0 0", padding:20, width:"100%",
+                    maxWidth:480, margin:"0 auto" }} onClick={e=>e.stopPropagation()}>
+        <div style={{ fontSize:16, fontWeight:800, marginBottom:16 }}>
+          {isEdit ? "編輯排班" : "新增排班"}
+        </div>
+
+        <label style={s.label}>日期</label>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...s.input, marginBottom:12}}/>
+
+        <label style={s.label}>夥伴</label>
+        <select value={empId} onChange={e=>setEmpId(e.target.value)} style={{...s.input, marginBottom:12}}>
+          <option value="">請選擇夥伴</option>
+          {staffList.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}
+        </select>
+
+        <label style={s.label}>櫃位/地點</label>
+        <select value={location} onChange={e=>setLocation(e.target.value)} style={{...s.input, marginBottom:12}}>
+          {managed.map(m=><option key={m} value={m}>{m}</option>)}
+        </select>
+
+        <div style={{ display:"flex", gap:10, marginBottom:12 }}>
+          <div style={{ flex:1 }}>
+            <label style={s.label}>上班時間</label>
+            <input type="time" value={start} onChange={e=>setStart(e.target.value)} style={s.input}/>
+          </div>
+          <div style={{ flex:1 }}>
+            <label style={s.label}>下班時間</label>
+            <input type="time" value={end} onChange={e=>setEnd(e.target.value)} style={s.input}/>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:10, marginBottom:16 }}>
+          <button onClick={()=>setType(type==="single"?"double":"single")}
+            style={{ ...s.btn("ghost"), flex:1, color:type==="double"?C.blue:C.muted,
+                     border:`1px solid ${type==="double"?C.blue:C.border}` }}>
+            {type==="double" ? "👥 雙人班" : "👤 單人班"}
+          </button>
+          <button onClick={()=>setHoliday(!holiday)}
+            style={{ ...s.btn("ghost"), flex:1, color:holiday?C.accent:C.muted,
+                     border:`1px solid ${holiday?C.accent:C.border}` }}>
+            {holiday ? "🎉 假日班" : "平日班"}
+          </button>
+        </div>
+
+        {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:12, padding:"8px 12px" }}>{err}</div>}
+
+        <div style={{ display:"flex", gap:10 }}>
+          <button onClick={onClose} style={{ ...s.btn("ghost"), flex:1 }}>取消</button>
+          <button onClick={handleSave} disabled={saving} style={{ ...s.btn("blue"), flex:2, opacity:saving?.6:1 }}>
+            {saving ? "儲存中…" : "確認送出"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
