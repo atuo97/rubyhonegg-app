@@ -101,10 +101,10 @@ const s = {
 // ─────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────
-const todayStr = () => new Date().toISOString().slice(0,10);
+const todayStr = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
 const timeNow  = () => new Date().toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
 const dateStr  = () => new Date().toLocaleDateString("zh-TW",{year:"numeric",month:"long",day:"numeric",weekday:"long"});
-const ymStr    = () => new Date().toISOString().slice(0,7);
+const ymStr    = () => todayStr().slice(0,7);
 const daysUntil = d => Math.ceil((new Date(d)-new Date())/86400000);
 function useTime(){ const [t,setT]=useState(timeNow()); useEffect(()=>{const i=setInterval(()=>setT(timeNow()),1000);return()=>clearInterval(i);},[]);return t; }
 
@@ -1330,7 +1330,7 @@ function ScheduleManagerTab({ user }) {
 
 function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved }) {
   const isEdit = !!initial.row;
-  const [date, setDate] = useState(initial.date || todayStr());
+  const [date, setDate] = useState(initial.date || todayStr());  // todayStr 已修正為台灣時區
   const [empId, setEmpId] = useState(initial.empId || "");
   const [location, setLocation] = useState(initial.location || managed[0] || "");
   const [start, setStart] = useState(initial.start || "10:00");
