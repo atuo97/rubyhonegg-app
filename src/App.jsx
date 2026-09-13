@@ -7,23 +7,37 @@ import { useState, useEffect, useRef } from "react";
 const API_URL = "https://royal-hat-f2df.atuo97.workers.dev";
 const LOGO_WHITE = "/logo_white.png";
 
-async function apiGet(params) {
-  try {
-    const qs = new URLSearchParams(params).toString();
-    const res = await fetch(`${API_URL}?${qs}`);
-    return JSON.parse(await res.text());
-  } catch(e) { return { error: "連線失敗:" + e.message }; }
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function apiGet(params, retries = 2) {
+  const qs = new URLSearchParams(params).toString();
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${API_URL}?${qs}`);
+      const text = await res.text();
+      return JSON.parse(text);
+    } catch(e) {
+      if (attempt < retries) { await sleep(800 * (attempt + 1)); continue; }
+      return { error: "連線失敗:" + e.message };
+    }
+  }
 }
 
-async function apiPost(data) {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(data),
-    });
-    return JSON.parse(await res.text());
-  } catch(e) { return { error: "連線失敗:" + e.message }; }
+async function apiPost(data, retries = 2) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(data),
+      });
+      const text = await res.text();
+      return JSON.parse(text);
+    } catch(e) {
+      if (attempt < retries) { await sleep(800 * (attempt + 1)); continue; }
+      return { error: "連線失敗:" + e.message };
+    }
+  }
 }
 
 // 照片壓縮(長邊800px JPEG)→ base64
@@ -572,6 +586,11 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
                 </option>
               ))}
             </select>
+            {Object.keys(locations||{}).length===0 && (
+              <div style={{ fontSize:12, color:C.red, marginTop:8, textAlign:"center" }}>
+                ⚠️ 地點清單載入失敗，請下拉重新整理頁面後再試
+              </div>
+            )}
           </div>
 
           {workLoc && (
