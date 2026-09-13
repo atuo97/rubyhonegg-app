@@ -520,7 +520,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
         lat: coords.lat, lng: coords.lng, location: workLoc, offline: false, photoUrl,
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
-      setMsg(`✅ 上班打卡成功！${timeStr}　請繼續完成下方盤點資料`);
+      setMsg(`✅ 上班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}　請繼續完成下方盤點資料`);
       setGroomFile(null); setGroomPreview("");
       onSegmentChange && onSegmentChange();
     } catch(e) {
@@ -778,7 +778,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
         type:"下班", cashHandover });
 
-      setMsg(`✅ 下班打卡成功！${timeStr} 辛苦了！`);
+      setMsg(`✅ 下班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)} 辛苦了！`);
       setChecklistDone && setChecklistDone({ open:false, close:false });
       onSegmentChange && onSegmentChange();
     } catch(e) {
