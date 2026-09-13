@@ -157,7 +157,7 @@ export default function App(){
   const navItems = [
     { id:"home",  icon:"🏠", label:"首頁" },
     { id:"punch", icon:"⏱", label:"打卡" },
-    { id:"ops",   icon:"📋", label:"盤點" },
+    { id:"ops",   icon:"📋", label:"補登" },
     { id:"info",  icon:"👤", label:"我的" },
     { id:"guide", icon:"📖", label:"制度" },
     ...(user.role>=2 ? [{ id:"schedule_mgr", icon:"🗓", label:"排班" },
@@ -199,7 +199,8 @@ export default function App(){
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule} />}
         {tab==="punch" && <PunchTab user={user} punchState={punchState}
                                     setPunchState={setPunchState} todaySchedule={todaySchedule}
-                                    locations={locations} workLoc={effLoc} setWorkLoc={setWorkLoc} />}
+                                    locations={locations} workLoc={effLoc} setWorkLoc={setWorkLoc}
+                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone} />}
         {tab==="ops"   && <OpsTab user={user} checklistDone={checklistDone}
                                    setChecklistDone={setChecklistDone} todaySchedule={todaySchedule}
                                    locations={locations} />}
@@ -354,9 +355,9 @@ function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, to
         {todaySchedule
           ? <div style={{ marginTop:6, fontSize:12, color:"#c09070" }}>
               📍 {todaySchedule.location} &nbsp;⏰ {todaySchedule.start}–{todaySchedule.end}
-              {todaySchedule.type==="double" &&
+              {(todaySchedule.type==="double"||todaySchedule.type==="triple") &&
                 <span style={{ marginLeft:6, fontSize:10, background:"#5a1008",
-                               color:"#ff9070", padding:"1px 6px", borderRadius:10 }}>雙人班</span>}
+                               color:"#ff9070", padding:"1px 6px", borderRadius:10 }}>{todaySchedule.type==="triple"?"三人班":"雙人班"}</span>}
             </div>
           : <div style={{ marginTop:6, fontSize:12, color:"#705040" }}>今日無排班</div>}
       </div>
@@ -429,14 +430,56 @@ function HomeTab({ user, staffInfo, announcements, punchState, checklistDone, to
 // ─────────────────────────────────────────────
 // PUNCH TAB
 // ─────────────────────────────────────────────
-function PunchTab({ user, punchState, setPunchState, todaySchedule, locations, workLoc, setWorkLoc }) {
+function PunchTab({ user, punchState, setPunchState, todaySchedule, locations, workLoc, setWorkLoc, checklistDone, setChecklistDone }) {
   const time = useTime();
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
-  const [groomFile, setGroomFile] = useState(null);   // 儀容照檔案
-  const [groomPreview, setGroomPreview] = useState(""); // 預覽
+
+  // 上班用
+  const [groomFile, setGroomFile] = useState(null);
+  const [groomPreview, setGroomPreview] = useState("");
   const groomRef = useRef();
+  const [firstInfo, setFirstInfo] = useState(null);
+  const [handover, setHandover] = useState(null);
+  const [openAmounts, setOpenAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
+  const [cashReceived, setCashReceived] = useState("");
+  const [openSubmitting, setOpenSubmitting] = useState(false);
+  const [openDone, setOpenDone] = useState(false);
+
+  // 下班用
+  const [closeAmounts, setCloseAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
+  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0" });
+  const [itemRevenue, setItemRevenue] = useState({});
+  const [cashHandover, setCashHandover] = useState("");
+  const [handoverNote, setHandoverNote] = useState("");
+  const [ovenPhotos, setOvenPhotos] = useState([]);
+  const [envPhotos, setEnvPhotos] = useState([]);
+  const ovenRef = useRef(); const envRef = useRef();
+  const [closeSubmitting, setCloseSubmitting] = useState(false);
+  const [closeDone, setCloseDone] = useState(false);
+
+  const flavors = ["原味","可可","紅玉","抹茶"];
+  const isCount = (locations||{})[workLoc]?.type === "C份數";
+  const locInfo = (locations||{})[workLoc] || {};
+  const revItems = locInfo.items && locInfo.items.length ? locInfo.items : ["雞蛋糕"];
+  const revenueAllFilled = isCount
+    ? (itemRevenue["雞蛋糕"] !== undefined && itemRevenue["雞蛋糕"] !== "")
+    : revItems.every(it => itemRevenue[it] !== undefined && itemRevenue[it] !== "");
+  const revenueTotal = revItems.reduce((sum,it)=> sum + (parseFloat(itemRevenue[it])||0), 0);
+
+  // 上班打卡成功後,查詢是否為首位開店者 + 讀取前一天交接
+  useEffect(() => {
+    if (!punchState.inTime || !workLoc) return;
+    (async () => {
+      const [fRes, hRes] = await Promise.all([
+        apiGet({ action:"checkFirstOpener", date:todayStr(), location:workLoc }),
+        apiGet({ action:"getYesterdayHandover", location:workLoc }),
+      ]);
+      if (fRes.success) setFirstInfo(fRes);
+      if (hRes.success) setHandover(hRes);
+    })();
+  }, [punchState.inTime, workLoc]);
 
   const getGPS = () => new Promise((resolve, reject) => {
     if (!navigator.geolocation) { reject("此裝置不支援GPS"); return; }
@@ -448,59 +491,124 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule, locations, w
   });
 
   const handleGroomPhoto = (e) => {
-    const f = e.target.files[0];
-    if (!f) return;
-    setGroomFile(f);
-    setGroomPreview(URL.createObjectURL(f));
+    const f = e.target.files[0]; if (!f) return;
+    setGroomFile(f); setGroomPreview(URL.createObjectURL(f));
+  };
+  const handleMultiPhoto = (setter) => (e) => {
+    const files = Array.from(e.target.files);
+    setter(p => [...p, ...files.map(f => ({ name:f.name, url:URL.createObjectURL(f), file:f }))]);
   };
 
-  const doPunch = async (type) => {
-    if (type === "in" && !workLoc) { setErr("請先選擇今日上班地點"); return; }
-    if (type === "in" && !groomFile) {
-      setErr("請先拍攝儀容照(帽子、口罩、制服)再打卡");
-      return;
-    }
+  // ── 步驟1:上班打卡(只需地點+儀容照,立即鎖定時間) ──
+  const doPunchIn = async () => {
+    if (!workLoc) { setErr("請先選擇今日上班地點"); return; }
+    if (!groomFile) { setErr("請先拍攝儀容照(帽子、口罩、制服)再打卡"); return; }
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
-      // 上班:先上傳儀容照
-      let photoUrl = "";
-      if (type === "in" && groomFile) {
-        setMsg("儀容照上傳中…");
-        photoUrl = await uploadPhoto(groomFile, {
-          folder:"儀容照片", date:todayStr(),
-          loc:todaySchedule?.location||"", name:user.name,
-        });
-        setMsg("");
-      }
-      const data = {
-        action: "punch",
-        date: todayStr(),
-        empId: user.id,
-        name: user.name,
-        scheduleId: todaySchedule?.id || "",
-        type: type === "in" ? "上班" : "下班",
-        time: now.toISOString(),
-        lat: coords.lat,
-        lng: coords.lng,
-        location: todaySchedule?.location || "未知地點",
-        offline: false,
-        photoUrl,
-      };
-      const res = await apiPost(data);
-      if (res.success) {
-        if (type === "in") setPunchState(p => ({...p, inTime:timeStr, coords}));
-        else setPunchState(p => ({...p, outTime:timeStr}));
-        setMsg(type === "in" ? `✅ 上班打卡成功！${timeStr}` : `✅ 下班打卡成功！${timeStr}`);
-      } else {
-        setErr("打卡失敗：" + (res.error || "請重試"));
-      }
+      setMsg("儀容照上傳中…");
+      const photoUrl = await uploadPhoto(groomFile, { folder:"儀容照片", date:todayStr(), loc:workLoc, name:user.name });
+      setMsg("打卡處理中…");
+      const res = await apiPost({
+        action: "punch", date: todayStr(), empId: user.id, name: user.name,
+        scheduleId: todaySchedule?.id || "", type: "上班", time: now.toISOString(),
+        lat: coords.lat, lng: coords.lng, location: workLoc, offline: false, photoUrl,
+      });
+      if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
+      setPunchState(p => ({...p, inTime:timeStr, coords}));
+      setMsg(`✅ 上班打卡成功！${timeStr}　請繼續完成下方盤點資料`);
     } catch(e) {
       setErr(typeof e === "string" ? e : "打卡失敗，請重試");
     }
     setLoading(false);
+  };
+
+  // ── 步驟2:補送開店盤點+接手零用金(事後補,不影響打卡時間) ──
+  const openAllFilled = firstInfo?.isFirst === false ? cashReceived !== ""
+    : (flavors.every(f => openAmounts[f] !== "") && cashReceived !== "");
+
+  const submitOpenData = async () => {
+    if (!openAllFilled) { setErr("請完整填寫麵糊起始量與接手零用金"); return; }
+    setOpenSubmitting(true); setErr("");
+    try {
+      await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:workLoc,
+        type:"上班", cashReceived });
+      if (firstInfo?.isFirst) {
+        await apiPost({
+          action:"openStore", date:todayStr(), scheduleId:todaySchedule?.id||"",
+          empId:user.id, name:user.name, location:workLoc,
+          original:openAmounts["原味"], cocoa:openAmounts["可可"],
+          ruby:openAmounts["紅玉"], matcha:openAmounts["抹茶"], note:"",
+        });
+      }
+      setChecklistDone && setChecklistDone(p=>({...p, open:true}));
+      setOpenDone(true);
+      setMsg("✅ 開店盤點已送出");
+    } catch(e) { setErr("送出失敗，請重試"); }
+    setOpenSubmitting(false);
+  };
+
+  // ── 步驟3:下班打卡(立即鎖定時間) ──
+  const doPunchOut = async () => {
+    setLoading(true); setErr(""); setMsg("");
+    try {
+      const coords = await getGPS();
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
+      const res = await apiPost({
+        action:"punch", date:todayStr(), empId:user.id, name:user.name,
+        scheduleId:todaySchedule?.id||"", type:"下班", time:now.toISOString(),
+        lat:coords.lat, lng:coords.lng, location:workLoc, offline:false,
+      });
+      if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
+      setPunchState(p => ({...p, outTime:timeStr}));
+      setMsg(`✅ 下班打卡成功！${timeStr}　請繼續完成下方收店盤點`);
+    } catch(e) {
+      setErr(typeof e === "string" ? e : "打卡失敗，請重試");
+    }
+    setLoading(false);
+  };
+
+  // ── 步驟4:補送收店盤點(事後補) ──
+  const closeAllFilled = flavors.every(f => closeAmounts[f] !== "") && revenueAllFilled &&
+    cashHandover !== "" && ovenPhotos.length>0 && envPhotos.length>0;
+
+  const submitCloseData = async () => {
+    if (!closeAllFilled) { setErr("請完整填寫剩餘量、營業額、零用金並上傳兩組照片"); return; }
+    setCloseSubmitting(true); setErr("");
+    try {
+      setMsg("清潔照片上傳中…");
+      const ovenUrls = [];
+      for (const p of ovenPhotos) {
+        const u = await uploadPhoto(p.file, { folder:"烤爐清潔照片", date:todayStr(), loc:workLoc, name:user.name });
+        if (u) ovenUrls.push(u);
+      }
+      const envUrls = [];
+      for (const p of envPhotos) {
+        const u = await uploadPhoto(p.file, { folder:"環境清潔照片", date:todayStr(), loc:workLoc, name:user.name });
+        if (u) envUrls.push(u);
+      }
+      setMsg("送出收店盤點…");
+      await apiPost({
+        action:"closeStore", date:todayStr(), scheduleId:todaySchedule?.id||"",
+        empId:user.id, name:user.name, location:workLoc,
+        remOriginal:closeAmounts["原味"], remCocoa:closeAmounts["可可"],
+        remRuby:closeAmounts["紅玉"], remMatcha:closeAmounts["抹茶"],
+        rsOriginal:restock["原味"], rsCocoa:restock["可可"],
+        rsRuby:restock["紅玉"], rsMatcha:restock["抹茶"],
+        itemRevenue: JSON.stringify(itemRevenue), cash:cashHandover,
+        photoUrl: [...ovenUrls, ...envUrls].join(" , "),
+        handoverNote,
+      });
+      await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:workLoc,
+        type:"下班", cashHandover });
+      setChecklistDone && setChecklistDone(p=>({...p, close:true}));
+      setCloseDone(true);
+      setMsg("✅ 收店盤點已送出，辛苦了！");
+    } catch(e) { setErr("送出失敗，請重試"); }
+    setCloseSubmitting(false);
   };
 
   return (
@@ -532,79 +640,247 @@ function PunchTab({ user, punchState, setPunchState, todaySchedule, locations, w
         </div>
       </div>
 
-      {punchState.coords && (
-        <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
-                      background:C.greenBg, border:`1px solid ${C.green}44` }}>
-          <div style={{ fontSize:11, color:C.green }}>
-            📍 定位成功：{punchState.coords.lat.toFixed(5)}, {punchState.coords.lng.toFixed(5)}
-          </div>
-        </div>
-      )}
-
       {msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.greenBg, border:`1px solid ${C.green}44` }}>
         <div style={{ fontSize:13, color:C.green, fontWeight:700 }}>{msg}</div>
       </div>}
-
       {err && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.redBg, border:`1px solid ${C.red}44` }}>
         <div style={{ fontSize:13, color:C.red }}>{err}</div>
       </div>}
 
-      {/* 上班地點選擇(含活動) */}
+      {/* ══════════ 步驟1:尚未上班 → 只要地點+儀容照就能打卡 ══════════ */}
       {!punchState.inTime && (
-        <div style={{ ...s.card, marginBottom:12 }}>
-          <div style={s.sectionTitle}>今日上班地點</div>
-          <select value={workLoc} onChange={e=>setWorkLoc(e.target.value)} style={s.input}>
-            <option value="">請選擇地點</option>
-            {Object.entries(locations||{}).map(([name,info]) => (
-              <option key={name} value={name}>
-                {info.kind==="活動" ? "🎪 " : "🏪 "}{name}{info.kind==="活動" ? "(活動 +$500)" : ""}
-              </option>
-            ))}
-          </select>
+        <>
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>今日上班地點</div>
+            <select value={workLoc} onChange={e=>setWorkLoc(e.target.value)} style={s.input}>
+              <option value="">請選擇地點</option>
+              {Object.entries(locations||{}).map(([name,info]) => (
+                <option key={name} value={name}>
+                  {info.kind==="活動" ? "🎪 " : "🏪 "}{name}{info.kind==="活動" ? "(活動 +$500)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {workLoc && (
+            <div style={{ ...s.card, marginBottom:12 }}>
+              <div style={s.sectionTitle}>儀容照 <span style={{ color:C.accent }}>*上班必拍</span></div>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>請確認帽子、口罩、制服穿戴整齊後自拍</div>
+              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+                {groomPreview && <img src={groomPreview} alt="" style={{ width:72, height:72, objectFit:"cover", borderRadius:12, border:`2px solid ${C.green}` }}/>}
+                <input ref={groomRef} type="file" accept="image/*" capture="user" onChange={handleGroomPhoto} style={{ display:"none" }}/>
+                <button onClick={()=>groomRef.current.click()} style={{ ...s.btn("ghost"), flex:1, gap:8,
+                  border:`2px dashed ${groomFile?C.green:C.border}`, color:groomFile?C.green:C.muted }}>
+                  🤳 {groomFile ? "重新拍攝" : "拍攝儀容照"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <button disabled={!workLoc || !groomFile || loading} onClick={doPunchIn}
+            style={{ ...s.btn("green"), opacity:(!workLoc||!groomFile||loading)?.5:1 }}>
+            {loading ? "處理中…" : "⬆ 上班打卡"}
+          </button>
+          <div style={{ fontSize:11, color:C.muted, textAlign:"center", marginTop:8 }}>
+            打卡後請儘速完成盤點資料，首頁會持續提醒未完成事項
+          </div>
+        </>
+      )}
+
+      {/* ══════════ 步驟2:已打卡上班 → 補送盤點資料 ══════════ */}
+      {punchState.inTime && !openDone && !checklistDone.open && (
+        <>
+          {handover && (handover.note || handover.cash!=="") && (
+            <div style={{ ...s.card, marginBottom:12, background:C.blueBg, border:`1px solid ${C.blue}44` }}>
+              <div style={s.sectionTitle}>📋 前一天({handover.date})交接事項</div>
+              {handover.note && <div style={{ fontSize:13, color:C.text, marginBottom:6 }}>{handover.note}</div>}
+              {handover.cash!=="" && <div style={{ fontSize:12, color:C.muted }}>交接零用金:${handover.cash}</div>}
+            </div>
+          )}
+
+          {firstInfo?.isFirst === true && (
+            <div style={{ ...s.card, marginBottom:12 }}>
+              <div style={s.sectionTitle}>🌅 開店盤點 <span style={{ color:C.accent }}>*您是今日第一位</span></div>
+              {flavors.map(f => (
+                <div key={f} style={{ marginBottom:10 }}>
+                  <label style={s.label}>{f}面糊起始量(包)</label>
+                  <input type="number" placeholder="請輸入包數" value={openAmounts[f]}
+                    onChange={e=>setOpenAmounts(p=>({...p,[f]:e.target.value}))} style={s.input}/>
+                </div>
+              ))}
+            </div>
+          )}
+          {firstInfo?.isFirst === false && (
+            <div style={{ ...s.card, marginBottom:12, background:C.greenBg }}>
+              <div style={{ fontSize:13, color:C.green, fontWeight:700 }}>
+                ✓ 麵糊已由 {firstInfo.openedBy} 完成開店盤點
+              </div>
+              <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>
+                原味{firstInfo.original} 可可{firstInfo.cocoa} 紅玉{firstInfo.ruby} 抹茶{firstInfo.matcha}(包)
+              </div>
+            </div>
+          )}
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>💰 接手零用金</div>
+            <input type="number" placeholder="請輸入接手時零用金金額" value={cashReceived}
+              onChange={e=>setCashReceived(e.target.value)} style={s.input}/>
+          </div>
+
+          <button disabled={!openAllFilled || openSubmitting} onClick={submitOpenData}
+            style={{ ...s.btn("primary"), opacity:(!openAllFilled||openSubmitting)?.5:1 }}>
+            {openSubmitting ? "送出中…" : "✓ 確認送出開店盤點"}
+          </button>
+        </>
+      )}
+
+      {punchState.inTime && checklistDone.open && !punchState.outTime && (
+        <div style={{ ...s.card, marginBottom:12, background:C.greenBg, textAlign:"center" }}>
+          <div style={{ fontSize:13, color:C.green, fontWeight:700 }}>✓ 開店盤點已完成</div>
         </div>
       )}
 
-      {/* 儀容照(上班打卡前必拍) */}
-      {!punchState.inTime && (
-        <div style={{ ...s.card, marginBottom:12 }}>
-          <div style={s.sectionTitle}>儀容照 <span style={{ color:C.accent }}>*上班必拍</span></div>
-          <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>
-            請確認帽子、口罩、制服穿戴整齊後自拍
+      {/* ══════════ 步驟3:已上班，尚未下班打卡 → 只要按下班打卡即可 ══════════ */}
+      {punchState.inTime && checklistDone.open && !punchState.outTime && (
+        <button disabled={loading} onClick={doPunchOut}
+          style={{ ...s.btn("blue"), opacity:loading?.5:1 }}>
+          {loading ? "處理中…" : "⬇ 下班打卡"}
+        </button>
+      )}
+
+      {/* ══════════ 步驟4:已下班打卡 → 補送收店盤點 ══════════ */}
+      {punchState.outTime && !closeDone && !checklistDone.close && (
+        <>
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>面糊剩餘數量（包）</div>
+            {flavors.map(f => (
+              <div key={f} style={{ marginBottom:10 }}>
+                <label style={s.label}>{f}面糊剩餘</label>
+                <input type="number" placeholder="請輸入剩餘包數" value={closeAmounts[f]}
+                  onChange={e=>setCloseAmounts(p=>({...p,[f]:e.target.value}))} style={s.input}/>
+              </div>
+            ))}
           </div>
-          <div style={{ display:"flex", gap:10, alignItems:"center" }}>
-            {groomPreview && (
-              <img src={groomPreview} alt="" style={{ width:72, height:72,
-                objectFit:"cover", borderRadius:12, border:`2px solid ${C.green}` }}/>
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>當日進貨量（包,無進貨免填）</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              {flavors.map(f => (
+                <div key={f}>
+                  <label style={s.label}>{f}進貨</label>
+                  <input type="number" placeholder="0" value={restock[f]}
+                    onChange={e=>setRestock(p=>({...p,[f]:e.target.value}))} style={s.input}/>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>營業數據{isCount && <span style={{ color:C.accent }}>(份數櫃位)</span>}</div>
+            {isCount ? (
+              <div style={{ marginBottom:12 }}>
+                <label style={s.label}>當日販售份數(份)</label>
+                <input type="number" placeholder={`請輸入份數(每份$${locInfo.unitPrice||70}自動換算)`}
+                  value={itemRevenue["雞蛋糕"]||""} onChange={e=>setItemRevenue(p=>({...p,"雞蛋糕":e.target.value}))} style={s.input}/>
+              </div>
+            ) : (
+              <>
+                {revItems.map(it => (
+                  <div key={it} style={{ marginBottom:12 }}>
+                    <label style={s.label}>{it}營業額（元）</label>
+                    <input type="number" placeholder={`請輸入${it}今日實際營業額`}
+                      value={itemRevenue[it]||""} onChange={e=>setItemRevenue(p=>({...p,[it]:e.target.value}))} style={s.input}/>
+                  </div>
+                ))}
+                {revItems.length > 1 && (
+                  <div style={{ fontSize:13, fontWeight:800, color:C.accent, textAlign:"right", marginBottom:12 }}>
+                    合計：${revenueTotal.toLocaleString()}
+                  </div>
+                )}
+              </>
             )}
-            <input ref={groomRef} type="file" accept="image/*" capture="user"
-              onChange={handleGroomPhoto} style={{ display:"none" }}/>
-            <button onClick={()=>groomRef.current.click()} style={{
-              ...s.btn("ghost"), flex:1, gap:8,
-              border:`2px dashed ${groomFile?C.green:C.border}`,
-              color:groomFile?C.green:C.muted }}>
-              🤳 {groomFile ? "重新拍攝" : "拍攝儀容照"}
+            <div>
+              <label style={s.label}>交接零用金（元）</label>
+              <input type="number" placeholder="請輸入交接時零用金金額" value={cashHandover}
+                onChange={e=>setCashHandover(e.target.value)} style={s.input}/>
+            </div>
+          </div>
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>清潔烤爐照片 <span style={{ color:C.accent }}>*必填</span></div>
+            {ovenPhotos.length>0 && (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+                {ovenPhotos.map((p,i)=>(
+                  <div key={i} style={{ position:"relative", borderRadius:10, overflow:"hidden", aspectRatio:"1", background:C.warm }}>
+                    <img src={p.url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                    <button onClick={()=>setOvenPhotos(ps=>ps.filter((_,idx)=>idx!==i))} style={{
+                      position:"absolute", top:4, right:4, width:20, height:20, borderRadius:10,
+                      background:"rgba(0,0,0,0.6)", color:"#fff", border:"none", cursor:"pointer", fontSize:12,
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input ref={ovenRef} type="file" accept="image/*" multiple capture="environment"
+              onChange={handleMultiPhoto(setOvenPhotos)} style={{ display:"none" }}/>
+            <button onClick={()=>ovenRef.current.click()} style={{ ...s.btn("ghost"), gap:8,
+              border:`2px dashed ${ovenPhotos.length>0?C.green:C.border}`, color:ovenPhotos.length>0?C.green:C.muted }}>
+              🔥 {ovenPhotos.length>0 ? `再新增（已拍 ${ovenPhotos.length} 張）` : "拍攝烤爐清潔照"}
             </button>
           </div>
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>清潔環境照片 <span style={{ color:C.accent }}>*必填</span></div>
+            {envPhotos.length>0 && (
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
+                {envPhotos.map((p,i)=>(
+                  <div key={i} style={{ position:"relative", borderRadius:10, overflow:"hidden", aspectRatio:"1", background:C.warm }}>
+                    <img src={p.url} alt="" style={{ width:"100%",height:"100%",objectFit:"cover" }}/>
+                    <button onClick={()=>setEnvPhotos(ps=>ps.filter((_,idx)=>idx!==i))} style={{
+                      position:"absolute", top:4, right:4, width:20, height:20, borderRadius:10,
+                      background:"rgba(0,0,0,0.6)", color:"#fff", border:"none", cursor:"pointer", fontSize:12,
+                      display:"flex", alignItems:"center", justifyContent:"center" }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input ref={envRef} type="file" accept="image/*" multiple capture="environment"
+              onChange={handleMultiPhoto(setEnvPhotos)} style={{ display:"none" }}/>
+            <button onClick={()=>envRef.current.click()} style={{ ...s.btn("ghost"), gap:8,
+              border:`2px dashed ${envPhotos.length>0?C.green:C.border}`, color:envPhotos.length>0?C.green:C.muted }}>
+              📸 {envPhotos.length>0 ? `再新增（已拍 ${envPhotos.length} 張）` : "拍攝環境清潔照"}
+            </button>
+          </div>
+
+          <div style={{ ...s.card, marginBottom:12 }}>
+            <div style={s.sectionTitle}>交班備注</div>
+            <textarea value={handoverNote} onChange={e=>setHandoverNote(e.target.value)}
+              placeholder="留給下一班/下一天的注意事項（選填）" style={{ ...s.input, minHeight:80, resize:"vertical" }}/>
+          </div>
+
+          {!closeAllFilled && (
+            <div style={{ fontSize:12, color:C.muted, textAlign:"center", marginBottom:10 }}>
+              ⚠️ 請完整填寫面糊剩餘、營業額、零用金並上傳兩組照片
+            </div>
+          )}
+          <button disabled={!closeAllFilled || closeSubmitting} onClick={submitCloseData}
+            style={{ ...s.btn("primary"), opacity:(!closeAllFilled||closeSubmitting)?.5:1 }}>
+            {closeSubmitting ? "送出中…" : "✓ 確認送出收店盤點"}
+          </button>
+        </>
+      )}
+
+      {punchState.outTime && checklistDone.close && (
+        <div style={{ ...s.card, textAlign:"center", padding:30 }}>
+          <div style={{ fontSize:40, marginBottom:10 }}>✅</div>
+          <div style={{ fontSize:15, fontWeight:800, color:C.green }}>今日打卡與盤點皆已完成</div>
+          <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>辛苦了，掰掰！👋</div>
         </div>
       )}
 
-      <div style={{ display:"flex", gap:10 }}>
-        <button disabled={!!punchState.inTime || loading} onClick={()=>doPunch("in")}
-          style={{ ...s.btn("green"), flex:1,
-                   opacity:(punchState.inTime||(!groomFile&&!punchState.inTime))?.5:1 }}>
-          {loading && !punchState.inTime ? "處理中…" : punchState.inTime ? "✓ 已打卡" : "⬆ 上班打卡"}
-        </button>
-        <button disabled={!punchState.inTime || !!punchState.outTime || loading}
-          onClick={()=>doPunch("out")}
-          style={{ ...s.btn("blue"), flex:1,
-                   opacity:(!punchState.inTime || punchState.outTime)?.5:1 }}>
-          {punchState.outTime ? "✓ 已退勤" : "⬇ 下班打卡"}
-        </button>
-      </div>
-
-      {!todaySchedule && (
+      {!todaySchedule && !punchState.inTime && (
         <div style={{ ...s.card, marginTop:12, textAlign:"center", color:C.muted, fontSize:13 }}>
           今日無排班，如有臨時出班請聯絡大隊長
         </div>
@@ -739,7 +1015,7 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
   const flavors = ["原味","可可","紅玉","抹茶"];
   const [amounts, setAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
   const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0" });
-  const [revenue, setRevenue] = useState("");
+  const [itemRevenue, setItemRevenue] = useState({});
   const [cash, setCash] = useState("");
   const [note, setNote] = useState("");
   const [photos, setPhotos] = useState([]);
@@ -752,6 +1028,11 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
   // 依櫃位類型切換業績輸入(C份數 → 輸入份數)
   const locInfo = (locations || {})[todaySchedule?.location] || {};
   const isCount = locInfo.type === "C份數";
+  const revItems = locInfo.items && locInfo.items.length ? locInfo.items : ["雞蛋糕"];
+  const revenueAllFilled = isCount
+    ? (itemRevenue["雞蛋糕"] !== undefined && itemRevenue["雞蛋糕"] !== "")
+    : revItems.every(it => itemRevenue[it] !== undefined && itemRevenue[it] !== "");
+  const revenueTotal = revItems.reduce((sum,it)=> sum + (parseFloat(itemRevenue[it])||0), 0);
 
   const handlePhoto = (e) => {
     const files = Array.from(e.target.files);
@@ -759,7 +1040,7 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
     setPhotos(p => [...p, ...previews]);
   };
 
-  const allFilled = flavors.every(f => amounts[f] !== "") && revenue !== "" && cash !== "" && photos.length > 0;
+  const allFilled = flavors.every(f => amounts[f] !== "") && revenueAllFilled && cash !== "" && photos.length > 0;
 
   const handleSubmit = async () => {
     setSubmitting(true); setErr("");
@@ -785,7 +1066,7 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
         remRuby: amounts["紅玉"], remMatcha: amounts["抹茶"],
         rsOriginal: restock["原味"], rsCocoa: restock["可可"],
         rsRuby: restock["紅玉"], rsMatcha: restock["抹茶"],
-        revenue, cash,
+        itemRevenue: JSON.stringify(itemRevenue), cash,
         photoUrl: urls.join(" , "),
         handoverNote: note,
       });
@@ -844,12 +1125,28 @@ function CloseChecklist({ user, todaySchedule, locations, onDone, onBack }) {
 
       <div style={s.card}>
         <div style={s.sectionTitle}>營業數據{isCount && <span style={{ color:C.accent }}>(份數櫃位)</span>}</div>
-        <div style={{ marginBottom:12 }}>
-          <label style={s.label}>{isCount ? "當日販售份數(份)" : "當日營業額（元）"}</label>
-          <input type="number"
-            placeholder={isCount ? `請輸入份數(每份$${locInfo.unitPrice||70}自動換算)` : "請輸入今日實際營業額"}
-            value={revenue} onChange={e=>setRevenue(e.target.value)} style={s.input}/>
-        </div>
+        {isCount ? (
+          <div style={{ marginBottom:12 }}>
+            <label style={s.label}>當日販售份數(份)</label>
+            <input type="number" placeholder={`請輸入份數(每份$${locInfo.unitPrice||70}自動換算)`}
+              value={itemRevenue["雞蛋糕"]||""} onChange={e=>setItemRevenue(p=>({...p,"雞蛋糕":e.target.value}))} style={s.input}/>
+          </div>
+        ) : (
+          <>
+            {revItems.map(it => (
+              <div key={it} style={{ marginBottom:12 }}>
+                <label style={s.label}>{it}營業額（元）</label>
+                <input type="number" placeholder={`請輸入${it}今日實際營業額`}
+                  value={itemRevenue[it]||""} onChange={e=>setItemRevenue(p=>({...p,[it]:e.target.value}))} style={s.input}/>
+              </div>
+            ))}
+            {revItems.length > 1 && (
+              <div style={{ fontSize:13, fontWeight:800, color:C.accent, textAlign:"right", marginBottom:12 }}>
+                合計：${revenueTotal.toLocaleString()}
+              </div>
+            )}
+          </>
+        )}
         <div>
           <label style={s.label}>零用金結餘（元）</label>
           <input type="number" placeholder="請輸入零用金結餘"
@@ -1307,7 +1604,7 @@ function ScheduleManagerTab({ user }) {
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:13, fontWeight:700 }}>{r.name} · {r.location}</div>
                 <div style={{ fontSize:11, color:C.muted }}>
-                  {r.start}–{r.end} ({r.hours}hr) {r.type==="double"?"👥雙人":""} {r.holiday==="是"?"🎉假日":""}
+                  {r.start}–{r.end} ({r.hours}hr) {r.type==="triple"?"👥👤三人":r.type==="double"?"👥雙人":""} {r.holiday==="是"?"🎉假日":""}
                 </div>
               </div>
               <button onClick={()=>setEditing(r)} style={{ ...s.btn("ghost"), width:"auto", padding:"6px 12px", fontSize:11 }}>編輯</button>
@@ -1389,10 +1686,10 @@ function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved
         </div>
 
         <div style={{ display:"flex", gap:10, marginBottom:16 }}>
-          <button onClick={()=>setType(type==="single"?"double":"single")}
-            style={{ ...s.btn("ghost"), flex:1, color:type==="double"?C.blue:C.muted,
-                     border:`1px solid ${type==="double"?C.blue:C.border}` }}>
-            {type==="double" ? "👥 雙人班" : "👤 單人班"}
+          <button onClick={()=>setType(type==="single"?"double":type==="double"?"triple":"single")}
+            style={{ ...s.btn("ghost"), flex:1, color:type!=="single"?C.blue:C.muted,
+                     border:`1px solid ${type!=="single"?C.blue:C.border}` }}>
+            {type==="triple" ? "👥👤 三人班" : type==="double" ? "👥 雙人班" : "👤 單人班"}
           </button>
           <button onClick={()=>setHoliday(!holiday)}
             style={{ ...s.btn("ghost"), flex:1, color:holiday?C.accent:C.muted,
