@@ -61,7 +61,10 @@ function compressPhoto(file) {
 async function uploadPhoto(file, meta) {
   const b64 = await compressPhoto(file);
   const res = await apiPost({ action:"uploadPhoto", base64:b64, ...meta });
-  return res.success ? res.url : "";
+  if (!res.success || !res.url) {
+    throw new Error("照片上傳失敗(" + (res.error || "請檢查網路後重試") + ")");
+  }
+  return res.url;
 }
 
 // ─────────────────────────────────────────────
@@ -524,7 +527,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
       setGroomFile(null); setGroomPreview("");
       onSegmentChange && onSegmentChange();
     } catch(e) {
-      setErr(typeof e === "string" ? e : "打卡失敗，請重試");
+      setErr(typeof e === "string" ? e : (e?.message || "打卡失敗，請重試"));
     }
     setLoading(false);
   };
@@ -782,7 +785,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       setChecklistDone && setChecklistDone({ open:false, close:false });
       onSegmentChange && onSegmentChange();
     } catch(e) {
-      setErr(typeof e === "string" ? e : "打卡失敗，請重試");
+      setErr(typeof e === "string" ? e : (e?.message || "打卡失敗，請重試"));
     }
     setLoading(false);
   };
