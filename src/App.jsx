@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
+const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 
 // ─────────────────────────────────────────────
@@ -192,6 +193,7 @@ export default function App(){
     { id:"guide", icon:"📖", label:"制度" },
     ...(user.role>=2 ? [{ id:"schedule_mgr", icon:"🗓", label:"排班" },
                          { id:"admin", icon:"📊", label:"管理" }] : []),
+    ...(user.role>=3 ? [{ id:"universe", icon:"🌌", label:"宇宙" }] : []),  // 測試中：先開放 Lv.3
   ];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
@@ -240,6 +242,11 @@ export default function App(){
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
         {tab==="schedule_mgr" && user.role>=2 && <ScheduleManagerTab user={user} />}
+        {tab==="universe" && user.role>=3 && (
+          <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} />
+          </Suspense>
+        )}
         {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onBack={()=>setTab("home")} />}
       </div>
 
