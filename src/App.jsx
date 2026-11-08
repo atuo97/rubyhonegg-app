@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import VotesTab from "./VotesTab.jsx";
 
 // ─────────────────────────────────────────────
 // Google Sheets API 設定
@@ -225,7 +226,8 @@ export default function App(){
       <div style={{ padding:"14px 14px 80px" }}>
         {tab==="home"  && <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
-                                   todaySchedule={todaySchedule} quota={quota} schedule={schedule} />}
+                                   todaySchedule={todaySchedule} quota={quota} schedule={schedule}
+                                   onOpenVotes={()=>setTab("vote")} />}
         {tab==="work"  && <WorkTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
@@ -238,6 +240,7 @@ export default function App(){
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
         {tab==="schedule_mgr" && user.role>=2 && <ScheduleManagerTab user={user} />}
+        {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onBack={()=>setTab("home")} />}
       </div>
 
       {/* BOTTOM NAV */}
@@ -341,7 +344,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes }) {
   const time = useTime();
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const urgentAnn = announcements.filter(a => a.urgent);
@@ -404,6 +407,19 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
             </div>
           ))}
         </div>
+      )}
+
+      {/* 夥伴投票入口 */}
+      {onOpenVotes && (
+        <button onClick={onOpenVotes} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:12,
+          cursor:"pointer", textAlign:"left", fontFamily:"inherit", borderLeft:"4px solid #6a48a8", padding:"12px 14px" }}>
+          <span style={{ fontSize:22 }}>🗳️</span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:800, color:C.text }}>夥伴投票</div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>查看進行中的投票、送出你的選擇</div>
+          </div>
+          <span style={{ color:C.light }}>›</span>
+        </button>
       )}
 
       {/* Urgent announcements */}
