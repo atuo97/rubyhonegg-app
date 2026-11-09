@@ -11,8 +11,20 @@ const LOGO_WHITE = "/logo_white.png";
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function apiGet(params, retries = 2) {
+// 本機快取(只放非敏感資料:公告、櫃位),讓畫面先秒開、背景再更新
+const cacheGet = k => { try { const v = localStorage.getItem("rh_" + k); return v ? JSON.parse(v) : null; } catch(e) { return null; } };
+const cacheSet = (k, v) => { try { localStorage.setItem("rh_" + k, JSON.stringify(v)); } catch(e) {} };
+
+// 同一時間相同的 GET 只送一次(避免重複請求拖慢後端)
+const inflightGets = {};
+function apiGet(params, retries = 2) {
   const qs = new URLSearchParams(params).toString();
+  if (inflightGets[qs]) return inflightGets[qs];
+  const p = apiGetRaw(qs, retries).finally(() => { delete inflightGets[qs]; });
+  inflightGets[qs] = p;
+  return p;
+}
+async function apiGetRaw(qs, retries) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(`${API_URL}?${qs}`);
@@ -137,11 +149,11 @@ export default function App(){
   const [segRefreshKey, setSegRefreshKey] = useState(0); // 用來觸發 WorkTab/LeaveTab 重新查詢
   const [checklistDone, setChecklistDone] = useState({ open:false, close:false });
   const [staffInfo, setStaffInfo] = useState(null);
-  const [announcements, setAnnouncements] = useState([]);
+  const [announcements, setAnnouncements] = useState(() => cacheGet("ann") || []);
   const [schedule, setSchedule] = useState([]);
   const [salary, setSalary]   = useState([]);
   const [quota, setQuota]     = useState(null);
-  const [locations, setLocations] = useState({});
+  const [locations, setLocations] = useState(() => cacheGet("loc") || {});
   const [workLoc, setWorkLoc] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -153,7 +165,7 @@ export default function App(){
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || segRefreshKey === 0) return;   // 登入時已查過一次,這裡只處理之後的刷新
     loadActiveSegment();
   }, [segRefreshKey]);
 
@@ -164,21 +176,17 @@ export default function App(){
 
   const loadAllData = async () => {
     setLoading(true);
+    // 每個請求一回來就先更新畫面,不必等最慢的那一個
+    const run = (req, fn) => req.then(res => { try { if (res && res.success) fn(res); } catch(e) { console.error(e); } });
     try {
-      const [infoRes, annRes, schedRes, salRes, quotaRes, locRes] = await Promise.all([
-        apiGet({ action:"getStaffInfo", empId:user.id }),
-        apiGet({ action:"getAnnouncements" }),
-        apiGet({ action:"getSchedule", empId:user.id, ym:ymStr() }),
-        apiGet({ action:"getSalary", empId:user.id }),
-        apiGet({ action:"getQuota", empId:user.id, ym:ymStr() }),
-        apiGet({ action:"getLocations" }),
+      await Promise.all([
+        run(apiGet({ action:"getStaffInfo", empId:user.id }), r => setStaffInfo(r.data)),
+        run(apiGet({ action:"getAnnouncements" }), r => { const d = r.data || []; setAnnouncements(d); cacheSet("ann", d); }),
+        run(apiGet({ action:"getSchedule", empId:user.id, ym:ymStr() }), r => setSchedule(r.data || [])),
+        run(apiGet({ action:"getSalary", empId:user.id }), r => setSalary(r.data || [])),
+        run(apiGet({ action:"getQuota", empId:user.id, ym:ymStr() }), r => setQuota(r.data)),
+        run(apiGet({ action:"getLocations" }), r => { const d = r.data || {}; setLocations(d); cacheSet("loc", d); }),
       ]);
-      if (infoRes.success) setStaffInfo(infoRes.data);
-      if (annRes.success)  setAnnouncements(annRes.data || []);
-      if (schedRes.success) setSchedule(schedRes.data || []);
-      if (salRes.success)  setSalary(salRes.data || []);
-      if (quotaRes.success) setQuota(quotaRes.data);
-      if (locRes.success)  setLocations(locRes.data || {});
     } catch(e) { console.error(e); }
     setLoading(false);
   };
@@ -353,6 +361,15 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes }) {
   const time = useTime();
+  // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
+  const [bdays, setBdays] = useState([]);
+  useEffect(() => {
+    let on = true;
+    apiGet({ action:"getTodayBirthdays", date:todayStr() }, 0).then(r => {
+      if (on && r && r.success) setBdays(r.data || []);
+    });
+    return () => { on = false; };
+  }, []);
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const urgentAnn = announcements.filter(a => a.urgent);
 
@@ -400,6 +417,29 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
             </div>
           : <div style={{ marginTop:6, fontSize:12, color:"#705040" }}>今日無排班</div>}
       </div>
+
+      {/* 今日壽星 */}
+      {bdays.length > 0 && (() => {
+        const mine = bdays.includes(user.name);
+        const others = bdays.filter(n => n !== user.name);
+        return (
+          <div style={{ ...s.card, display:"flex", alignItems:"center", gap:12,
+                        background:`linear-gradient(135deg,${C.goldBg},${C.accentBg})`,
+                        border:`1px solid ${C.goldL}66` }}>
+            <span style={{ fontSize:30 }}>🎂</span>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:14, fontWeight:800, color:C.gold }}>
+                {mine ? `${user.name}，生日快樂！🎉` : "今日壽星"}
+              </div>
+              <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>
+                {mine
+                  ? (others.length ? `今天也是 ${others.join("、")} 的生日` : "紅玉滿全體夥伴祝你有個甜甜的一天")
+                  : `${others.join("、")} 今天生日，記得送上祝福`}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Todos */}
       {todos.length > 0 && (
@@ -1115,9 +1155,13 @@ function GuideTab() {
   const sections = [
     { id:"basic", icon:"⏱", title:"基本工時薪資", color:C.accent, content:(
       <div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:8, lineHeight:1.8 }}>
+          工時＝上、下班打卡之間的時數，<strong style={{color:C.text}}>不扣午休</strong>。
+          同一天在不同櫃位上班，工時<strong style={{color:C.text}}>合併累計</strong>後再計算加班。
+        </div>
         {[["第1–8小時","× 1.00 基本工資"],["第9–10小時","× 1.33 加班薪資1"],
           ["第11–12小時","× 1.67 加班薪資2"],["超過12小時","× 2.00 加班薪資3"],
-          ["國定假日","全部時段 × 2"]].map(([r,v]) => (
+          ["國定假日／颱風停班日","當日全部工資 × 2"]].map(([r,v]) => (
           <div key={r} style={{ display:"flex", justifyContent:"space-between",
                                 padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
             <span style={{ fontSize:13, color:C.muted }}>{r}</span>
@@ -1129,11 +1173,13 @@ function GuideTab() {
     { id:"bonus", icon:"🎯", title:"業績獎金（單/雙/三人）", color:C.gold, content:(
       <div>
         <div style={{ fontSize:12, color:C.muted, marginBottom:12 }}>
-          雙人門檻×2、三人門檻×3，達標後每人各領全額獎金
+          以當天該櫃位「計算業績」合計判斷，<strong style={{color:C.text}}>達到門檻即發</strong>；
+          雙人門檻×2、三人門檻×3，達標後每人各領全額獎金。<br/>
+          百貨櫃位：計算業績＝登記業績 × 80%（例：單人 $500 獎金需登記 $12,500）。
         </div>
-        {[["單人>$10,000 / 雙人>$20,000 / 三人>$30,000","$500"],
-          ["單人>$12,500 / 雙人>$25,000 / 三人>$37,500","$700"],
-          ["單人>$15,000 / 雙人>$30,000 / 三人>$45,000","$1,000"]].map(([r,v]) => (
+        {[["單人≥$10,000 / 雙人≥$20,000 / 三人≥$30,000","$500"],
+          ["單人≥$12,500 / 雙人≥$25,000 / 三人≥$37,500","$700"],
+          ["單人≥$15,000 / 雙人≥$30,000 / 三人≥$45,000","$1,000"]].map(([r,v]) => (
           <div key={r} style={{ display:"flex", justifyContent:"space-between",
                                 padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
             <span style={{ fontSize:12, color:C.muted, flex:2 }}>{r}</span>
@@ -1144,19 +1190,20 @@ function GuideTab() {
     )},
     { id:"group", icon:"🏪", title:"團體獎金", color:C.green, content:(
       <div style={{ fontSize:13, color:C.muted, lineHeight:2 }}>
-        月計算業績超過 <strong style={{color:C.text}}>$200,000</strong> 時，依工時比例分配。<br/>
-        計算方式：銷貨額 × 80% → ÷ 當月天數 × 30 = 30天基準<br/>
-        30天基準 &gt; $200,000 → 發放
+        每個櫃位每月計算一次：<br/>
+        月換算業績 ＝ 當月計算業績 ÷ 當月營業天數 × 30<br/>
+        月換算業績 &gt; <strong style={{color:C.text}}>$200,000</strong> → 發放<br/>
+        獎金 ＝ 當月計算業績 × <strong style={{color:C.text}}>1%</strong>，依各人當月在該櫃的工時比例分配
       </div>
     )},
     { id:"allowance", icon:"🌟", title:"各項津貼", color:C.blue, content:(
       <div>
-        {[["O 技能津貼","累計工時>180hr","每小時 +$20"],
-          ["P 貢獻津貼","≥1080/2160/3240/4320hr","每小時 +$5/10/15/20"],
-          ["Q 長青津貼","年滿50歲","每小時 +$10"],
-          ["R 生日津貼","排班≥80hr且累計≥1080hr","$600/1,200/2,400 依累計工時；未達則$200"],
-          ["S 三節津貼","春節/端午/中秋","計算方式同生日津貼"],
-          ["T 職務加給","有額外任務","另行議定"]
+        {[["O 技能津貼","累計工時 > 180hr","每小時 +$20"],
+          ["P 貢獻津貼","累計工時 > 1,080 / 2,160 / 3,240 / 4,320hr","每小時 +$5 / $10 / $15 / $20"],
+          ["Q 長青津貼","暫不計算","日後實施時另行公告"],
+          ["R 生日津貼","生日當月工時 ≥ 80hr","累計 >4,320hr：$2,400／>2,160hr：$1,200／其餘：$600；當月未滿 80hr 發 $200"],
+          ["S 三節津貼","春節（1月）、端午（6月）、中秋（9月）當月工時 ≥ 80hr","金額級距同生日津貼；當月未滿 80hr 發 $200"],
+          ["T 職務加給","有額外任務","另行議定，每月沿用上月金額"]
         ].map(([col,cond,amount]) => (
           <div key={col} style={{ padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ fontSize:12, fontWeight:700, color:C.blueL }}>{col}</div>
