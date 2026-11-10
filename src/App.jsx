@@ -1659,6 +1659,8 @@ function AdminTab({ user }) {
         </div>
       )}
 
+      <BatterStockPanel user={user} />
+
       {d && (
         <div style={s.card}>
           <div style={s.sectionTitle}>各櫃位累積({d.asOf})</div>
@@ -1710,6 +1712,57 @@ function AdminTab({ user }) {
       <div style={{ marginTop:12 }}>
         <InsuranceGradePanel user={user} ym={ym} />
       </div>
+    </div>
+  );
+}
+
+// ── 各店剩餘麵糊(取各櫃位最新一筆收店盤點)──
+const BATTER_FLAVORS = ["原味","可可","紅玉","抹茶"];
+const BATTER_LOW = 2;   // 剩餘 ≤ 這個包數就標紅提醒
+function BatterStockPanel({ user }) {
+  const [list, setList] = useState(null);
+  const [err, setErr] = useState("");
+  const load = async () => {
+    setErr("");
+    const r = await apiGet({ action:"getBatterStock", empId:user.id }, 1);
+    if (r && r.success) setList(r.data || []); else { setList([]); setErr((r && r.error) || "剩餘麵糊功能尚未開通"); }
+  };
+  useEffect(() => { load(); }, []);
+  const today = todayStr();
+  const ago = d => { const n = Math.round((new Date(today) - new Date(d)) / 86400000); return n <= 0 ? "今天" : n === 1 ? "昨天" : `${n} 天前`; };
+  const totalLow = (list || []).filter(x => BATTER_FLAVORS.some(f => x.rem[f] != null && x.rem[f] <= BATTER_LOW)).length;
+  return (
+    <div style={s.card}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
+        <div style={s.sectionTitle}>各店剩餘麵糊(包)</div>
+        {totalLow > 0 && <span style={{ fontSize:11.5, color:C.red, fontWeight:600 }}>{totalLow} 店需補貨</span>}
+      </div>
+      <div style={{ fontSize:11.5, color:C.muted, marginBottom:10 }}>依各店最近一次收店盤點；剩 {BATTER_LOW} 包以下標紅</div>
+      {list === null && <div className="rh-skel" style={{ height:70 }}/>}
+      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
+      {list && !err && list.length === 0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無收店盤點資料</div>}
+      {list && list.length > 0 && (
+        <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(4, 44px)", columnGap:6, rowGap:0, alignItems:"center" }}>
+          <span/>{BATTER_FLAVORS.map(f => <span key={f} style={{ fontSize:11, color:C.muted, textAlign:"center", paddingBottom:6 }}>{f}</span>)}
+          {list.map(x => {
+            const stale = x.date < today && ago(x.date) !== "昨天";
+            return [
+              <div key={x.loc+"n"} style={{ padding:"8px 0", borderTop:`1px solid ${C.border}`, minWidth:0 }}>
+                <div style={{ fontSize:13, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{x.loc.replace(/^\d+/, "")}</div>
+                <div style={{ fontSize:10.5, color: stale ? C.gold : C.light }}>{ago(x.date)}{x.by ? `・${x.by}` : ""}</div>
+              </div>,
+              ...BATTER_FLAVORS.map(f => {
+                const v = x.rem[f], low = v != null && v <= BATTER_LOW;
+                return <div key={x.loc+f} style={{ borderTop:`1px solid ${C.border}`, alignSelf:"stretch", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <span style={{ minWidth:34, textAlign:"center", padding:"3px 0", borderRadius:8, fontSize:14, fontWeight:600,
+                    fontVariantNumeric:"tabular-nums", background: low ? C.redBg : "transparent", color: v == null ? C.light : low ? C.red : C.text }}>{v == null ? "—" : v}</span>
+                </div>;
+              })
+            ];
+          })}
+        </div>
+      )}
+      <button onClick={load} style={{ ...s.btn("ghost"), padding:"7px", fontSize:12, marginTop:10 }}>重新整理</button>
     </div>
   );
 }
