@@ -3,6 +3,7 @@
 // 只負責畫面：誰在哪個場景、走路動畫、對話框。資料由 UniverseTab 傳入。
 // ─────────────────────────────────────────────
 import * as THREE from "three";
+import { toSceneOpts } from "./avatarCatalog.js";
 
 export const SCENES = {
   office:  { x: 0,   name: "辦公室",       short: "辦公室", icon: "💼", aisle: 2.6 },
@@ -40,7 +41,12 @@ export const AVATAR_PRESETS = {
   "千芊": { glasses: true, hair: 0x1a1a1a },
 };
 function hash(str) { let h = 0; for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
+// 夥伴自選的紙娃娃造型(empId → cfg),由 UniverseTab 從後端取得後用 setAvatars 設定
+let AV_CFG = {};
+const todayTW = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Taipei" });
 export function avatarFor(p) {
+  const mine = AV_CFG[String(p.id)];
+  if (mine) return toSceneOpts(mine, todayTW());
   const preset = Object.keys(AVATAR_PRESETS).find(k => (p.name || "").includes(k));
   const h = hash(p.id || p.name);
   const hairs = [0x1a1a1a, 0x2b1a10, 0x3b2314, 0x5a3825, 0x6b4423];
@@ -299,6 +305,39 @@ export function createOffice(container) {
   overlay.style.cssText = "position:absolute;inset:0;pointer-events:none;overflow:hidden";
   container.appendChild(overlay);
   function bubbleEl(cls) { const b = document.createElement("div"); b.className = cls; b.style.opacity = 0; overlay.appendChild(b); return b; }
+  // 帽子/頭飾(y = 帽子底部中心高度)
+  function addHat(g, hat, y, c) {
+    const W = 0xffffff;
+    switch (hat) {
+      case "cap": box(0.74, 0.26, 0.7, c, 0, y - 0.05, 0, g); box(0.74, 0.06, 0.32, c, 0, y - 0.17, 0.48, g); break;
+      case "chef": case "goldchef": { const k = hat === "goldchef" ? 0xf1c40f : W;
+        box(0.7, 0.2, 0.66, k, 0, y - 0.05, 0, g); box(0.62, 0.5, 0.58, k, 0, y + 0.28, 0, g); box(0.84, 0.28, 0.72, k, 0, y + 0.6, 0, g); break; }
+      case "beanie": box(0.76, 0.3, 0.7, 0x3b6ea5, 0, y, 0, g); box(0.2, 0.2, 0.2, W, 0, y + 0.24, 0, g); break;
+      case "santa": box(0.78, 0.2, 0.72, W, 0, y - 0.05, 0, g); box(0.62, 0.3, 0.6, 0xd62828, 0, y + 0.2, 0, g);
+        box(0.4, 0.26, 0.4, 0xd62828, 0, y + 0.42, -0.12, g); box(0.2, 0.2, 0.2, W, 0, y + 0.5, -0.32, g); break;
+      case "pumpkin": box(0.52, 0.4, 0.52, 0xe67e22, 0, y + 0.12, 0, g); box(0.1, 0.16, 0.1, 0x2e8b3a, 0, y + 0.4, 0, g); break;
+      case "crown": box(0.7, 0.14, 0.64, 0xf1c40f, 0, y - 0.02, 0, g);
+        [[-0.26, -0.22], [0.26, -0.22], [-0.26, 0.22], [0.26, 0.22], [0, 0]].forEach(s => box(0.12, 0.24, 0.12, 0xf1c40f, s[0], y + 0.16, s[1], g)); break;
+    }
+  }
+  // 小暴龍裝(品牌吉祥物,可自選穿上)
+  function makeTrex(o) {
+    const g = new THREE.Group(); scene.add(g);
+    const R = 0xd94a3a, Cr = 0xffe6c7, D = 0xa8322a;
+    const legL = new THREE.Group(); legL.position.set(-0.22, 0.65, 0); g.add(legL); box(0.3, 0.65, 0.34, R, 0, -0.32, 0, legL); box(0.34, 0.12, 0.5, D, 0, -0.6, 0.1, legL);
+    const legR = new THREE.Group(); legR.position.set(0.22, 0.65, 0); g.add(legR); box(0.3, 0.65, 0.34, R, 0, -0.32, 0, legR); box(0.34, 0.12, 0.5, D, 0, -0.6, 0.1, legR);
+    box(0.9, 0.95, 0.7, R, 0, 1.1, 0, g); box(0.6, 0.7, 0.05, Cr, 0, 1.05, 0.36, g);
+    box(0.5, 0.4, 0.5, R, 0, 1.0, -0.5, g); box(0.32, 0.3, 0.5, R, 0, 0.85, -0.9, g); box(0.2, 0.2, 0.4, R, 0, 0.75, -1.25, g);
+    [[1.7, -0.25], [1.5, -0.55], [1.3, -0.9]].forEach(s => box(0.14, 0.2, 0.18, 0xf1c40f, 0, s[0], s[1], g));
+    const armL = new THREE.Group(); armL.position.set(-0.52, 1.35, 0.2); g.add(armL); box(0.14, 0.36, 0.14, R, 0, -0.16, 0.08, armL);
+    const armR = new THREE.Group(); armR.position.set(0.52, 1.35, 0.2); g.add(armR); box(0.14, 0.36, 0.14, R, 0, -0.16, 0.08, armR);
+    box(0.95, 0.75, 0.85, R, 0, 2.0, 0.12, g); box(0.8, 0.2, 0.62, Cr, 0, 1.7, 0.3, g);
+    [-0.25, 0.25].forEach(sx => { box(0.2, 0.22, 0.03, 0xffffff, sx, 2.15, 0.555, g); box(0.1, 0.12, 0.03, 0x222222, sx, 2.13, 0.575, g); box(0.16, 0.08, 0.02, 0xff9aa2, sx * 1.6, 1.95, 0.555, g); });
+    box(0.07, 0.07, 0.03, 0xffffff, -0.15, 1.85, 0.555, g); box(0.07, 0.07, 0.03, 0xffffff, 0.15, 1.85, 0.555, g);
+    addHat(g, o.hat, 2.55, R);
+    return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.2, trex: true };
+  }
+  function buildChar(av) { return av.mascot === "trex" ? makeTrex(av) : av.penguin ? makePenguin(av) : makeChar(av); }
   function makeChar(o) {
     const g = new THREE.Group(); scene.add(g);
     const legL = new THREE.Group(); legL.position.set(-0.18, 0.7, 0); g.add(legL); box(0.3, 0.7, 0.32, o.pants, 0, -0.35, 0, legL);
@@ -307,15 +346,21 @@ export function createOffice(container) {
     if (o.apron) box(0.6, 0.6, 0.04, 0xffffff, 0, 1.0, 0.24, g);
     const armL = new THREE.Group(); armL.position.set(-0.5, 1.42, 0); g.add(armL); box(0.22, 0.66, 0.26, o.shirt, 0, -0.3, 0, armL);
     const armR = new THREE.Group(); armR.position.set(0.5, 1.42, 0); g.add(armR); box(0.22, 0.66, 0.26, o.shirt, 0, -0.3, 0, armR);
-    box(0.68, 0.62, 0.62, 0xf5c9a0, 0, 1.8, 0, g);
-    box(0.72, 0.2, 0.66, o.hair, 0, 2.15, 0, g);
+    box(0.68, 0.62, 0.62, o.skin || 0xf5c9a0, 0, 1.8, 0, g);
+    if (o.hairStyle === "buzz") box(0.7, 0.1, 0.64, o.hair, 0, 2.1, 0, g);
+    else box(0.72, 0.2, 0.66, o.hair, 0, 2.15, 0, g);
+    if (o.hairStyle === "long") { box(0.1, 0.8, 0.62, o.hair, -0.37, 1.75, -0.02, g); box(0.1, 0.8, 0.62, o.hair, 0.37, 1.75, -0.02, g); box(0.72, 0.8, 0.1, o.hair, 0, 1.75, -0.33, g); }
+    if (o.hairStyle === "bun" && !o.hat) box(0.3, 0.3, 0.3, o.hair, 0, 2.42, -0.05, g);
+    addHat(g, o.hat, 2.3, o.shirt);
     if (o.cap) { box(0.74, 0.26, 0.7, o.cap, 0, 2.22, 0, g); box(0.74, 0.06, 0.32, o.cap, 0, 2.1, 0.48, g); }
     if (o.glasses) box(0.56, 0.12, 0.03, 0x222222, 0, 1.84, 0.32, g);
     if (o.ponytail) { box(0.72, 0.45, 0.12, o.hair, 0, 1.95, -0.33, g); box(0.2, 0.2, 0.2, o.hair, 0, 2.05, -0.45, g); box(0.18, 0.55, 0.18, o.hair, 0, 1.7, -0.5, g); }
     if (o.bob) { box(0.1, 0.4, 0.62, o.hair, -0.37, 1.9, -0.02, g); box(0.1, 0.4, 0.62, o.hair, 0.37, 1.9, -0.02, g); box(0.72, 0.45, 0.1, o.hair, 0, 1.92, -0.33, g); }
     if (o.slim) g.scale.set(0.86, 1, 0.86);
     box(0.09, 0.11, 0.02, 0x222222, -0.15, 1.83, 0.315, g); box(0.09, 0.11, 0.02, 0x222222, 0.15, 1.83, 0.315, g);
-    box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
+box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
+    if (o.face === "sunglasses") box(0.62, 0.15, 0.03, 0x111111, 0, 1.84, 0.335, g);
+    if (o.face === "mask") box(0.5, 0.26, 0.03, 0xffffff, 0, 1.62, 0.335, g);
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.4 };
   }
   function makePenguin(o) {
@@ -332,6 +377,7 @@ export function createOffice(container) {
     box(0.1, 0.12, 0.02, 0x111111, -0.15, 1.9, 0.415, g); box(0.1, 0.12, 0.02, 0x111111, 0.15, 1.9, 0.415, g);
     box(0.24, 0.12, 0.22, 0xf39c12, 0, 1.76, 0.5, g); box(0.14, 0.07, 0.02, 0xff9aa2, -0.27, 1.74, 0.415, g); box(0.14, 0.07, 0.02, 0xff9aa2, 0.27, 1.74, 0.415, g);
     box(0.95, 0.12, 0.82, o.shirt, 0, 2.27, 0, g);
+    addHat(g, o.hat, 2.5, o.shirt);
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3, penguin: true };
   }
 
@@ -446,7 +492,16 @@ export function createOffice(container) {
     m.c.g.rotation.y = s.rotY; m.c.sit = !!s.sit; m.c.anim = s.anim; m.arrived = true;
   }
 
+  let lastList = [];
+  function rebuildChar(m, av) {
+    const old = m.c, c = buildChar(av);
+    c.g.position.copy(old.g.position); c.g.rotation.y = old.g.rotation.y;
+    c.path = old.path; c.onArrive = old.onArrive; c.anim = old.anim; c.sit = old.sit; c.t = old.t;
+    scene.remove(old.g); old.bubble.remove(); old.tagEl && old.tagEl.remove();
+    nameTag(c, m.p.name); m.c = c;
+  }
   function setCrew(list) {
+    lastList = list;
     const ids = new Set(list.map(p => String(p.id)));
     // 下班：揮手離場
     for (const [id, m] of crew) if (!ids.has(id) && !m.leaving) {
@@ -460,11 +515,12 @@ export function createOffice(container) {
       const id = String(p.id), k = sceneOf(p.location);
       let m = crew.get(id);
       if (m && m.leaving) return;
+      if (m) { m.p = p; const av = avatarFor(p), sig = JSON.stringify(av); if (sig !== m.sig) { rebuildChar(m, av); m.sig = sig; } }
       if (!m) {
         const av = avatarFor(p);
-        const c = av.penguin ? makePenguin(av) : makeChar(av);
+        const c = buildChar(av);
         nameTag(c, p.name);
-        m = { p, c, scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
+        m = { p, c, sig: JSON.stringify(av), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
         crew.set(id, m);
         const slot = freeSlot(k); occupied[k].add(slot);
         // 還沒有場景 → 從該場景入口走進來
@@ -570,6 +626,7 @@ export function createOffice(container) {
 
   return {
     setCrew,
+    setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
     setView(k) { if (SCENES[k]) view = k; },
     dispose() {

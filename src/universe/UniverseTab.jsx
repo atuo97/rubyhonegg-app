@@ -35,7 +35,7 @@ async function pool(items, n, fn, onProgress) {
 
 const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "預拌粉", "零錢"];
 
-export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
+export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
@@ -59,6 +59,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
     short.forEach(x => (map[x.scene] = map[x.scene] || []).push(x.item));
     engine.current && engine.current.setBoards(map);
   }, [short]);
+
+  // ── 夥伴自選造型(後端 getAvatars;尚未部署時安靜略過,小人維持預設外型)──
+  const loadAvatars = async () => {
+    const r = await apiGet({ action: "getAvatars" }, 0);
+    if (r && r.success && engine.current) engine.current.setAvatars(r.data || {});
+  };
 
   // ── 缺貨看板（後端：getShortages / addShortage / resolveShortage）──
   const loadShort = async () => {
@@ -86,6 +92,14 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
 
   const load = async () => {
     setErr("");
+    // 優先用後端一次算好的在班名單(全員可用);後端沒有這支 API 時才退回逐人查詢
+    const crew = await apiGet({ action: "getOnDutyCrew", date: todayStr() }, 1);
+    if (crew && crew.success) {
+      setOnDuty((crew.data || []).filter(p => p.location));
+      setProgress("");
+      setUpdated(new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
+      return;
+    }
     const staffRes = await apiGet({ action: "getStaffList", empId: user.id });
     if (!staffRes.success) { setErr(staffRes.error || "讀取夥伴名單失敗"); return; }
     const staff = staffRes.data || [];
@@ -98,7 +112,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
     setOnDuty(list); setProgress("");
     setUpdated(new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
   };
-  useEffect(() => { load(); loadShort(); const t = setInterval(() => { load(); loadShort(); }, 3 * 60 * 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { load(); loadShort(); loadAvatars(); const t = setInterval(() => { load(); loadShort(); loadAvatars(); }, 3 * 60 * 1000); return () => clearInterval(t); }, []);
 
   const shown = demo ? DEMO : onDuty;
   const count = k => shown.filter(p => sceneOf(p.location) === k).length;
@@ -110,13 +124,16 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
       <style>{CSS}</style>
       <div style={{ ...s.card, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-          <div style={{ fontWeight: 900, fontSize: 15 }}>🌌 宇宙辦公室 <span style={{ fontSize: 10, color: C.gold, fontWeight: 700 }}>測試版</span></div>
-          <div style={{ fontSize: 11, color: C.muted }}>{progress || (updated && `更新 ${updated}`)}</div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>紅玉滿宇宙辦公室 <span style={{ fontSize: 10, color: C.gold, fontWeight: 600 }}>測試版</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: C.muted }}>{progress || (updated && `更新 ${updated}`)}</span>
+            {onEditAvatar && <button onClick={onEditAvatar} style={{ border: `1px solid ${C.border}`, background: C.card, color: C.accent, borderRadius: 999, padding: "4px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>我的造型</button>}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
           {SCENE_KEYS.map(k => (
             <button key={k} onClick={() => setView(k)} style={{
-              flex: "0 0 auto", border: "none", borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 800, cursor: "pointer",
+              flex: "0 0 auto", border: "none", borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer",
               background: view === k ? C.accent : C.warm, color: view === k ? "#fff" : C.text,
             }}>{SCENES[k].icon} {SCENES[k].short}{count(k) ? ` · ${count(k)}` : ""}</button>
           ))}
@@ -138,10 +155,10 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
           {short.filter(x => x.scene === view).map(x => (
             <div key={x.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: C.red }}>{x.item}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.red }}>{x.item}</div>
                 <div style={{ fontSize: 10, color: C.light }}>{x.by || ""}{x.time ? " · " + new Date(x.time).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}</div>
               </div>
-              <button onClick={() => resolveShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.greenBg, color: C.green, fontWeight: 800, fontSize: 12, cursor: "pointer" }}>✅ 補好了</button>
+              <button onClick={() => resolveShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.greenBg, color: C.green, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>✅ 補好了</button>
             </div>
           ))}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
@@ -167,7 +184,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s }) {
           return (
             <div key={p.id} onClick={() => setView(k)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
               <span style={{ fontSize: 13, fontWeight: 700 }}>{p.name}</span>
-              <span style={{ fontSize: 12, color: C.muted }}>{SCENES[k].icon} {shortLoc(p.location)}{p.inTime ? ` · ${String(p.inTime).slice(11, 16) || p.inTime}` : ""}</span>
+              <span style={{ fontSize: 12, color: C.muted }}>{SCENES[k].icon} {shortLoc(p.location)}{p.inTime ? ` · ${(() => { const d = new Date(p.inTime); return isNaN(d) ? String(p.inTime) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); })()}` : ""}</span>
             </div>
           );
         })}

@@ -64,10 +64,9 @@ export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
         <button onClick={onBack} style={{ background:"none", border:"none", cursor:"pointer",
           color:C.muted, fontSize:13, padding:"0 0 10px", fontFamily:"inherit" }}>‹ 回首頁</button>
       )}
-      <div style={{ ...s.card, background:`linear-gradient(135deg,#1a1030,#2a1848)`, border:"1px solid #40286a", textAlign:"center", padding:18 }}>
-        <div style={{ fontSize:30 }}>🗳️</div>
-        <div style={{ fontSize:16, fontWeight:800, color:"#d0b8f0" }}>夥伴投票</div>
-        <div style={{ fontSize:12, color:"#8a70b0", marginTop:4 }}>投票為記名,管理員可查看投票內容</div>
+      <div style={{ ...s.card, textAlign:"center", padding:18 }}>
+        <div style={{ fontSize:16, fontWeight:600 }}>夥伴投票</div>
+        <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>投票為記名，管理員可查看投票內容</div>
       </div>
 
       {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>⚠️ {err}</div>}
@@ -112,7 +111,7 @@ export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
         return (
           <div key={p.id} style={{ ...s.card, opacity: live?1:.85 }}>
             <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
-              <div style={{ fontSize:15, fontWeight:800 }}>{p.title}</div>
+              <div style={{ fontSize:15, fontWeight:600 }}>{p.title}</div>
               <span style={{ fontSize:11, fontWeight:700, color: live?C.green:C.muted, whiteSpace:"nowrap" }}>{live?"進行中":"已結束"}</span>
             </div>
             {p.desc && <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>{p.desc}</div>}
@@ -132,7 +131,7 @@ export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
                   {n!==null && <div style={{ position:"absolute", left:0, top:0, bottom:0, width:pct+"%", background:C.goldBg, zIndex:0 }}/>}
                   <div style={{ position:"relative", zIndex:1, display:"flex", justifyContent:"space-between" }}>
                     <span>{on?"✓ ":""}{o}</span>
-                    {n!==null && <span style={{ fontWeight:800, color:C.gold }}>{n} 票 · {pct}%</span>}
+                    {n!==null && <span style={{ fontWeight:600, color:C.gold }}>{n} 票 · {pct}%</span>}
                   </div>
                 </button>
               );
