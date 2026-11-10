@@ -6,7 +6,7 @@
 import { useEffect, useState } from "react";
 import {
   SKINS, HAIR_STYLES, HAIR_COLORS, TOPS, PANTS, FACES, HATS, MASCOTS,
-  defaultCfg, sanitize, hatUnlocked, hatLockText,
+  defaultCfg, sanitize, hatUnlocked, hatLockText, SAYING_MAX,
 } from "./universe/avatarCatalog.js";
 
 const hex = n => "#" + n.toString(16).padStart(6, "0");
@@ -126,6 +126,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s }) 
     <div>
       <div style={{ ...s.card, display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px 14px",
                     background: "linear-gradient(180deg,#f7f0e6,#fffdfa)" }}>
+        <div style={{ minHeight: 30, maxWidth: 260, marginBottom: 8, padding: cfg.saying ? "6px 12px" : 0, borderRadius: 12, background: "#fffaf2", border: cfg.saying ? `1px solid ${C.border}` : "none", fontSize: 12.5, color: "#2b1d14", textAlign: "center", lineHeight: 1.4 }}>{cfg.saying}</div>
         <Doll cfg={cfg} />
         <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>這就是你在宇宙辦公室裡的樣子</div>
       </div>
@@ -133,6 +134,9 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s }) 
       {msg && <div style={{ ...s.card, background: C.goldBg, fontSize: 12.5, color: C.gold, padding: "10px 14px" }}>{msg}</div>}
 
       <div style={s.card}>
+        <div style={s.sectionTitle}>頭頂的一句話</div>
+        <input value={cfg.saying} maxLength={SAYING_MAX} onChange={e => set("saying", e.target.value)} placeholder="例如：今天也要加油！" style={s.input} />
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>會出現在宇宙辦公室你的頭頂，所有夥伴都看得到（{[...cfg.saying].length}/{SAYING_MAX} 字）。請友善、正向喔。</div>
         <Title>角色</Title>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {MASCOTS.map(m => <Chip key={m.id} C={C} on={cfg.mascot === m.id} label={m.name} onClick={() => set("mascot", m.id)} />)}

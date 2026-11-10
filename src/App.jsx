@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor from "./AvatarEditor.jsx";
+import OrdersTab from "./OrdersTab.jsx";
 
 // ─────────────────────────────────────────────
 // Google Sheets API 設定
@@ -153,6 +154,7 @@ const ICONS = {
   chart:'<path d="M5 19V9M12 19V5M19 19v-7"/>',
   cube:'<path d="M12 3.5l7.5 4v9L12 20.5l-7.5-4v-9z"/><path d="M12 12l7.5-4.5M12 12L4.5 7.5M12 12v8.5"/>',
   chev:'<path d="M9 6l6 6-6 6"/>',
+  order:'<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5h6v3H9zM8.5 12h7M8.5 16h5"/>',
   back:'<path d="M15 6l-6 6 6 6"/>',
 };
 function Ic({ n, size=22, color="currentColor", sw=1.6, style }) {
@@ -221,7 +223,7 @@ function HomeSkeleton() {
 }
 
 // 白色圓角列表項
-function ListItem({ icon, title, desc, onClick }) {
+function ListItem({ icon, title, desc, onClick, badge, badgeRed }) {
   return (
     <button onClick={onClick} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:14,
       cursor:"pointer", textAlign:"left", fontFamily:"inherit", padding:"14px 16px", marginBottom:8, color:C.text }}>
@@ -230,7 +232,117 @@ function ListItem({ icon, title, desc, onClick }) {
         <span style={{ display:"block", fontSize:14.5, fontWeight:500 }}>{title}</span>
         {desc && <span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>{desc}</span>}
       </span>
+      {badge ? <span style={{ minWidth:22, height:22, padding:"0 7px", borderRadius:11, boxSizing:"border-box", background: badgeRed ? C.red : C.accent,
+                               color:"#fff", fontSize:12, fontWeight:600, display:"flex", alignItems:"center", justifyContent:"center" }}>{badge}</span> : null}
       <Ic n="chev" size={18} color={C.light}/>
+    </button>
+  );
+}
+
+
+// ─────────────────────────────────────────────
+// 訂單提醒(App 內):每分鐘查今天的訂單 → 頂端提醒列、底部「更多」數字、快到時震動＋提示音＋系統通知
+// 只在 App 開著時有效(手機鎖定或 App 完全關閉時收不到,之後由 LINE 推播補上)
+// ─────────────────────────────────────────────
+const ORDER_SOON_MIN = 15;   // 「最晚開始製作」前幾分鐘先提醒
+const orderStartMin = o => {
+  const m = /^(\d{2}):(\d{2})$/.exec(o.method === "外送" && o.sendTime ? o.sendTime : o.time || "");
+  return m ? +m[1] * 60 + +m[2] - (Number(o.prep) || 0) : null;
+};
+const nowMinTW = () => { const [h, m] = new Date().toLocaleTimeString("en-GB", { timeZone:"Asia/Taipei", hour:"2-digit", minute:"2-digit" }).split(":"); return +h * 60 + +m; };
+const fmtMin = n => { n = ((n % 1440) + 1440) % 1440; return String(Math.floor(n / 60)).padStart(2, "0") + ":" + String(n % 60).padStart(2, "0"); };
+
+let audioCtx = null;
+function chime() {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    [0, 0.22].forEach((d, i) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.type = "sine"; o.frequency.value = i ? 1046 : 784;
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime + d);
+      g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + d + 0.35);
+      o.connect(g).connect(audioCtx.destination); o.start(audioCtx.currentTime + d); o.stop(audioCtx.currentTime + d + 0.4);
+    });
+  } catch (e) {}
+}
+// iOS / Chrome 要使用者先點過畫面才能出聲:第一次點擊時先把音效解鎖
+if (typeof window !== "undefined") {
+  const unlock = () => { try { audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)(); audioCtx.resume(); } catch (e) {} window.removeEventListener("pointerdown", unlock); };
+  window.addEventListener("pointerdown", unlock);
+}
+function sysNotify(title, body) {
+  try {
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+    const opt = { body, icon:"/logo_ink.png", tag:"rh-order", renotify:true };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller)
+      navigator.serviceWorker.ready.then(reg => reg.showNotification(title, opt)).catch(() => new Notification(title, opt));
+    else new Notification(title, opt);
+  } catch (e) {}
+}
+
+function useOrderAlerts(user) {
+  const [ords, setOrds] = useState(null);
+  const [now, setNow] = useState(nowMinTW());
+  const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem("rh_ordSound") !== "0"; } catch (e) { return true; } });
+  const [perm, setPerm] = useState(() => (typeof Notification !== "undefined" ? Notification.permission : "unsupported"));
+  const notified = useRef(new Set());
+  const first = useRef(true);
+  const refresh = () => { if (user) apiGet({ action:"getOrders", empId:user.id, from:todayStr(), to:todayStr() }, 0).then(r => { if (r && r.success) setOrds(r.data || []); }); };
+  useEffect(() => {
+    if (!user) return;
+    refresh();
+    const t = setInterval(() => { refresh(); setNow(nowMinTW()); }, 60000);
+    const vis = () => { if (!document.hidden) { refresh(); setNow(nowMinTW()); } };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); };
+  }, [user]);
+
+  const today = todayStr();
+  const open = (ords || []).filter(o => o.date === today && ["新訂單","製作中","已完成"].includes(o.status))
+                           .sort((a, b) => (orderStartMin(a) ?? 9999) - (orderStartMin(b) ?? 9999));
+  const todo = open.filter(o => ["新訂單","製作中"].includes(o.status) && orderStartMin(o) != null);
+  const late = todo.filter(o => now >= orderStartMin(o));
+  const soon = todo.filter(o => now < orderStartMin(o) && orderStartMin(o) - now <= ORDER_SOON_MIN);
+  const next = [...open].sort((a, b) => (a.time < b.time ? -1 : 1))[0] || null;
+
+  // 新進入「快到了／該開始了」的訂單 → 震動＋提示音＋系統通知(每筆每階段只響一次)
+  useEffect(() => {
+    if (!ords) return;
+    const fresh = [];
+    soon.forEach(o => { const k = o.id + "|soon"; if (!notified.current.has(k)) { notified.current.add(k); fresh.push([o, "soon"]); } });
+    late.forEach(o => { const k = o.id + "|late"; if (!notified.current.has(k)) { notified.current.add(k); notified.current.add(o.id + "|soon"); fresh.push([o, "late"]); } });
+    if (first.current) { first.current = false; if (!fresh.length) return; }
+    if (!fresh.length) return;
+    try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
+    if (soundOn) chime();
+    const [o, st] = fresh[0];
+    const more = fresh.length > 1 ? `（另有 ${fresh.length - 1} 筆）` : "";
+    sysNotify(st === "late" ? "訂單該開始製作了" : `訂單 ${ORDER_SOON_MIN} 分鐘內要開始製作`,
+              `${o.time} ${o.method}・${o.cname}・${(o.items || []).map(i => i.name + "×" + i.qty).join("、") || o.extra || ""}${more}`);
+  }, [ords, now]);
+
+  const setSound = v => { setSoundOn(v); try { localStorage.setItem("rh_ordSound", v ? "1" : "0"); } catch (e) {} if (v) chime(); };
+  const askPerm = async () => { try { const p = await Notification.requestPermission(); setPerm(p); if (p === "granted") sysNotify("訂單通知已開啟", "訂單快到製作時間時會通知你"); } catch (e) {} };
+  return { ready: !!ords, open, late, soon, next, now, soundOn, setSound, perm, askPerm, refresh };
+}
+
+// 每頁頂端的訂單提醒列
+function OrderBanner({ ord, onOpen }) {
+  if (!ord.late.length && !ord.soon.length) return null;
+  const late = ord.late.length > 0, o = late ? ord.late[0] : ord.soon[0];
+  const left = orderStartMin(o) - ord.now;
+  return (
+    <button onClick={onOpen} style={{ width:"100%", border:"none", cursor:"pointer", fontFamily:"inherit", textAlign:"left",
+      display:"flex", alignItems:"center", gap:10, padding:"10px 16px", background: late ? C.red : C.goldBg, color: late ? "#fff" : C.gold,
+      borderBottom:`1px solid ${late ? C.red : C.border}` }}>
+      <Ic n="order" size={20}/>
+      <span style={{ flex:1, fontSize:13, lineHeight:1.4 }}>
+        {late ? <><b>{ord.late.length} 筆訂單該開始製作了</b>・{o.time} {o.method} {o.cname}</>
+              : <><b>{left} 分鐘後</b>要開始做 {o.cname} 的訂單（{o.time} {o.method}）{ord.soon.length > 1 ? `等 ${ord.soon.length} 筆` : ""}</>}
+      </span>
+      <Ic n="chev" size={16}/>
     </button>
   );
 }
@@ -288,9 +400,10 @@ export default function App(){
   };
 
   const online = useOnline();
+  const ord = useOrderAlerts(user);
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
-  const SUB = ["vote","guide","schedule_mgr","admin","universe","avatar"];
+  const SUB = ["vote","guide","schedule_mgr","admin","universe","avatar","orders"];
   const navItems = [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"punch", icon:"clock", label:"打卡" },
@@ -299,7 +412,7 @@ export default function App(){
   ];
   const navActive = SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -309,8 +422,9 @@ export default function App(){
     <div style={s.app}>
       <GlobalStyle/>
       {!online && <OfflineBar/>}
-      {/* TOP BAR */}
-      <div style={{ background:"rgba(248,245,240,.94)", backdropFilter:"blur(8px)", position:"sticky", top:0, zIndex:50,
+      {/* TOP BAR(＋訂單提醒列,一起固定在頂端) */}
+      <div style={{ position:"sticky", top:0, zIndex:50 }}>
+      <div style={{ background:"rgba(248,245,240,.94)", backdropFilter:"blur(8px)",
                     padding:"12px 18px", display:"flex", justifyContent:"space-between", alignItems:"center",
                     borderBottom:`1px solid ${C.border}` }}>
         <div>
@@ -330,6 +444,9 @@ export default function App(){
         </div>
       </div>
 
+      {tab!=="orders" && <OrderBanner ord={ord} onOpen={()=>setTab("orders")} />}
+      </div>
+
       {/* CONTENT */}
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
         {SUB.includes(tab) && <SubHeader title={subTitle} onBack={goMore} />}
@@ -338,7 +455,7 @@ export default function App(){
                           : <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule}
-                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} />)}
+                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} />)}
         {tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
@@ -349,6 +466,7 @@ export default function App(){
         {tab==="more"  && (
           <div>
             <div style={s.sectionTitle}>功能</div>
+            <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
             <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
             <ListItem icon="user" title="我的小人造型" desc="換髮型、衣服、帽子，或變身小暴龍" onClick={()=>setTab("avatar")}/>
             <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
@@ -368,6 +486,7 @@ export default function App(){
             <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>setTab("avatar")} />
           </Suspense>
         )}
+        {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
         {tab==="avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} />}
         {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
       </div>
@@ -383,7 +502,12 @@ export default function App(){
             background:"none", border:"none", cursor:"pointer", fontFamily:"inherit",
             color: navActive===n.id ? C.accent : C.muted, transition:"color .15s",
           }}>
-            <Ic n={n.icon} size={23} sw={navActive===n.id?1.9:1.6}/>
+            <span style={{ position:"relative", display:"flex" }}>
+              <Ic n={n.icon} size={23} sw={navActive===n.id?1.9:1.6}/>
+              {n.id==="more" && ord.open.length > 0 && <span style={{ position:"absolute", top:-4, right:-9, minWidth:17, height:17, padding:"0 4px", boxSizing:"border-box",
+                borderRadius:9, background: ord.late.length ? C.red : C.accent, color:"#fff", fontSize:10.5, fontWeight:600, lineHeight:"17px", textAlign:"center",
+                border:"1.5px solid #fffdfa" }}>{ord.open.length}</span>}
+            </span>
             <span style={{ fontSize:11, fontWeight:500 }}>{n.label}</span>
           </button>
         ))}
@@ -493,7 +617,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo }) {
   const time = useTime();
   // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
   const [bdays, setBdays] = useState([]);
@@ -504,6 +628,8 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
     });
     return () => { on = false; };
   }, []);
+  // 今日訂單提醒(資料由 App 統一輪詢,見 useOrderAlerts)
+  const openOrds = orderInfo ? orderInfo.open : [], lateOrds = orderInfo ? orderInfo.late : [], nextOrd = orderInfo ? orderInfo.next : null;
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const urgentAnn = announcements.filter(a => a.urgent);
 
@@ -579,6 +705,20 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
             </div>
           ))}
         </div>
+      )}
+
+      {/* 今日訂單提醒 */}
+      {onOpenOrders && openOrds.length > 0 && (
+        <button onClick={onOpenOrders} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:12,
+          cursor:"pointer", textAlign:"left", fontFamily:"inherit", padding:"12px 14px", color:C.text,
+          borderLeft:`3px solid ${lateOrds.length ? C.red : C.accent}`, background: lateOrds.length ? C.redBg : C.card }}>
+          <span style={{ color: lateOrds.length ? C.red : C.accent, display:"flex" }}><Ic n="order"/></span>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:14, fontWeight:600 }}>今日訂單 {openOrds.length} 筆待處理{lateOrds.length ? `，${lateOrds.length} 筆該開始做了` : ""}</div>
+            <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>下一筆 {nextOrd.time} {nextOrd.method}・{nextOrd.cname}</div>
+          </div>
+          <Ic n="chev" size={18} color={C.light}/>
+        </button>
       )}
 
       {/* 宇宙辦公室入口 */}

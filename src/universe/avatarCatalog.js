@@ -48,12 +48,17 @@ export const MASCOTS = [
   { id: "none", name: "夥伴本人" }, { id: "trex", name: "小暴龍" }, { id: "penguin", name: "企鵝" },
 ];
 
+export const SAYING_MAX = 24;
 export const defaultCfg = () => ({
-  skin: "s2", hairStyle: "short", hairColor: "dbrown", top: "ruby", pants: "gray",
+  saying: "", skin: "s2", hairStyle: "short", hairColor: "dbrown", top: "ruby", pants: "gray",
   face: "none", hat: "none", apron: true, mascot: "none",
 });
 
 const has = (list, id) => list.some(x => x.id === id);
+// 夥伴自己寫的一句話:去掉換行/控制字元與 < >,最多 24 字
+export function cleanSaying(v) {
+  return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, SAYING_MAX);
+}
 // 只留下合法欄位與合法值(前後端各做一次,避免髒資料)
 export function sanitize(cfg) {
   const d = defaultCfg(), c = cfg && typeof cfg === "object" ? cfg : {};
@@ -67,6 +72,7 @@ export function sanitize(cfg) {
     hat: has(HATS, c.hat) ? c.hat : d.hat,
     apron: c.apron === false ? false : true,
     mascot: has(MASCOTS, c.mascot) ? c.mascot : d.mascot,
+    saying: cleanSaying(c.saying),
   };
 }
 
@@ -96,7 +102,7 @@ export function toSceneOpts(rawCfg, today) {
   return {
     skin: pickC(SKINS, cfg.skin), hair: pickC(HAIR_COLORS, cfg.hairColor),
     hairStyle: cfg.hairStyle, shirt: pickC(TOPS, cfg.top), pants: pickC(PANTS, cfg.pants),
-    face: cfg.face, hat, apron: cfg.apron, mascot: cfg.mascot,
+    face: cfg.face, hat, apron: cfg.apron, mascot: cfg.mascot, saying: cfg.saying,
     // 相容舊欄位
     ponytail: cfg.hairStyle === "ponytail", bob: cfg.hairStyle === "bob", glasses: cfg.face === "glasses",
     penguin: cfg.mascot === "penguin",

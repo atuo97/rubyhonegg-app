@@ -337,7 +337,7 @@ export function createOffice(container) {
     addHat(g, o.hat, 2.55, R);
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.2, trex: true };
   }
-  function buildChar(av) { return av.mascot === "trex" ? makeTrex(av) : av.penguin ? makePenguin(av) : makeChar(av); }
+  function buildChar(av) { const c = av.mascot === "trex" ? makeTrex(av) : av.penguin ? makePenguin(av) : makeChar(av); c.saying = av.saying || ""; return c; }
   function makeChar(o) {
     const g = new THREE.Group(); scene.add(g);
     const legL = new THREE.Group(); legL.position.set(-0.18, 0.7, 0); g.add(legL); box(0.3, 0.7, 0.32, o.pants, 0, -0.35, 0, legL);
@@ -524,7 +524,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
         crew.set(id, m);
         const slot = freeSlot(k); occupied[k].add(slot);
         // 還沒有場景 → 從該場景入口走進來
-        route(m, k, slot, () => { settle(m); say(m.c, "上班囉！💪", 2200); });
+        route(m, k, slot, () => { settle(m); say(m.c, m.c.saying || "上班囉！💪", 3200); });
         m.scene = k; m.slot = slot;
       } else if (m.scene !== k) {
         occupied[m.scene].delete(m.slot);
@@ -593,9 +593,11 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
         const s = slotPos(m.scene, m.slot); if (s.fx) s.fx.on = true;
         m.talk -= dt;
         if (m.talk <= 0) {
-          m.talk = 8 + Math.random() * 10;
+          m.talk = c.saying ? 5 + Math.random() * 5 : 8 + Math.random() * 10;
+          m.sayN = (m.sayN || 0) + 1;
+          if (c.saying && m.sayN % 3 !== 0) { say(c, c.saying, 4200); } else {
           const lines = c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "office" ? OFFICE_LINES : SHOP_LINES;
-          say(c, pick(lines), 2800);
+          say(c, pick(lines), 2800); }
         }
       }
     }
