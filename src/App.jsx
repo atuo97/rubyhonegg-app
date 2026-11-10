@@ -7,6 +7,7 @@ import ArenaTab from "./ArenaTab.jsx";
 import TowerTab from "./TowerTab.jsx";
 import ShopStreetTab from "./ShopStreetTab.jsx";
 import OrdersTab from "./OrdersTab.jsx";
+import ScheduleManager, { MyShifts } from "./ScheduleTab.jsx";
 
 // ─────────────────────────────────────────────
 // Google Sheets API 設定
@@ -515,7 +516,7 @@ export default function App(){
   const openGame = (t2) => { setGameTab(t2 || "home"); setTab("game"); };
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
-  const SUB = ["vote","guide","schedule_mgr","admin","universe","avatar","orders","game","arena","tower","street"];
+  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street"];
   const navItems = [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"punch", icon:"clock", label:"打卡" },
@@ -524,7 +525,7 @@ export default function App(){
   ];
   const navActive = SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -544,7 +545,7 @@ export default function App(){
           <div style={{ fontSize:16, fontWeight:600, marginTop:1 }}>
             {user.name}
             <span style={{ fontSize:11, fontWeight:400, color:C.muted, marginLeft:8 }}>
-              {user.role===3?"管理者":user.role===2?"分隊長":"夥伴"}
+              {user.role>=5?"大隊長":user.role===4?"總經理":user.role===3?"管理者":user.role===2?"分隊長":"夥伴"}
             </span>
           </div>
         </div>
@@ -568,17 +569,19 @@ export default function App(){
                           : <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule}
-                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} />)}
+                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")} />)}
         {tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
                                    onWorkChange={()=>setSegRefreshKey(k=>k+1)}
                                    onLeaveChange={()=>{ setSegRefreshKey(k=>k+1); setWorkLoc(""); }} />}
         {tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
-                                   schedule={schedule} announcements={announcements} onRefresh={loadAllData} />}
+                                   schedule={schedule} announcements={announcements} onRefresh={loadAllData}
+                                   onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
         {tab==="more"  && (
           <div>
             <div style={s.sectionTitle}>功能</div>
+            <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
             <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
             <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
             <ListItem icon="user" title="我的小人造型" desc="換髮型、衣服、帽子，或變身小暴龍" onClick={()=>setTab("avatar")}/>
@@ -590,14 +593,15 @@ export default function App(){
             <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
             {user.role>=2 && <>
               <div style={{ ...s.sectionTitle, marginTop:16 }}>管理</div>
-              <ListItem icon="cal" title="排班管理" onClick={()=>setTab("schedule_mgr")}/>
+              <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
               <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
             </>}
           </div>
         )}
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
-        {tab==="schedule_mgr" && user.role>=2 && <ScheduleManagerTab user={user} />}
+        {tab==="schedule_mgr" && user.role>=2 && <ScheduleManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
+        {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
             <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>setTab("avatar")} />
@@ -687,7 +691,9 @@ function LoginScreen({ onLogin }) {
     if (!phone || !pw) { setErr("請填入帳號與密碼"); return; }
     setErr(""); setLoading(true);
     try {
-      const res = await apiGet({ action:"login", phone, password:pw });
+      // v1.18:走 POST,密碼不會出現在網址;後端還沒更新時(回「未知的動作」)退回舊的 GET
+      let res = await apiPost({ action:"login", phone, password:pw }, 1);
+      if (res && !res.success && /未知的動作/.test(res.error || "")) res = await apiGet({ action:"login", phone, password:pw });
       if (res.success) {
         onLogin(res.user);
       } else {
@@ -738,7 +744,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame, onOpenInfo }) {
   const time = useTime();
   // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
   const [bdays, setBdays] = useState([]);
@@ -759,6 +765,7 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
     activeSeg && !checklistDone.open && { icon:"📋", label:"開店盤點尚未完成", color:C.gold },
     activeSeg && { icon:"🌙", label:`「${activeSeg.location}」尚未下班`, color:C.blue },
     checkupDays <= 30 && checkupDays > 0 && { icon:"🩺", label:`體檢將於 ${checkupDays} 天後到期`, color:C.red },
+    user.weakPw && { icon:"🔒", label:"密碼還是生日，建議改一組自己的（點這裡）", color:C.gold, onClick:onOpenInfo },
   ].filter(Boolean);
 
   const Bar = ({ label, cur, max, unit, color }) => {
@@ -818,8 +825,8 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
         <div style={{ marginBottom:12 }}>
           <div style={s.sectionTitle}>待辦事項</div>
           {todos.map((t,i) => (
-            <div key={i} style={{ ...s.card, padding:"10px 14px", marginBottom:8,
-                                   borderLeft:`3px solid ${t.color}`,
+            <div key={i} onClick={t.onClick} style={{ ...s.card, padding:"10px 14px", marginBottom:8,
+                                   borderLeft:`3px solid ${t.color}`, cursor:t.onClick ? "pointer" : "default",
                                    display:"flex", alignItems:"center", gap:10 }}>
               <span style={{ fontSize:18 }}>{t.icon}</span>
               <span style={{ fontSize:13 }}>{t.label}</span>
@@ -1447,7 +1454,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
 // ─────────────────────────────────────────────
 // OPS TAB
 // ─────────────────────────────────────────────
-function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh }) {
+function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged }) {
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const latestSalary = salary.sort((a,b)=>String(b["年月"]).localeCompare(String(a["年月"])))[0];
 
@@ -1466,6 +1473,15 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh }
       </div>
 
       <button onClick={onRefresh} style={{ ...s.btn("secondary"), marginBottom:12 }}>🔄 重新整理資料</button>
+
+      {user.weakPw && (
+        <div style={{ ...s.card, background:C.goldBg, border:`1px solid ${C.gold}44`, borderLeft:`4px solid ${C.gold}` }}>
+          <div style={{ fontSize:13, fontWeight:600 }}>🔒 你的密碼還是生日</div>
+          <div style={{ fontSize:12, color:C.muted, marginTop:4, lineHeight:1.6 }}>生日很容易被猜到，建議到下方「帳號安全」改成自己的密碼。不改也能繼續使用。</div>
+        </div>
+      )}
+
+      <SalaryToDateCard user={user} />
 
       {checkupDays <= 30 && checkupDays > 0 && (
         <div style={{ ...s.card, background:C.redBg, border:`1px solid ${C.red}44`,
@@ -1536,7 +1552,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh }
         ))}
       </div>
 
-      <ChangePasswordCard user={user} />
+      <ChangePasswordCard user={user} onChanged={onPwChanged} />
 
       <div style={s.card}>
         <div style={s.sectionTitle}>所有公告</div>
@@ -1556,9 +1572,81 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh }
 }
 
 // ─────────────────────────────────────────────
+// 本月薪資概況(1 日～昨天,實際打卡＋收店業績;後端 getSalaryToDate,需登入 token)
+// ─────────────────────────────────────────────
+function SalaryToDateCard({ user }) {
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(false);
+  const [hide, setHide] = useState(() => { try { return localStorage.getItem("rh_salHide") === "1"; } catch (e) { return false; } });
+  const load = () => {
+    if (!user.token) { setErr("請登出再登入一次，就能看到本月薪資概況"); return; }
+    setErr("");
+    apiPost({ action:"getSalaryToDate", empId:user.id, token:user.token }, 1).then(r => {
+      if (r && r.success) setD(r);
+      else setErr(r && /未知的動作/.test(r.error || "") ? "本月薪資概況即將開放" : ((r && r.error) || "暫時讀不到，稍後再試"));
+    });
+  };
+  useEffect(load, [user.id, user.token]);
+  const toggleHide = () => { const v = !hide; setHide(v); try { localStorage.setItem("rh_salHide", v ? "1" : "0"); } catch (e) {} };
+  const money = n => hide ? "＊＊＊" : "NT$ " + Number(n || 0).toLocaleString();
+  const md = x => String(x || "").slice(5).replace("-", "/");
+  const row = (l, v, note, color, key) => (
+    <div key={key || l} style={{ padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", gap:8 }}>
+        <span style={{ fontSize:13, color:C.muted }}>{l}</span>
+        <span style={{ fontSize:13, fontWeight:700, color:color || C.text, whiteSpace:"nowrap" }}>{v}</span>
+      </div>
+      {note && <div style={{ fontSize:11, color:C.light, marginTop:2 }}>{note}</div>}
+    </div>
+  );
+  return (
+    <div style={{ ...s.card, background:C.goldBg, border:`1px solid ${C.gold}44` }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={s.sectionTitle}>本月薪資概況{d && d.asOf ? ` · 至 ${md(d.asOf)}` : ""}</div>
+        <button onClick={toggleHide} aria-label={hide ? "顯示金額" : "隱藏金額"} style={{ border:"none", background:"transparent", fontSize:12, color:C.muted, cursor:"pointer", fontFamily:"inherit" }}>{hide ? "👁 顯示" : "🙈 隱藏"}</button>
+      </div>
+      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>{err}</div>}
+      {!d && !err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>計算中…</div>}
+      {d && (
+        <div>
+          <div style={{ textAlign:"center", margin:"4px 0 10px" }}>
+            <div style={{ fontSize:11.5, color:C.muted }}>目前累積應發（扣勞健保前）</div>
+            <div style={{ fontSize:30, fontWeight:600, color:C.gold }}>{money(d.gross)}</div>
+            <div style={{ fontSize:11.5, color:C.muted }}>{d.hours.total} 小時 · {d.days.length} 個班 · 扣勞健保後約 {money(d.net)}</div>
+          </div>
+          {d.items.length === 0 && d.notes.map((n, i) => <div key={i} style={{ fontSize:12, color:C.muted, textAlign:"center" }}>{n}</div>)}
+          {d.items.map(x => row(x.label, money(x.amt), x.note, null, x.key))}
+          {d.deductions.map(x => row(x.label, hide ? "＊＊＊" : "−NT$ " + Number(x.amt).toLocaleString(), "", C.red))}
+          {d.days.length > 0 && (
+            <button onClick={()=>setOpen(!open)} style={{ ...s.btn("ghost"), marginTop:10 }}>{open ? "收起每日明細" : "看每日明細"}</button>
+          )}
+          {open && d.days.map(x => (
+            <div key={x.date + x.loc} style={{ padding:"8px 0", borderBottom:`1px solid ${C.border}`, fontSize:12 }}>
+              <div style={{ display:"flex", justifyContent:"space-between" }}>
+                <span><b>{md(x.date)}</b> {x.loc} <span style={{ color:C.muted }}>{x.dayType !== "平日" ? x.dayType : ""}</span></span>
+                <span style={{ fontWeight:700 }}>{x.hrs} 小時</span>
+              </div>
+              <div style={{ color:C.muted, marginTop:2 }}>
+                工資 {money(x.pay)}
+                {x.perf > 0 && <> · 業績獎金 {money(x.perf)}</>}
+                {x.holBonus > 0 && <> · 假日獎金 {money(x.holBonus)}</>}
+                {x.rev === null && <> · 當天業績還沒登記</>}
+                {x.rev !== null && x.next > 0 && !hide && <> · 再 {Number(x.next).toLocaleString()} 業績到下一級</>}
+              </div>
+            </div>
+          ))}
+          {d.items.length > 0 && d.notes.map((n, i) => <div key={i} style={{ fontSize:11, color:C.light, marginTop:8, lineHeight:1.6 }}>※ {n}</div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
 // 修改密碼(夥伴自行修改;走 POST,密碼不會出現在網址列)
 // ─────────────────────────────────────────────
-function ChangePasswordCard({ user }) {
+function ChangePasswordCard({ user, onChanged }) {
   const [open, setOpen] = useState(false);
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
@@ -1580,6 +1668,7 @@ function ChangePasswordCard({ user }) {
     if (res && res.success) {
       setOk("密碼已更新，下次登入請使用新密碼");
       setOldPw(""); setNewPw(""); setNewPw2(""); setOpen(false);
+      onChanged && onChanged();
     } else {
       setErr((res && res.error) || "修改失敗，請稍後再試");
     }

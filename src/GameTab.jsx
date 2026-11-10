@@ -3,8 +3,9 @@
 // 分頁:總覽、商店、扭蛋、寵物、徽章、團隊。資料來源:後端 gmMe(一次拿齊),各動作 gmBuy/gmGacha/…
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import MiniGames from "./MiniGames.jsx";
 
-const TABS = [["home", "總覽"], ["shop", "商店"], ["gacha", "扭蛋"], ["pet", "寵物"], ["badge", "徽章"], ["team", "團隊"]];
+const TABS = [["home", "總覽"], ["shop", "商店"], ["gacha", "扭蛋"], ["pet", "寵物"], ["play", "小遊戲"], ["badge", "徽章"], ["team", "團隊"]];
 const CAT_NAME = { haircolor: "髮色", acc: "配件", outfit: "服裝", frame: "名牌框", hat: "頭飾", petacc: "寵物配件", weapon: "對戰武器", armor: "對戰防具", card: "對戰卡片" };
 const TIER_COLOR = { "普通": "#8a7e72", "稀有": "#3d5a80", "傳說": "#b9381c" };
 const UNLOCK_NAME = { lounge: "咖啡機＋地毯", plants: "植物牆＋水族箱", arcade: "遊戲區（大型電玩＋桌球）", station: "新場景・宇宙太空站", spectrum: "七色光譜大廳" };
@@ -58,7 +59,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
         <div style={{ fontSize: 38, fontWeight: 600, marginTop: 4 }}><Coin n={me.balance} size={30} /></div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 8, lineHeight: 1.6 }}>
           {!started ? `${P["測試版開始日"]} 測試版開始累積` : !official ? `測試期間：${P["正式版開始日"]} 正式版上線時，當下餘額 ×${P["正式版加倍倍率"]}` : "正式版"}
-          <br />每工作 1 小時 1 枚{me.role >= 3 ? "（管理者 ×1.5）" : me.role >= 2 ? "（分隊長 ×1.2）" : ""}，每天凌晨結算到前一天
+          <br />每工作 1 小時 1 枚{me.role >= 3 ? "（管理層 ×1.5）" : me.role >= 2 ? "（分隊長 ×1.2）" : ""}，活動場次再 ×2，每天凌晨結算到前一天
         </div>
       </Card>
       <Card>
@@ -76,7 +77,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <div style={{ fontSize: 14, fontWeight: 600, color: l.amount > 0 ? C.green : C.red, whiteSpace: "nowrap" }}>{l.amount > 0 ? "+" : ""}{l.amount}</div>
           </div>))}
       </Card>
-      {user.role >= 3 && <Admin />}
+      {me.isTop && <Admin />}
     </>
   );
 
@@ -183,6 +184,14 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
           </div>
         </Card>
         <Card>
+          <Title>改名字</Title>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder={pt.name} style={{ ...s.input, flex: 1 }} />
+            <Btn style={{ width: "auto" }} disabled={!petForm.name.trim()} onClick={async () => { const ok = await act({ action: "gmPetUpdate", name: petForm.name, acc: pt.acc }, "改好名字了"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>改名</Btn>
+          </div>
+          <Btn kind="secondary" style={{ marginTop: 10 }} onClick={() => setTab("play")}>🎮 和{pt.name}玩小遊戲</Btn>
+        </Card>
+        <Card>
           <Title>寵物配件</Title>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => act({ action: "gmPetUpdate", acc: "" }, "已拿下配件")} style={chip(!pt.acc)}>不戴</button>
@@ -259,7 +268,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   // ───── 管理者 ─────
   const Admin = () => (
     <Card>
-      <Title>管理者工具</Title>
+      <Title>大隊長工具</Title>
       <input value={adm.target} onChange={e => setAdm(a => ({ ...a, target: e.target.value }))} placeholder="夥伴員工編號（例：E003）" style={{ ...s.input, marginBottom: 8 }} />
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <select value={adm.badge} onChange={e => setAdm(a => ({ ...a, badge: e.target.value }))} style={{ ...s.input, flex: 1 }}>
@@ -285,6 +294,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
       {tab === "shop" && <Shop />}
       {tab === "gacha" && <Gacha />}
       {tab === "pet" && <Pet />}
+      {tab === "play" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={() => { load(); onChanged && onChanged(); }} />}
       {tab === "badge" && <Badge />}
       {tab === "team" && <Team />}
       {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400, maxWidth: "86%", textAlign: "center" }}>{toast}</div>}
