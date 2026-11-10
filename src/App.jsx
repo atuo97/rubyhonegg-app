@@ -2,6 +2,10 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor from "./AvatarEditor.jsx";
+import GameTab, { Coin } from "./GameTab.jsx";
+import ArenaTab from "./ArenaTab.jsx";
+import TowerTab from "./TowerTab.jsx";
+import ShopStreetTab from "./ShopStreetTab.jsx";
 import OrdersTab from "./OrdersTab.jsx";
 
 // ─────────────────────────────────────────────
@@ -154,6 +158,9 @@ const ICONS = {
   chart:'<path d="M5 19V9M12 19V5M19 19v-7"/>',
   cube:'<path d="M12 3.5l7.5 4v9L12 20.5l-7.5-4v-9z"/><path d="M12 12l7.5-4.5M12 12L4.5 7.5M12 12v8.5"/>',
   chev:'<path d="M9 6l6 6-6 6"/>',
+  coin:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 9.5h3.5a1.5 1.5 0 010 3h-2a1.5 1.5 0 000 3h3.5"/>',
+  sword:'<path d="M14.5 4.5h5v5L9 20l-5-5z"/><path d="M7 13l4 4M4 20l2-2"/>',
+  tower:'<path d="M6 20V9h12v11"/><path d="M6 9V5h2v2h2V5h4v2h2V5h2v4M10 20v-4h4v4"/>',
   order:'<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5h6v3H9zM8.5 12h7M8.5 16h5"/>',
   back:'<path d="M15 6l-6 6 6 6"/>',
 };
@@ -347,6 +354,108 @@ function OrderBanner({ ord, onOpen }) {
   );
 }
 
+// 赤心幣資料(gmMe):首頁卡片、頂欄餘額共用;每 5 分鐘與切回 App 時更新
+function useGameMe(user) {
+  const [me, setMe] = useState(null);
+  const refresh = () => { if (user) apiGet({ action:"gmMe", empId:user.id }, 0).then(r => { if (r && r.success) setMe(r.data); }); };
+  useEffect(() => {
+    if (!user) return; refresh();
+    const t = setInterval(refresh, 5 * 60000);
+    const vis = () => { if (!document.hidden) refresh(); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); };
+  }, [user]);
+  return { me, refresh };
+}
+
+// 首頁:每日一題、生日祝福、收到的互動
+const INTER_ICON = { cheer:"💪", like:"👍", nod:"🙇", smile:"😊" };
+function GameHomeCards({ user, game, onOpenGame }) {
+  const me = game.me;
+  const [ans, setAns] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  if (!me) return null;
+  const started = me.today >= me.params["測試版開始日"];
+  const q = me.quiz;
+  const answer = async (k) => {
+    setBusy(true);
+    const r = await apiPost({ action:"gmAnswer", empId:user.id, qid:q.question.id, answer:k }, 0);
+    setBusy(false);
+    if (r && r.success) { setAns({ ...r.data, choice:k }); game.refresh(); } else setNote((r && r.error) || "送出失敗");
+  };
+  const post = async (payload, msg) => { const r = await apiPost({ empId:user.id, ...payload }, 0); setNote(r && r.success ? msg : (r && r.error) || "送出失敗"); game.refresh(); setTimeout(()=>setNote(""), 2500); };
+  const unread = (me.inbox || []).filter(x => x.unread);
+  const shownQ = ans ? ans.question : q && q.question;
+  const done = ans || (q && q.answered);
+  return (
+    <>
+      {note && <div style={{ ...s.card, padding:"10px 14px", fontSize:13, background:C.accentBg, color:C.accent }}>{note}</div>}
+
+      {(me.birthdays || []).map(b => b.id === user.id ? (
+        <div key={b.id} style={{ ...s.card, background:"#fff0f6", border:"1px solid #f8c8dc", textAlign:"center" }}>
+          <div style={{ fontSize:28 }}>🎂🎉</div>
+          <div style={{ fontSize:16, fontWeight:600, marginTop:4 }}>生日快樂，{b.name}！</div>
+          <div style={{ fontSize:12.5, color:C.muted, marginTop:4 }}>宇宙辦公室正在幫你開派對{b.from.length ? `・${b.from.length} 位夥伴送上祝福：${b.from.join("、")}` : ""}</div>
+        </div>
+      ) : (
+        <div key={b.id} style={{ ...s.card, display:"flex", alignItems:"center", gap:12, background:"#fff0f6", border:"1px solid #f8c8dc" }}>
+          <span style={{ fontSize:26 }}>🎂</span>
+          <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:600 }}>今天是 {b.name} 的生日！</div><div style={{ fontSize:11.5, color:C.muted }}>已有 {b.wishes} 位夥伴送上祝福</div></div>
+          <button disabled={b.wished} onClick={()=>post({ action:"gmWish", to:b.id }, `已祝 ${b.name} 生日快樂！`)} style={{ border:"none", borderRadius:999, padding:"7px 12px", fontSize:12.5, background:b.wished ? C.warm : "#ff6fa8", color:b.wished ? C.muted : "#fff", cursor:b.wished ? "default" : "pointer", fontFamily:"inherit" }}>{b.wished ? "已祝福" : "送祝福"}</button>
+        </div>
+      ))}
+
+      {started && q && !q.none && shownQ && (
+        <div style={s.card}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <div style={{ ...s.sectionTitle, marginBottom:0 }}>每日一題・{shownQ.cat}</div>
+            {!done && <span style={{ fontSize:11.5, color:C.gold }}>答對 +1 🪙</span>}
+          </div>
+          <div style={{ fontSize:14.5, fontWeight:500, lineHeight:1.5, marginBottom:10 }}>{shownQ.text}</div>
+          <div style={{ display:"grid", gap:6 }}>
+            {["A","B","C","D"].filter(k => shownQ.options[k] !== "" && shownQ.options[k] != null).map(k => {
+              const chosen = (ans ? ans.choice : q.choice) === k, right = done && shownQ.answer === k;
+              return <button key={k} disabled={done || busy} onClick={()=>answer(k)} style={{ textAlign:"left", border:`1px solid ${right ? C.green : chosen ? C.red : C.border}`, background:right ? C.greenBg : chosen ? C.redBg : C.card, borderRadius:12, padding:"10px 12px", fontSize:13.5, cursor:done ? "default" : "pointer", fontFamily:"inherit", color:C.text }}>
+                <b style={{ marginRight:8 }}>{k}</b>{shownQ.options[k]}</button>;
+            })}
+          </div>
+          {done && <div style={{ fontSize:12.5, marginTop:10, color:(ans ? ans.correct : q.correct) ? C.green : C.red }}>
+            {(ans ? ans.correct : q.correct) ? `答對了！+1 枚${ans && ans.bonus ? `，連續答對再 +${ans.bonus}` : ""}` : "答錯了，明天再挑戰"}
+            {shownQ.explain && <div style={{ color:C.muted, marginTop:4 }}>{shownQ.explain}</div>}</div>}
+        </div>
+      )}
+
+      {(me.gifts || []).length > 0 && (
+        <div style={{ ...s.card, background:"#fff6e8" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <div style={{ ...s.sectionTitle, marginBottom:0 }}>收到 {me.gifts.length} 份禮物</div>
+            <button onClick={()=>post({ action:"spGiftRead" }, "已收下")} style={{ border:"none", background:"none", color:C.muted, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>收下</button>
+          </div>
+          {me.gifts.slice(0, 5).map((g, i) => <div key={i} style={{ fontSize:13, padding:"4px 0" }}>{g.icon} <b>{g.from}</b> 送你一份{g.item}</div>)}
+        </div>
+      )}
+
+      {unread.length > 0 && (
+        <div style={s.card}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+            <div style={{ ...s.sectionTitle, marginBottom:0 }}>收到 {unread.length} 個互動</div>
+            <button onClick={()=>post({ action:"gmInboxRead" }, "已讀")} style={{ border:"none", background:"none", color:C.muted, fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>全部已讀</button>
+          </div>
+          {unread.slice(0, 5).map((x, i) => {
+            const back = (me.sentToday || []).includes(x.from + "|" + x.type);
+            return <div key={i} style={{ display:"flex", alignItems:"center", gap:10, padding:"7px 0", borderTop:i ? `1px solid ${C.border}` : "none" }}>
+              <span style={{ fontSize:20 }}>{INTER_ICON[x.type]}</span>
+              <span style={{ flex:1, fontSize:13 }}><b>{x.fromName}</b> 對你{x.label}<span style={{ fontSize:11, color:C.light, marginLeft:6 }}>{x.time.slice(11,16)}</span></span>
+              <button disabled={back} onClick={()=>post({ action:"gmInteract", to:x.from, type:x.type }, `已回禮給 ${x.fromName}`)} style={{ border:`1px solid ${C.accent}`, background:C.card, color:back ? C.light : C.accent, borderColor:back ? C.border : C.accent, borderRadius:999, padding:"4px 10px", fontSize:12, cursor:back ? "default" : "pointer", fontFamily:"inherit" }}>{back ? "已回禮" : "回禮"}</button>
+            </div>;
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─────────────────────────────────────────────
 // APP ROOT
 // ─────────────────────────────────────────────
@@ -401,9 +510,12 @@ export default function App(){
 
   const online = useOnline();
   const ord = useOrderAlerts(user);
+  const game = useGameMe(user);
+  const [gameTab, setGameTab] = useState("home");
+  const openGame = (t2) => { setGameTab(t2 || "home"); setTab("game"); };
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
-  const SUB = ["vote","guide","schedule_mgr","admin","universe","avatar","orders"];
+  const SUB = ["vote","guide","schedule_mgr","admin","universe","avatar","orders","game","arena","tower","street"];
   const navItems = [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"punch", icon:"clock", label:"打卡" },
@@ -412,7 +524,7 @@ export default function App(){
   ];
   const navActive = SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -438,6 +550,7 @@ export default function App(){
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           {loading && <div style={{ fontSize:11, color:C.muted }}>同步中…</div>}
+          {game.me && <button onClick={()=>openGame("home")} aria-label="赤心幣" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
           <div style={{ width:38, height:38, borderRadius:19, background:C.accentBg, color:C.accent,
                         border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center",
                         fontSize:15, fontWeight:600 }}>{user.avatar}</div>
@@ -455,7 +568,7 @@ export default function App(){
                           : <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule}
-                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} />)}
+                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} />)}
         {tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
@@ -469,6 +582,10 @@ export default function App(){
             <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
             <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
             <ListItem icon="user" title="我的小人造型" desc="換髮型、衣服、帽子，或變身小暴龍" onClick={()=>setTab("avatar")}/>
+            <ListItem icon="sword" title="對戰" desc="裝備武器卡片，和夥伴切磋或即時對戰" onClick={()=>setTab("arena")}/>
+            <ListItem icon="tower" title="百貨櫃位塔防戰" desc="投入赤心幣升級你櫃位的塔，每週一結算" onClick={()=>setTab("tower")}/>
+            <ListItem icon="home" title="夥伴商店街" desc="逛夥伴開的小店，或開一家自己的店" onClick={()=>setTab("street")}/>
+            <ListItem icon="coin" title="赤心幣" desc={game.me ? `餘額 ${game.me.balance} 枚・商店、扭蛋、寵物、徽章、團隊` : "商店、扭蛋、寵物、徽章、團隊"} onClick={()=>openGame("home")}/>
             <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
             <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
             {user.role>=2 && <>
@@ -487,7 +604,11 @@ export default function App(){
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
-        {tab==="avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} />}
+        {tab==="avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={()=>openGame("shop")} />}
+        {tab==="arena" && <ArenaTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="tower" && <TowerTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="street" && <ShopStreetTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="game" && <GameTab key={gameTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initialTab={gameTab} onEditAvatar={()=>setTab("avatar")} onChanged={game.refresh} />}
         {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
       </div>
 
@@ -617,7 +738,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame }) {
   const time = useTime();
   // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
   const [bdays, setBdays] = useState([]);
@@ -706,6 +827,9 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
           ))}
         </div>
       )}
+
+      {/* 赤心幣:生日、每日一題、收到的互動 */}
+      {game && <GameHomeCards user={user} game={game} onOpenGame={onOpenGame} />}
 
       {/* 今日訂單提醒 */}
       {onOpenOrders && openOrds.length > 0 && (
@@ -904,6 +1028,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   return (
     <div>
       <TimeHeader sub={inSegment ? <>目前上班中：{activeSeg.location}</> : null} />
+      <SopCard type="開店" />
 
       {msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.greenBg, border:`1px solid ${C.green}44` }}>
@@ -1145,6 +1270,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   return (
     <div>
       <TimeHeader sub={activeSeg ? <>準備下班：{activeSeg.location}{getVenue(user.id, activeSeg.location) ? `（${getVenue(user.id, activeSeg.location)}）` : ""}</> : null} />
+      {activeSeg && <SopCard type="收店" />}
 
       {msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.greenBg, border:`1px solid ${C.green}44` }}>
@@ -1660,6 +1786,7 @@ function AdminTab({ user }) {
       )}
 
       <BatterStockPanel user={user} />
+      <DailyReportPanel user={user} />
 
       {d && (
         <div style={s.card}>
@@ -1712,6 +1839,90 @@ function AdminTab({ user }) {
       <div style={{ marginTop:12 }}>
         <InsuranceGradePanel user={user} ym={ym} />
       </div>
+    </div>
+  );
+}
+
+// ── 每日營運日報(分隊長以上)──
+function DailyReportPanel({ user }) {
+  const yday = () => { const d = new Date(Date.now() + 8 * 3600e3 - 86400e3); return d.toISOString().slice(0, 10); };
+  const [date, setDate] = useState(yday());
+  const [d, setD] = useState(null);
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(null);
+  useEffect(() => { setD(null); setErr(""); apiGet({ action:"getDailyReport", empId:user.id, date }, 1).then(r => { if (r && r.success) setD(r.data); else setErr((r && r.error) || "日報功能尚未開通"); }); }, [date]);
+  const shift = n => { const t = new Date(date + "T00:00:00Z"); t.setUTCDate(t.getUTCDate() + n); const v = t.toISOString().slice(0, 10); if (v <= todayStr()) setDate(v); };
+  const fmt = n => "$" + Number(n || 0).toLocaleString();
+  return (
+    <div style={s.card}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+        <div style={{ ...s.sectionTitle, marginBottom:0 }}>每日營運日報</div>
+        <div style={{ display:"flex", alignItems:"center", gap:4 }}>
+          <button onClick={()=>shift(-1)} aria-label="前一天" style={{ border:"none", background:"none", fontSize:18, color:C.muted, cursor:"pointer" }}>‹</button>
+          <span style={{ fontSize:12.5 }}>{date.slice(5).replace("-", "/")}</span>
+          <button onClick={()=>shift(1)} aria-label="後一天" style={{ border:"none", background:"none", fontSize:18, color:C.muted, cursor:"pointer" }}>›</button>
+        </div>
+      </div>
+      {!d && !err && <div className="rh-skel" style={{ height:80 }}/>}
+      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
+      {d && <>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, textAlign:"center", marginBottom:10 }}>
+          {[["營業額", fmt(d.total.rev)], ["工時", d.total.hours + "h"], ["每小時產值", fmt(d.perHour)], ["訂單", d.total.orders]].map(x =>
+            <div key={x[0]} style={{ background:C.warm, borderRadius:12, padding:"8px 2px" }}><div style={{ fontSize:14, fontWeight:600 }}>{x[1]}</div><div style={{ fontSize:10.5, color:C.muted }}>{x[0]}</div></div>)}
+        </div>
+        {d.stores.length === 0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:8 }}>這天沒有營運資料</div>}
+        {d.stores.map(st => (
+          <div key={st.loc} style={{ borderTop:`1px solid ${C.border}`, padding:"8px 0" }}>
+            <button onClick={()=>setOpen(open === st.loc ? null : st.loc)} style={{ display:"flex", width:"100%", justifyContent:"space-between", border:"none", background:"none", padding:0, cursor:"pointer", fontFamily:"inherit", color:C.text }}>
+              <span style={{ fontSize:13.5 }}>{st.loc.replace(/^\d+/, "")}</span>
+              <span style={{ fontSize:13 }}><b>{fmt(st.rev)}</b><span style={{ color:C.muted, marginLeft:8 }}>{st.hours}h{st.orders ? `・${st.orders} 單` : ""}</span> {open === st.loc ? "▴" : "▾"}</span>
+            </button>
+            {st.closes === 0 && st.hours > 0 && <div style={{ fontSize:11.5, color:C.gold, marginTop:2 }}>⚠️ 有人上班但沒有收店盤點</div>}
+            {open === st.loc && <div style={{ fontSize:12, color:C.muted, marginTop:6, lineHeight:1.7 }}>
+              麵糊消耗：{["原味","可可","紅玉","抹茶"].map(f => `${f} ${st.use[f]}`).join("、")}（共 {st.useTotal} 包）<br/>
+              {st.rem && <>收店剩餘：{["原味","可可","紅玉","抹茶"].map(f => `${f} ${st.rem[f]}`).join("、")}<br/></>}
+              {st.orders ? <>訂單：{st.orders} 筆（已交付 {st.ordersDone}）<br/></> : null}
+              上班：{st.staff.length ? st.staff.map(x => `${x.name} ${x.hours}h`).join("、") : "—"}
+            </div>}
+          </div>))}
+        {d.abnormal.length > 0 && <div style={{ marginTop:10, background:C.redBg, borderRadius:12, padding:"8px 10px" }}>
+          <div style={{ fontSize:12.5, fontWeight:600, color:C.red, marginBottom:4 }}>異常打卡 {d.abnormal.length} 筆</div>
+          {d.abnormal.map((a, i) => <div key={i} style={{ fontSize:12, color:C.text }}>{a.name}・{String(a.loc).replace(/^\d+/, "")}・{a.note}</div>)}
+        </div>}
+      </>}
+    </div>
+  );
+}
+
+// ── SOP 清單(上班頁＝開店、下班頁＝收店;勾選只存在這支手機,當天有效)──
+let SOP_CACHE = null;
+function SopCard({ type }) {
+  const [list, setList] = useState(SOP_CACHE ? SOP_CACHE[type] : null);
+  const [open, setOpen] = useState(false);
+  const key = "rh_sop_" + type + "_" + todayStr();
+  const [done, setDone] = useState(() => { try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) { return {}; } });
+  useEffect(() => { if (!SOP_CACHE) apiGet({ action:"getSop" }, 0).then(r => { if (r && r.success) { SOP_CACHE = r.data; setList(r.data[type] || []); } }); }, []);
+  if (!list || !list.length) return null;
+  const toggle = n => { const nx = { ...done, [n]: !done[n] }; setDone(nx); try { localStorage.setItem(key, JSON.stringify(nx)); } catch (e) {} };
+  const cnt = list.filter(x => done[x.n]).length;
+  return (
+    <div style={s.card}>
+      <button onClick={()=>setOpen(o => !o)} style={{ display:"flex", width:"100%", justifyContent:"space-between", alignItems:"center", border:"none", background:"none", padding:0, cursor:"pointer", fontFamily:"inherit", color:C.text }}>
+        <span style={{ fontSize:14, fontWeight:600 }}>📋 {type} SOP</span>
+        <span style={{ fontSize:12, color: cnt === list.length ? C.green : C.muted }}>{cnt}/{list.length} {open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div style={{ marginTop:8 }}>
+        {list.map(x => (
+          <label key={x.n} style={{ display:"flex", gap:10, padding:"8px 0", borderTop:`1px solid ${C.border}`, cursor:"pointer" }}>
+            <input type="checkbox" checked={!!done[x.n]} onChange={()=>toggle(x.n)} style={{ marginTop:3, accentColor:C.accent }}/>
+            <span style={{ flex:1 }}>
+              <span style={{ fontSize:13.5, fontWeight:500, textDecoration: done[x.n] ? "line-through" : "none", color: done[x.n] ? C.muted : C.text }}>{x.n}. {x.title}</span>
+              {x.desc && <span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>{x.desc}</span>}
+              {x.img && /^https:\/\//.test(x.img) && <img src={x.img} alt={x.title} style={{ width:"100%", borderRadius:10, marginTop:6 }}/>}
+            </span>
+          </label>))}
+        <div style={{ fontSize:11, color:C.light, marginTop:6 }}>勾選紀錄只存在這支手機、當天有效，不會影響打卡</div>
+      </div>}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
-// 🌌 宇宙辦公室分頁（測試中：僅 Lv.3 可見）
+// 🌌 宇宙辦公室分頁(全員可見)
 // 依打卡狀態，讓夥伴的角色出現在他上班的櫃位
+// v1.17:寵物、徽章、生日派對、冠軍旗＋煙火、天氣、節日、基金解鎖家具、夥伴互動
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
@@ -12,7 +13,25 @@ const CSS = `
 .uo-boss{background:#ffe08a}.uo-boss:after{border-top-color:#ffe08a}
 .uo-guest{background:#d6f5e3}.uo-guest:after{border-top-color:#d6f5e3}
 .uo-tag{position:absolute;transform:translate(-50%,0);font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:6px;white-space:nowrap}
+.uo-frame_wood{background:#8e5b3a;border:1.5px solid #d4a373}
+.uo-frame_glow{background:#c0392b;border:1.5px solid #ffe066;box-shadow:0 0 8px #ffe066}
 `;
+
+// 節日(農曆日期每年要更新;週年日由後端「遊戲參數」提供)
+const HOLIDAYS = [
+  ["xmas", "12-20", "12-26"], ["newyear", "12-31", "12-31"], ["newyear", "01-01", "01-02"], ["halloween", "10-25", "10-31"],
+  ["lunar", "2027-02-03", "2027-02-12"], ["lantern", "2027-02-19", "2027-02-21"], ["dragonboat", "2027-06-07", "2027-06-09"],
+  ["midautumn", "2027-09-13", "2027-09-15"],
+];
+function holidayOf(today, anniv) {
+  const md = today.slice(5);
+  if (anniv && md === anniv) return "anniversary";
+  for (const [k, a, b] of HOLIDAYS) {
+    if (a.length === 10 ? (today >= a && today <= b) : (md >= a && md <= b)) return k;
+  }
+  return "";
+}
+const INTERACTIONS = [["cheer", "💪", "加油打氣"], ["like", "👍", "按讚"], ["nod", "🙇", "點頭致意"], ["smile", "😊", "微笑"]];
 
 // 示範用：沒人上班時也能看到效果
 const DEMO = [
@@ -47,6 +66,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const [short, setShort] = useState([]);          // [{id, scene, item, by, time}]
   const [backendOk, setBackendOk] = useState(true);
   const [custom, setCustom] = useState("");
+  const [game, setGame] = useState(null);          // gmScene
+  const [feed, setFeed] = useState([]);
+  const [target, setTarget] = useState(null);      // 互動對象
+  const [imsg, setImsg] = useState("");
+  const [sent, setSent] = useState({});            // 今天已送出的 "對象|類型"
+  const seenFeed = useRef(null);
 
   useEffect(() => {
     engine.current = createOffice(boxRef.current);
@@ -90,6 +115,43 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     }
   };
 
+  // ── 遊戲化:寵物、徽章、生日、冠軍、基金、互動動態(gmScene)、天氣 ──
+  const loadGame = async () => {
+    const r = await apiGet({ action: "gmScene" }, 0);
+    if (!(r && r.success) || !engine.current) return;
+    const d = r.data || {}, today = todayStr();
+    setGame(d); setFeed(d.feed || []);
+    apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
+    engine.current.setGame({ pets: d.pets || {}, worn: d.worn || {}, birthdays: d.birthdays || [], champion: d.champion || "",
+      fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
+    // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
+    const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);
+    if (seenFeed.current) (d.feed || []).slice().reverse().forEach((f, i) => {
+      if (!seenFeed.current.has(f.time + f.from + f.to + f.type)) setTimeout(() => engine.current && engine.current.emote(f.from, f.to, f.type, f.fromName, f.toName), i * 1500);
+    });
+    seenFeed.current = new Set(keys);
+  };
+  const loadWeather = async () => {
+    try {
+      const r = await fetch("https://api.open-meteo.com/v1/forecast?latitude=25.04&longitude=121.56&current=precipitation,is_day&timezone=Asia%2FTaipei");
+      const j = await r.json(), c = j.current || {};
+      engine.current && engine.current.setGame({ weather: { rain: (c.precipitation || 0) > 0.1, night: c.is_day === 0 } });
+    } catch (e) {
+      const h = +new Date().toLocaleString("en-GB", { timeZone: "Asia/Taipei", hour: "2-digit", hour12: false });
+      engine.current && engine.current.setGame({ weather: { rain: false, night: h >= 18 || h < 6 } });
+    }
+  };
+  const interact = async (p, type) => {
+    setImsg("");
+    const r = await apiPost({ action: "gmInteract", empId: user.id, to: p.id, type }, 0);
+    if (r && r.success) {
+      setSent(x => ({ ...x, [p.id + "|" + type]: 1 }));
+      engine.current && engine.current.emote(user.id, p.id, type, user.name, p.name);
+      setImsg(`已對 ${p.name} ${INTERACTIONS.find(i => i[0] === type)[2]}！`);
+      setTimeout(() => setTarget(null), 900); loadGame();
+    } else setImsg((r && r.error) || "送出失敗");
+  };
+
   const load = async () => {
     setErr("");
     // 優先用後端一次算好的在班名單(全員可用);後端沒有這支 API 時才退回逐人查詢
@@ -113,6 +175,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     setUpdated(new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
   };
   useEffect(() => { load(); loadShort(); loadAvatars(); const t = setInterval(() => { load(); loadShort(); loadAvatars(); }, 3 * 60 * 1000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    loadGame(); loadWeather();
+    apiGet({ action: "gmMe", empId: user.id }, 0).then(r => { if (r && r.success) { const m = {}; (r.data.sentToday || []).forEach(k => (m[k] = 1)); setSent(m); } });
+    const a = setInterval(loadGame, 60 * 1000), b = setInterval(loadWeather, 30 * 60 * 1000);
+    return () => { clearInterval(a); clearInterval(b); };
+  }, []);
 
   const shown = demo ? DEMO : onDuty;
   const count = k => shown.filter(p => sceneOf(p.location) === k).length;
@@ -145,8 +213,27 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
             </div>
           )}
         </div>
-        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>左右拖曳可旋轉 · 每 3 分鐘自動更新</div>
+        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>左右拖曳可旋轉 · 點下方在班名單的「互動」可以幫夥伴加油</div>
       </div>
+
+      {game && game.birthdays && game.birthdays.length > 0 && (
+        <div style={{ ...s.card, background: "#fff0f6", border: "1px solid #f8c8dc", textAlign: "center" }}>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>🎂 今天是 {game.birthdays.map(b => b.name).join("、")} 的生日！</div>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>辦公室正在開派對，到首頁送上祝福吧</div>
+        </div>
+      )}
+
+      {feed.length > 0 && (
+        <div style={s.card}>
+          <div style={s.sectionTitle}>宇宙動態</div>
+          {feed.slice(0, 6).map((f, i) => (
+            <div key={i} style={{ fontSize: 13, padding: "5px 0", borderBottom: i < Math.min(5, feed.length - 1) ? `1px solid ${C.border}` : "none" }}>
+              {(INTERACTIONS.find(x => x[0] === f.type) || [])[1]} <b>{f.fromName}</b> 對 <b>{f.toName}</b> {f.label}
+              <span style={{ fontSize: 11, color: C.light, marginLeft: 6 }}>{String(f.time).slice(11, 16)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {isStore && (
         <div style={s.card}>
@@ -182,13 +269,33 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         {shown.map(p => {
           const k = sceneOf(p.location);
           return (
-            <div key={p.id} onClick={() => setView(k)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
-              <span style={{ fontSize: 13, fontWeight: 700 }}>{p.name}</span>
+            <div key={p.id} onClick={() => setView(k)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{p.name} <span style={{ fontWeight: 400 }}>{((game && game.worn && game.worn[p.id]) || []).join("")}</span></span>
+              {!demo && String(p.id) !== String(user.id) && <button onClick={e => { e.stopPropagation(); setTarget(p); setImsg(""); setView(k); }} style={{ border: `1px solid ${C.accent}`, background: C.card, color: C.accent, borderRadius: 999, padding: "3px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>互動</button>}
               <span style={{ fontSize: 12, color: C.muted }}>{SCENES[k].icon} {shortLoc(p.location)}{p.inTime ? ` · ${(() => { const d = new Date(p.inTime); return isNaN(d) ? String(p.inTime) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); })()}` : ""}</span>
             </div>
           );
         })}
       </div>
+
+      {target && (
+        <div onClick={() => setTarget(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 300, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: "18px 16px calc(22px + env(safe-area-inset-bottom))" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 14 }}>要對 {target.name} 做什麼？</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }}>
+              {INTERACTIONS.map(([k, ic, label]) => {
+                const done = sent[target.id + "|" + k];
+                return <button key={k} disabled={done} onClick={() => interact(target, k)} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: "12px 4px", background: done ? C.warm : C.card, cursor: done ? "default" : "pointer", fontFamily: "inherit", opacity: done ? .5 : 1 }}>
+                  <div style={{ fontSize: 26 }}>{ic}</div><div style={{ fontSize: 12, marginTop: 4, color: C.text }}>{label}</div>
+                  {done && <div style={{ fontSize: 10, color: C.muted }}>今天送過了</div>}
+                </button>;
+              })}
+            </div>
+            {imsg && <div style={{ fontSize: 13, textAlign: "center", marginTop: 12, color: C.accent }}>{imsg}</div>}
+            <div style={{ fontSize: 11, color: C.light, textAlign: "center", marginTop: 10 }}>同一個人、同一種互動一天一次 · 每月結算「互動之星」</div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", gap: 8 }}>
         <button onClick={load} style={{ ...s.btn() }}>🔄 重新整理</button>

@@ -13,6 +13,7 @@ export const SCENES = {
   nangang: { x: 160, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true },
   zhubei:  { x: 200, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true },
   other:   { x: 240, name: "其他櫃位・活動", short: "其他", icon: "🎪", aisle: -2.8, store: true },
+  street:  { x: 280, name: "夥伴商店街",   short: "商店街", icon: "🏪", aisle: 2.6 },
 };
 export const SCENE_KEYS = Object.keys(SCENES);
 
@@ -24,6 +25,7 @@ export function sceneOf(loc = "") {
   if (/竹北/.test(loc)) return "zhubei";
   if (/工廠|中央廚房/.test(loc)) return "factory";
   if (/辦公/.test(loc)) return "office";
+  if (/商店街/.test(loc)) return "street";
   return "other";
 }
 // "01正櫃遠百信義" → "遠百信義"
@@ -316,14 +318,48 @@ export function createOffice(container) {
       case "santa": box(0.78, 0.2, 0.72, W, 0, y - 0.05, 0, g); box(0.62, 0.3, 0.6, 0xd62828, 0, y + 0.2, 0, g);
         box(0.4, 0.26, 0.4, 0xd62828, 0, y + 0.42, -0.12, g); box(0.2, 0.2, 0.2, W, 0, y + 0.5, -0.32, g); break;
       case "pumpkin": box(0.52, 0.4, 0.52, 0xe67e22, 0, y + 0.12, 0, g); box(0.1, 0.16, 0.1, 0x2e8b3a, 0, y + 0.4, 0, g); break;
+      case "party": { const m = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.6, 8), mat(0xff6fa8)); m.position.set(0, y + 0.22, 0); g.add(m);
+        box(0.14, 0.14, 0.14, 0xffe066, 0, y + 0.56, 0, g); break; }
+      case "g_antenna": [-0.2, 0.2].forEach(sx => { box(0.05, 0.4, 0.05, 0x2ecc71, sx, y + 0.1, 0, g); box(0.14, 0.14, 0.14, 0x7dff7d, sx, y + 0.34, 0, g); }); break;
+      case "g_helmet": { const m = glassBox(0.95, 0.9, 0.9, 0xbfe7ff, 0.35); m.position.set(0, y - 0.45, 0.02); g.add(m); box(0.98, 0.1, 0.92, 0xdfe6ec, 0, y - 0.88, 0.02, g); break; }
+      case "g_ufo": box(0.8, 0.08, 0.8, 0x9aa3ad, 0, y + 0.05, 0, g); box(0.4, 0.2, 0.4, 0x8fd3ff, 0, y + 0.18, 0, g);
+        [[-0.3, 0], [0.3, 0], [0, 0.3], [0, -0.3]].forEach(s => box(0.07, 0.05, 0.07, 0xffe066, s[0], y + 0.02, s[1], g)); break;
       case "crown": box(0.7, 0.14, 0.64, 0xf1c40f, 0, y - 0.02, 0, g);
         [[-0.26, -0.22], [0.26, -0.22], [-0.26, 0.22], [0.26, 0.22], [0, 0]].forEach(s => box(0.12, 0.24, 0.12, 0xf1c40f, s[0], y + 0.16, s[1], g)); break;
+    }
+  }
+  // 配件(商店/扭蛋)。身體:中心 y1.09、前面 z0.23、背面 z-0.23;頭頂 y2.11
+  function addAcc(g, acc, o) {
+    const ring = (rad, c, y, tilt) => { const m = new THREE.Mesh(new THREE.TorusGeometry(rad, 0.05, 6, 20), new THREE.MeshBasicMaterial({ color: c })); m.position.set(0, y, 0); m.rotation.x = Math.PI / 2 + (tilt || 0); g.add(m); return m; };
+    switch (acc) {
+      case "bowtie": box(0.14, 0.14, 0.05, 0xc0392b, -0.1, 1.42, 0.25, g); box(0.14, 0.14, 0.05, 0xc0392b, 0.1, 1.42, 0.25, g); box(0.08, 0.08, 0.06, 0x922b21, 0, 1.42, 0.26, g); break;
+      case "scarf": box(0.84, 0.14, 0.52, 0xe74c3c, 0, 1.46, 0, g); box(0.14, 0.38, 0.05, 0xe74c3c, 0.22, 1.25, 0.26, g); break;
+      case "backpack": box(0.6, 0.6, 0.26, 0x8e5b3a, 0, 1.12, -0.36, g); box(0.4, 0.2, 0.05, 0xa9744f, 0, 1.0, -0.5, g); break;
+      case "wings": [-1, 1].forEach(s => { const w = box(0.06, 0.6, 0.5, 0xffffff, s * 0.28, 1.35, -0.36, g); w.rotation.z = s * 0.5; }); break;
+      case "cape": box(0.82, 1.0, 0.05, 0xc0392b, 0, 0.98, -0.27, g); box(0.84, 0.1, 0.5, 0xf1c40f, 0, 1.46, 0, g); break;
+      case "halo": ring(0.28, 0xffe066, 2.62); break;
+      case "g_starclip": box(0.16, 0.16, 0.05, 0xffe066, 0.3, 2.12, 0.22, g); break;
+      case "g_moonpin": box(0.13, 0.13, 0.04, 0xf1c40f, -0.2, 1.3, 0.25, g); box(0.07, 0.13, 0.05, o.shirt || 0xc0392b, -0.17, 1.3, 0.26, g); break;
+      case "g_rocket": box(0.22, 0.55, 0.22, 0xdfe6ec, -0.16, 1.15, -0.36, g); box(0.22, 0.55, 0.22, 0xdfe6ec, 0.16, 1.15, -0.36, g);
+        box(0.22, 0.14, 0.22, 0xc0392b, -0.16, 1.48, -0.36, g); box(0.22, 0.14, 0.22, 0xc0392b, 0.16, 1.48, -0.36, g);
+        box(0.14, 0.18, 0.14, 0xff8c1a, -0.16, 0.8, -0.36, g); box(0.14, 0.18, 0.14, 0xff8c1a, 0.16, 0.8, -0.36, g); break;
+      case "g_galaxy": box(0.82, 1.0, 0.05, 0x2c2c6e, 0, 0.98, -0.27, g);
+        [[-0.25, 1.2], [0.2, 0.9], [0.05, 1.3], [-0.1, 0.7], [0.28, 1.15]].forEach(s => box(0.06, 0.06, 0.02, 0xffffff, s[0], s[1], -0.3, g)); break;
+      case "g_saturn": ring(0.62, 0xf5b041, 1.85, 0.35); break;
+    }
+  }
+  // 服裝(取代上衣/圍裙的細節)
+  function addOutfit(g, outfit) {
+    switch (outfit) {
+      case "chefsuit": [1.3, 1.1, 0.9].forEach(y => { box(0.06, 0.06, 0.02, 0x333333, -0.12, y, 0.24, g); box(0.06, 0.06, 0.02, 0x333333, 0.12, y, 0.24, g); }); box(0.8, 0.1, 0.48, 0xc0392b, 0, 1.46, 0, g); break;
+      case "spacesuit": box(0.4, 0.3, 0.04, 0x2e86de, 0, 1.15, 0.24, g); box(0.1, 0.1, 0.03, 0xe74c3c, -0.1, 1.17, 0.27, g); box(0.1, 0.1, 0.03, 0x2ecc71, 0.08, 1.17, 0.27, g); box(0.6, 0.55, 0.3, 0xdfe6ec, 0, 1.12, -0.36, g); break;
+      case "raincoat": box(0.8, 0.3, 0.7, 0xf4d03f, 0, 2.05, -0.06, g); break;
     }
   }
   // 小暴龍裝(品牌吉祥物,可自選穿上)
   function makeTrex(o) {
     const g = new THREE.Group(); scene.add(g);
-    const R = 0xd94a3a, Cr = 0xffe6c7, D = 0xa8322a;
+    const R = o.trexColor || 0xd94a3a, Cr = 0xffe6c7, D = o.trexColor ? 0xc49a12 : 0xa8322a;
     const legL = new THREE.Group(); legL.position.set(-0.22, 0.65, 0); g.add(legL); box(0.3, 0.65, 0.34, R, 0, -0.32, 0, legL); box(0.34, 0.12, 0.5, D, 0, -0.6, 0.1, legL);
     const legR = new THREE.Group(); legR.position.set(0.22, 0.65, 0); g.add(legR); box(0.3, 0.65, 0.34, R, 0, -0.32, 0, legR); box(0.34, 0.12, 0.5, D, 0, -0.6, 0.1, legR);
     box(0.9, 0.95, 0.7, R, 0, 1.1, 0, g); box(0.6, 0.7, 0.05, Cr, 0, 1.05, 0.36, g);
@@ -335,6 +371,7 @@ export function createOffice(container) {
     [-0.25, 0.25].forEach(sx => { box(0.2, 0.22, 0.03, 0xffffff, sx, 2.15, 0.555, g); box(0.1, 0.12, 0.03, 0x222222, sx, 2.13, 0.575, g); box(0.16, 0.08, 0.02, 0xff9aa2, sx * 1.6, 1.95, 0.555, g); });
     box(0.07, 0.07, 0.03, 0xffffff, -0.15, 1.85, 0.555, g); box(0.07, 0.07, 0.03, 0xffffff, 0.15, 1.85, 0.555, g);
     addHat(g, o.hat, 2.55, R);
+    if (o.acc && ["cape", "g_galaxy", "wings", "halo", "g_saturn", "scarf", "bowtie"].indexOf(o.acc) >= 0) { const a = new THREE.Group(); a.position.y = 0.05; a.scale.set(1.1, 1, 1.4); g.add(a); addAcc(a, o.acc, o); }
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.2, trex: true };
   }
   function buildChar(av) { const c = av.mascot === "trex" ? makeTrex(av) : av.penguin ? makePenguin(av) : makeChar(av); c.saying = av.saying || ""; return c; }
@@ -343,7 +380,7 @@ export function createOffice(container) {
     const legL = new THREE.Group(); legL.position.set(-0.18, 0.7, 0); g.add(legL); box(0.3, 0.7, 0.32, o.pants, 0, -0.35, 0, legL);
     const legR = new THREE.Group(); legR.position.set(0.18, 0.7, 0); g.add(legR); box(0.3, 0.7, 0.32, o.pants, 0, -0.35, 0, legR);
     box(0.78, 0.78, 0.46, o.shirt, 0, 1.09, 0, g);
-    if (o.apron) box(0.6, 0.6, 0.04, 0xffffff, 0, 1.0, 0.24, g);
+    if (o.apron && !o.outfit) box(0.6, 0.6, 0.04, 0xffffff, 0, 1.0, 0.24, g);
     const armL = new THREE.Group(); armL.position.set(-0.5, 1.42, 0); g.add(armL); box(0.22, 0.66, 0.26, o.shirt, 0, -0.3, 0, armL);
     const armR = new THREE.Group(); armR.position.set(0.5, 1.42, 0); g.add(armR); box(0.22, 0.66, 0.26, o.shirt, 0, -0.3, 0, armR);
     box(0.68, 0.62, 0.62, o.skin || 0xf5c9a0, 0, 1.8, 0, g);
@@ -361,6 +398,8 @@ export function createOffice(container) {
 box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (o.face === "sunglasses") box(0.62, 0.15, 0.03, 0x111111, 0, 1.84, 0.335, g);
     if (o.face === "mask") box(0.5, 0.26, 0.03, 0xffffff, 0, 1.62, 0.335, g);
+    if (o.outfit) addOutfit(g, o.outfit);
+    if (o.acc) addAcc(g, o.acc, o);
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.4 };
   }
   function makePenguin(o) {
@@ -432,11 +471,47 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     [0, 1, 2].forEach(i => box(0.5, 0.7, 0.05, [0xe74c3c, 0xf1c40f, 0x3498db][i], 4.2 + i * 0.5, 3.6, 3.0, P));
   } });
 
+  // ── 場景:夥伴商店街(攤位依 setGame({shops}) 動態產生)──
+  let streetStalls = null;
+  {
+    const P = group("street");
+    box(16, 0.4, 12, 0xc9b79c, 0, -0.2, 0, P);
+    for (let i = -7; i < 8; i += 2) box(1.9, 0.02, 11.6, i % 4 ? 0xbfa98a : 0xd2c2a6, i, 0.01, 0, P);
+    box(16.4, 4, 0.4, 0xe8dcc8, 0, 2, -6.2, P);
+    put(P, textPlane("紅玉滿・夥伴商店街", 6, 1.0, { bg: "#c0392b", color: "#fff3e0", size: 64 }), 0, 3.2, -5.98);
+    [-7, 7].forEach(x => { box(0.2, 3.4, 0.2, 0x6e4b2a, x, 1.7, 5.5, P); });
+    for (let x = -6.5; x <= 6.5; x += 1.3) box(0.5, 0.5, 0.5, [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71][Math.round(x * 10) % 4 < 0 ? 0 : Math.round(x * 10) % 4], x, 3.3, 5.5, P);
+    plant(P, -7.3, -5.3); plant(P, 7.3, -5.3);
+    SLOTS.street = [{ x: 0, z: 3.5, rotY: Math.PI, anim: "stand" }];
+    streetStalls = new THREE.Group(); P.add(streetStalls);
+  }
+  const STALL_COLOR = { "咖啡店": 0x6f4e37, "甜點店": 0xf8a5c2, "花店": 0x58b368, "武器鋪": 0x7f8c8d, "卡片屋": 0x8e44ad, "雜貨店": 0xe67e22 };
+  const STALL_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸" };
+  function syncShops(list) {
+    while (streetStalls.children.length) streetStalls.remove(streetStalls.children[0]);
+    (list || []).slice(0, 8).forEach((sh, i) => {
+      const x = -5.6 + (i % 4) * 3.7, z = i < 4 ? -3.6 : 1.2, col = STALL_COLOR[sh.type] || 0xc0392b, g = new THREE.Group(); g.position.set(x, 0, z); streetStalls.add(g);
+      box(2.6, 1.0, 1.0, 0xfff3e0, 0, 0.5, 0, g); box(2.7, 0.08, 1.1, col, 0, 1.04, 0, g);
+      [-1.2, 1.2].forEach(px => box(0.1, 2.2, 0.1, 0x6e4b2a, px, 1.1, -0.45, g));
+      for (let k = 0; k < 5; k++) box(0.55, 0.12, 1.4, k % 2 ? col : 0xffffff, -1.1 + k * 0.55, 2.25, 0.05, g);
+      put(g, textPlane((STALL_ICON[sh.type] || "") + " " + sh.name, 2.6, 0.55, { bg: "#fffaf2", color: "#2b1d14", size: 52 }), 0, 1.65, -0.38);
+      put(g, textPlane("店主 " + sh.ownerName + (sh.level > 1 ? " ・Lv." + sh.level : ""), 2.4, 0.4, { color: "rgba(255,255,255,.9)", bg: "rgba(0,0,0,.35)", size: 40 }), 0, 0.55, 0.52);
+      for (let k = 0; k < sh.level + 1; k++) box(0.22, 0.22, 0.22, [0xf1c40f, 0xe74c3c, 0x3498db][k % 3], -0.8 + k * 0.4, 1.19, 0.1, g);
+    });
+    if (!(list || []).length) put(streetStalls, textPlane("累計工時 1080 小時就能來這裡開店", 8, 0.8, { color: "rgba(60,40,20,.55)", size: 44 }), 0, 0.05, 0, 0, -Math.PI / 2);
+  }
+  syncShops([]);
+
   const boss = makeChar({ shirt: 0x2c3e50, pants: 0x1b2631, hair: 0x222222, cap: 0xc0392b });
   boss.g.position.set(0.6, 0, 4.6); boss.g.rotation.y = -Math.PI / 4; boss.bubble.classList.add("uo-boss");
   nameTag(boss, "隊長");
 
-  function nameTag(c, name) { const t = document.createElement("div"); t.className = "uo-tag"; t.textContent = name; overlay.appendChild(t); c.tagEl = t; }
+  function nameTag(c, name, opt) {
+    const t = document.createElement("div"); opt = opt || {};
+    t.className = "uo-tag" + (opt.frame ? " uo-" + opt.frame : "");
+    t.textContent = name + (opt.icons && opt.icons.length ? " " + opt.icons.join("") : "");
+    overlay.appendChild(t); c.tagEl = t;
+  }
   const timers = new WeakMap();
   function say(c, txt, ms) {
     c.bubble.textContent = txt; c.bubble.style.opacity = 1; clearTimeout(timers.get(c));
@@ -493,12 +568,21 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
 
   let lastList = [];
+  // ── 遊戲化資料(setGame 傳入)──
+  let GAME = { pets: {}, worn: {}, birthdays: [], champion: "", fireworks: false, unlocks: [], holiday: "", weather: {} };
+  const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [] });
+  function avatarOf(p) {
+    const av = Object.assign({}, avatarFor(p));
+    if (GAME.birthdays.some(b => String(b.id) === String(p.id)) && (!av.hat || av.hat === "none")) av.hat = "party";
+    av._icons = (GAME.worn[String(p.id)] || []).join("");
+    return av;
+  }
   function rebuildChar(m, av) {
     const old = m.c, c = buildChar(av);
     c.g.position.copy(old.g.position); c.g.rotation.y = old.g.rotation.y;
     c.path = old.path; c.onArrive = old.onArrive; c.anim = old.anim; c.sit = old.sit; c.t = old.t;
     scene.remove(old.g); old.bubble.remove(); old.tagEl && old.tagEl.remove();
-    nameTag(c, m.p.name); m.c = c;
+    nameTag(c, m.p.name, tagOpt(m.p, av)); m.c = c;
   }
   function setCrew(list) {
     lastList = list;
@@ -508,18 +592,18 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       m.leaving = true; occupied[m.scene].delete(m.slot);
       say(m.c, "下班囉，掰掰～ 👋", 2500);
       const k = m.scene; m.slot = m.slot; // 保留以便走出
-      route(m, null, 0, () => { scene.remove(m.c.g); m.c.bubble.remove(); m.c.tagEl.remove(); crew.delete(id); });
+      route(m, null, 0, () => { scene.remove(m.c.g); m.c.bubble.remove(); m.c.tagEl.remove(); if (m.pet) { scene.remove(m.pet.g); m.pet = null; } crew.delete(id); });
       m.scene = k;
     }
     list.forEach(p => {
       const id = String(p.id), k = sceneOf(p.location);
       let m = crew.get(id);
       if (m && m.leaving) return;
-      if (m) { m.p = p; const av = avatarFor(p), sig = JSON.stringify(av); if (sig !== m.sig) { rebuildChar(m, av); m.sig = sig; } }
+      if (m) { m.p = p; const av = avatarOf(p), sig = JSON.stringify(av); if (sig !== m.sig) { rebuildChar(m, av); m.sig = sig; } }
       if (!m) {
-        const av = avatarFor(p);
+        const av = avatarOf(p);
         const c = buildChar(av);
-        nameTag(c, p.name);
+        nameTag(c, p.name, tagOpt(p, av));
         m = { p, c, sig: JSON.stringify(av), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
         crew.set(id, m);
         const slot = freeSlot(k); occupied[k].add(slot);
@@ -534,6 +618,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       }
       m.p = p;
     });
+    if (typeof syncPets === "function") syncPets();
   }
 
   // ── 動畫 ──
@@ -545,12 +630,16 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       case "serve": aL = -0.3; aR = -0.9 + Math.sin(t * 3) * 0.4; break;
       case "talk": aL = -0.3; aR = -0.6 + Math.sin(t * 6) * 0.35; break;
       case "sit": aL = aR = -0.3; break;
+      case "cheer": aL = aR = -2.8 + Math.sin(t * 12) * 0.3; break;
+      case "like": aL = -0.1; aR = -2.6; break;
+      case "wave": aL = -0.1; aR = -2.4 + Math.sin(t * 10) * 0.4; break;
       default: aL = aR = Math.sin(t * 1.5) * 0.05;
     }
     if (c.anim === "walk") { const s = Math.sin(t * 10) * 0.6; c.legL.rotation.x = s; c.legR.rotation.x = -s; aL = -s; aR = s; }
     else if (c.sit) { c.legL.rotation.x = c.legR.rotation.x = -Math.PI / 2; ly = 0.05; }
     else c.legL.rotation.x = c.legR.rotation.x = 0;
     c.armL.rotation.x = aL; c.armR.rotation.x = aR; c.armL.rotation.z = zL; c.armR.rotation.z = zR; c.g.position.y = ly;
+    c.g.rotation.x = c.anim === "nod" ? Math.max(0, Math.sin(t * 7)) * 0.18 : 0;
   }
   function stepMove(c, dt) {
     if (!c.path.length) return;
@@ -577,6 +666,191 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   renderer.domElement.addEventListener("pointerdown", onDown);
   window.addEventListener("pointerup", onUp); window.addEventListener("pointermove", onMove);
 
+  // ════════ 遊戲化圖層:寵物、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
+  const PET_COLORS = { "原味": 0xf3c66b, "可可": 0x7b4a2e, "紅玉": 0xd9534f, "抹茶": 0x8bbf6a };
+  function makePet(pt) {
+    const g = new THREE.Group(); scene.add(g);
+    const col = PET_COLORS[pt.flavor] || PET_COLORS["原味"], st = Math.max(1, Math.min(5, pt.stage || 1)), s = [0, 0.7, 0.85, 0.95, 1.05, 1.15][st];
+    const body = new THREE.Group(); g.add(body); body.scale.set(s, s, s);
+    if (st === 1) { box(0.36, 0.42, 0.36, col, 0, 0.22, 0, body); box(0.06, 0.06, 0.02, 0x222222, -0.08, 0.28, 0.19, body); box(0.06, 0.06, 0.02, 0x222222, 0.08, 0.28, 0.19, body); }
+    else {
+      box(0.42, 0.36, 0.42, col, 0, 0.3, 0, body); box(0.44, 0.06, 0.44, 0xf5deb3, 0, 0.46, 0, body);
+      box(0.07, 0.07, 0.02, 0x222222, -0.1, 0.34, 0.22, body); box(0.07, 0.07, 0.02, 0x222222, 0.1, 0.34, 0.22, body); box(0.08, 0.04, 0.02, 0xff9aa2, 0, 0.26, 0.22, body);
+      box(0.08, 0.12, 0.1, 0xe67e22, -0.1, 0.06, 0.04, body); box(0.08, 0.12, 0.1, 0xe67e22, 0.1, 0.06, 0.04, body);
+      if (st >= 4) { box(0.26, 0.08, 0.26, 0xffffff, 0, 0.52, 0, body); box(0.3, 0.16, 0.3, 0xffffff, 0, 0.64, 0, body); }
+    }
+    if (pt.acc === "pet_bow") { box(0.12, 0.08, 0.03, 0xc0392b, -0.06, 0.2, 0.22, body); box(0.12, 0.08, 0.03, 0xc0392b, 0.06, 0.2, 0.22, body); }
+    if (pt.acc === "pet_wings") [-1, 1].forEach(k => { const w = box(0.04, 0.24, 0.2, 0xffffff, k * 0.24, 0.36, -0.08, body); w.rotation.z = k * 0.6; });
+    if (pt.acc === "pet_crown") box(0.22, 0.1, 0.22, 0xf1c40f, 0, st >= 4 ? 0.77 : 0.53, 0, body);
+    const sparks = [];
+    if (st >= 5) for (let i = 0; i < 3; i++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), new THREE.MeshBasicMaterial({ color: 0xffe066 })); g.add(sp); sparks.push(sp); }
+    return { g, body, stage: st, sparks, t: Math.random() * 5, sig: JSON.stringify(pt) };
+  }
+  function syncPets() {
+    for (const [id, m] of crew) {
+      const pt = GAME.pets[id], sig = pt ? JSON.stringify(pt) : "";
+      if (m.pet && m.pet.sig !== sig) { scene.remove(m.pet.g); m.pet = null; }
+      if (pt && !m.pet && !m.leaving) { m.pet = makePet(pt); m.pet.g.position.copy(m.c.g.position); }
+    }
+  }
+  function tickPet(m, dt) {
+    const pt = m.pet; if (!pt) return; pt.t += dt;
+    const o = m.c.g.position, ry = m.c.g.rotation.y;
+    const tx = o.x - Math.sin(ry) * 0.2 + Math.cos(ry) * 0.75, tz = o.z - Math.cos(ry) * 0.2 - Math.sin(ry) * 0.75;
+    const p = pt.g.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    if (d > 6) p.set(tx, 0, tz);
+    else if (d > 0.05) { const s = Math.min(d, dt * 3.6); p.x += dx / d * s; p.z += dz / d * s; pt.g.rotation.y = Math.atan2(dx, dz); }
+    else pt.g.rotation.y += (ry - pt.g.rotation.y) * Math.min(1, dt * 3);
+    const hop = pt.stage === 1 ? 0.04 : pt.stage === 2 ? 0.08 : 0.16;
+    pt.body.position.y = Math.abs(Math.sin(pt.t * (d > 0.1 ? 10 : 3))) * hop;
+    if (pt.stage === 1) pt.body.rotation.z = Math.sin(pt.t * 2) * 0.15;
+    if (pt.stage >= 3 && d <= 0.1) pt.body.rotation.y = Math.sin(pt.t * 1.3) * 0.8;
+    pt.sparks.forEach((s, i) => { const a = pt.t * 2 + i * 2.1; s.position.set(Math.cos(a) * 0.4, 0.5 + Math.sin(pt.t * 3 + i) * 0.15, Math.sin(a) * 0.4); });
+    pt.g.visible = m.c.g.visible;
+  }
+
+  // 生日派對:辦公室放蛋糕、氣球、布條,在辦公室的小人定時一起說生日快樂
+  let partyG = null, partyClock = 20;
+  function syncParty() {
+    if (partyG) { partyG.parent.remove(partyG); partyG = null; }
+    if (!GAME.birthdays.length) return;
+    partyG = new THREE.Group(); GROUPS[0].add(partyG);
+    box(1.4, 0.5, 1.4, 0xfff3e0, 0.8, 0.25, 2.2, partyG); box(1.0, 0.45, 1.0, 0xf8a5c2, 0.8, 0.72, 2.2, partyG); box(0.6, 0.35, 0.6, 0xfff3e0, 0.8, 1.12, 2.2, partyG);
+    [-0.2, 0, 0.2].forEach(x => { box(0.06, 0.25, 0.06, 0xffffff, 0.8 + x, 1.42, 2.2, partyG); box(0.07, 0.09, 0.07, 0xffb020, 0.8 + x, 1.6, 2.2, partyG); });
+    [[-1, 0xe74c3c], [1.3, 0x3498db], [2.6, 0xf1c40f], [-2.3, 0x9b59b6], [3.9, 0x2ecc71]].forEach(b => { box(0.02, 1.6, 0.02, 0xdddddd, b[0], 2.0, -4.6, partyG); box(0.5, 0.6, 0.5, b[1], b[0], 3.0, -4.6, partyG); });
+    put(partyG, textPlane("生日快樂 " + GAME.birthdays.map(b => b.name).join("、"), 7, 0.9, { bg: "#ff6fa8", color: "#fff", size: 54 }), -3.6, 3.5, -5.95);
+    partyClock = 6;
+  }
+  function tickParty(dt) {
+    if (!partyG) return;
+    partyClock -= dt; if (partyClock > 0) return;
+    partyClock = 45 + Math.random() * 30;
+    [...crew.values()].filter(m => m.arrived && !m.leaving).forEach((m, i) => setTimeout(() => say(m.c, i % 2 ? "🎉 祝你生日快樂！" : "🎂 生日快樂～", 3500), i * 600));
+  }
+
+  // 冠軍櫃位旗＋煙火
+  let flagG = null, fwClock = 1; const SPARKS = [];
+  function syncChampion() {
+    if (flagG) { flagG.parent.remove(flagG); flagG = null; }
+    const k = GAME.champion ? sceneOf(GAME.champion) : "";
+    if (!k || !SCENES[k] || k === "other") return;
+    flagG = new THREE.Group(); GROUPS[SCENE_KEYS.indexOf(k)].add(flagG);
+    box(0.12, 4.2, 0.12, 0xd0d0d0, 6.8, 2.1, -5.4, flagG); box(0.25, 0.25, 0.25, 0xf1c40f, 6.8, 4.3, -5.4, flagG);
+    put(flagG, textPlane("本月冠軍", 2.2, 1.2, { bg: "#c0392b", color: "#ffe08a", size: 64 }), 7.95, 3.6, -5.4);
+    flagG.userData.scene = k;
+  }
+  function tickFireworks(dt) {
+    for (let i = SPARKS.length - 1; i >= 0; i--) {
+      const s = SPARKS[i]; s.userData.life -= dt; s.position.addScaledVector(s.userData.v, dt); s.userData.v.y -= 2.5 * dt;
+      s.material.opacity = Math.max(0, s.userData.life / 1.4);
+      if (s.userData.life <= 0) { scene.remove(s); s.geometry.dispose(); s.material.dispose(); SPARKS.splice(i, 1); }
+    }
+    if (!GAME.fireworks || !flagG) return;
+    fwClock -= dt; if (fwClock > 0) return; fwClock = 1.2 + Math.random() * 1.5;
+    const k = flagG.userData.scene, cx = SCENES[k].x + (Math.random() * 10 - 5), cy = 6 + Math.random() * 2, cz = -3 + Math.random() * 3;
+    const col = [0xff5e5e, 0xffd166, 0x6ee7b7, 0x7cc4ff, 0xf9a8d4][Math.floor(Math.random() * 5)];
+    for (let i = 0; i < 26; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial({ color: col, transparent: true }));
+      m.position.set(cx, cy, cz); const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2, sp = 2.5 + Math.random() * 1.5;
+      m.userData = { v: new THREE.Vector3(Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + 1, Math.sin(a) * Math.cos(b) * sp), life: 1.4 };
+      scene.add(m); SPARKS.push(m);
+    }
+  }
+
+  // 團隊基金解鎖的家具(辦公室)
+  let unlockG = null;
+  function syncUnlocks() {
+    if (unlockG) { unlockG.parent.remove(unlockG); unlockG = null; }
+    const U = GAME.unlocks || []; if (!U.length) return;
+    unlockG = new THREE.Group(); GROUPS[0].add(unlockG);
+    if (U.indexOf("lounge") >= 0) {   // 咖啡機＋地毯
+      box(0.9, 1.3, 0.7, 0x2c3e50, 7.3, 0.65, -1.2, unlockG); box(0.5, 0.3, 0.05, 0x5dade2, 7.3, 1.0, -0.84, unlockG); box(0.3, 0.2, 0.3, 0xffffff, 7.3, 0.4, -0.9, unlockG);
+      box(2.6, 0.06, 2.0, 0xe8c07a, 4.5, 0.04, 1.2, unlockG);
+    }
+    if (U.indexOf("plants") >= 0) {   // 植物牆＋水族箱
+      for (let x = -7.6; x <= -4; x += 0.6) for (let y = 0.6; y <= 3.2; y += 0.6) box(0.55, 0.55, 0.15, Math.round((x + y) * 10) % 2 ? 0x27ae60 : 0x2ecc71, x, y, -5.95, unlockG);
+      box(2.2, 1.2, 0.8, 0x2c3e50, -1.8, 0.6, 5.3, unlockG); const tank = glassBox(2.0, 1.0, 0.7, 0x5dade2, 0.45); tank.position.set(-1.8, 1.7, 5.3); unlockG.add(tank);
+      [[-2.3, 1.6], [-1.6, 1.9], [-1.3, 1.5]].forEach(f => box(0.18, 0.1, 0.06, 0xff8c1a, f[0], f[1], 5.3, unlockG));
+    }
+    if (U.indexOf("arcade") >= 0) {   // 大型電玩＋桌球桌
+      box(0.9, 1.9, 0.8, 0x6c3483, 7.3, 0.95, 2.6, unlockG); box(0.7, 0.5, 0.05, 0x58d68d, 7.3, 1.4, 2.98, unlockG);
+      box(2.4, 0.08, 1.3, 0x1e8449, 4.5, 0.85, 3.6, unlockG); box(2.4, 0.2, 0.04, 0xffffff, 4.5, 0.98, 3.6, unlockG);
+      [[3.5, 3.1], [5.5, 3.1], [3.5, 4.1], [5.5, 4.1]].forEach(l => box(0.08, 0.8, 0.08, 0x333333, l[0], 0.4, l[1], unlockG));
+    }
+  }
+
+  // 節日裝飾(辦公室)
+  let holiG = null;
+  function syncHoliday() {
+    if (holiG) { holiG.parent.remove(holiG); holiG = null; }
+    const h = GAME.holiday; if (!h) return;
+    holiG = new THREE.Group(); GROUPS[0].add(holiG);
+    if (h === "xmas") {
+      box(0.3, 0.5, 0.3, 0x6e4b2a, -7, 0.25, 4.4, holiG);
+      [[1.6, 0.6], [1.2, 1.1], [0.8, 1.55], [0.4, 1.95]].forEach(l => box(l[0], 0.5, l[0], 0x1e8449, -7, l[1] + 0.2, 4.4, holiG));
+      box(0.3, 0.3, 0.3, 0xf1c40f, -7, 2.5, 4.4, holiG);
+      [[-7.5, 1.0, 4.9, 0xe74c3c], [-6.5, 1.4, 4.9, 0x3498db], [-7.2, 1.8, 4.9, 0xf1c40f]].forEach(b => box(0.14, 0.14, 0.14, b[3], b[0], b[1], b[2], holiG));
+    } else if (h === "lunar" || h === "lantern") {
+      [-6, -2, 2, 6].forEach(x => { box(0.03, 0.6, 0.03, 0x333333, x, 3.6, -4.8, holiG); box(0.6, 0.7, 0.6, 0xe74c3c, x, 3.0, -4.8, holiG); box(0.64, 0.08, 0.64, 0xf1c40f, x, 3.38, -4.8, holiG); box(0.64, 0.08, 0.64, 0xf1c40f, x, 2.62, -4.8, holiG); });
+      if (h === "lunar") put(holiG, textPlane("新春快樂", 3, 0.8, { bg: "#c0392b", color: "#ffd700", size: 70 }), 4.5, 3.6, -5.95);
+    } else if (h === "midautumn") {
+      const moon = new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 12), new THREE.MeshBasicMaterial({ color: 0xfff1b5 })); moon.position.set(-6, 6.5, -7.5); holiG.add(moon);
+      [[3.8, -1.2], [4.2, -1.5], [5.0, -1.3]].forEach(p => box(0.3, 0.26, 0.3, 0x9acd32, p[0], 0.7, p[1], holiG));
+    } else if (h === "dragonboat") {
+      box(2.4, 0.3, 0.5, 0xc0392b, 4.5, 0.65, -1.6, holiG); box(0.4, 0.4, 0.4, 0x27ae60, 3.4, 0.9, -1.6, holiG);
+      [[4.2, 0], [4.6, 0.1], [5.0, -0.1]].forEach(z => box(0.22, 0.22, 0.22, 0x2e8b57, z[0], 0.9, -1.6 + z[1], holiG));
+    } else if (h === "halloween") {
+      [[-7, 4.6], [7, 4.6], [0.5, 5.2]].forEach(p => { box(0.6, 0.5, 0.6, 0xe67e22, p[0], 0.25, p[1], holiG); box(0.1, 0.15, 0.1, 0x2e8b3a, p[0], 0.58, p[1], holiG); box(0.12, 0.1, 0.02, 0x222222, p[0] - 0.12, 0.3, p[1] + 0.31, holiG); box(0.12, 0.1, 0.02, 0x222222, p[0] + 0.12, 0.3, p[1] + 0.31, holiG); });
+    } else if (h === "newyear") {
+      put(holiG, textPlane("Happy New Year", 4, 0.8, { bg: "#2c3e50", color: "#ffd700", size: 60 }), 4.5, 3.6, -5.95);
+    } else if (h === "anniversary") {
+      box(1.6, 0.6, 1.6, 0xc0392b, -1.5, 0.3, 2.5, holiG); box(1.2, 0.5, 1.2, 0xfff3e0, -1.5, 0.85, 2.5, holiG);
+      put(holiG, textPlane("紅玉滿 週年快樂", 4, 0.8, { bg: "#c0392b", color: "#fff3e0", size: 60 }), 4.5, 3.6, -5.95);
+    }
+  }
+
+  // 天氣:下雨、夜晚
+  const hemi = scene.children.find(o => o.isHemisphereLight);
+  let rain = null;
+  function syncWeather() {
+    const w = GAME.weather || {}, night = !!w.night;
+    if (hemi) hemi.intensity = night ? 0.5 : 0.75;
+    sun.intensity = night ? 0.35 : 0.75;
+    scene.background.setHex(night ? 0x0e0d1c : w.rain ? 0x2a2f3d : 0x1d1b2e);
+    if (w.rain && !rain) {
+      const n = 900, pos = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { pos[i * 3] = Math.random() * 40 - 20; pos[i * 3 + 1] = Math.random() * 14; pos[i * 3 + 2] = Math.random() * 30 - 15; }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      rain = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x9ec9ff, size: 0.08, transparent: true, opacity: 0.7 }));
+      scene.add(rain);
+    } else if (!w.rain && rain) { scene.remove(rain); rain.geometry.dispose(); rain = null; }
+  }
+  function tickRain(dt) {
+    if (!rain) return;
+    rain.position.x = camX;
+    const a = rain.geometry.attributes.position;
+    for (let i = 0; i < a.count; i++) { let y = a.getY(i) - dt * 14; if (y < 0) y += 14; a.setY(i, y); }
+    a.needsUpdate = true;
+  }
+
+  // 互動表演:兩人在同一場景就面對面做動作,否則只在看得到的那一位頭上顯示
+  const INTER = { cheer: ["cheer", "💪 加油！", "謝謝！💪"], like: ["like", "👍 讚！", "😆 謝啦"], nod: ["nod", "🙇 你好", "🙇"], smile: ["wave", "😊", "😊"] };
+  function emote(fromId, toId, type, fromName, toName) {
+    const A = crew.get(String(fromId)), B = crew.get(String(toId)), d = INTER[type]; if (!d) return;
+    const act = (m, anim, txt) => { const c = m.c, keep = c.anim; c.anim = anim; say(c, txt, 3000); setTimeout(() => { if (m.c === c && c.anim === anim) c.anim = keep; }, 2600); };
+    if (A && B && A.scene === B.scene && !A.leaving && !B.leaving) {
+      const pa = A.c.g.position, pb = B.c.g.position;
+      A.c.g.rotation.y = Math.atan2(pb.x - pa.x, pb.z - pa.z); B.c.g.rotation.y = Math.atan2(pa.x - pb.x, pa.z - pb.z);
+      act(A, d[0], d[1]); setTimeout(() => act(B, d[0], d[2]), 900);
+    } else if (B && !B.leaving) act(B, d[0], (fromName || "") + " " + d[1]);
+    else if (A && !A.leaving) act(A, d[0], d[1] + " → " + (toName || ""));
+  }
+
+  function tickGame(dt) {
+    for (const m of crew.values()) tickPet(m, dt);
+    tickParty(dt); tickFireworks(dt); tickRain(dt);
+  }
+
   let raf, last = performance.now(), guestClock = 3;
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -602,6 +876,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       }
     }
     boss.g.visible = camX < 34; animChar(boss, dt); place(boss);
+    tickGame(dt);
     const blinkFast = now / 90;
     FX.forEach(f => {
       if (f.kind === "screen") f.mesh.material.color.setHex(f.on ? (Math.sin(now / 120 + f.mesh.position.x) > -0.6 ? 0x5dade2 : 0x85c1e9) : 0x2a2f45);
@@ -631,6 +906,20 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
     setView(k) { if (SCENES[k]) view = k; },
+    // 遊戲化資料:{ pets, worn, birthdays, champion, fireworks, unlocks, holiday, weather }
+    setGame(g) {
+      const prev = GAME; GAME = Object.assign({}, GAME, g || {});
+      const ch = k => JSON.stringify(prev[k]) !== JSON.stringify(GAME[k]);
+      if (ch("worn") || ch("birthdays")) setCrew(lastList);
+      syncPets();
+      if (ch("birthdays")) syncParty();
+      if (ch("champion")) syncChampion();
+      if (ch("unlocks")) syncUnlocks();
+      if (ch("holiday")) syncHoliday();
+      if (ch("weather")) syncWeather();
+      if (ch("shops")) syncShops(GAME.shops);
+    },
+    emote,
     dispose() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", size);
