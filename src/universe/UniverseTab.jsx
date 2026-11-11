@@ -102,6 +102,17 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const [imsg, setImsg] = useState("");
   const [sent, setSent] = useState({});            // 今天已送出的 "對象|類型"
   const seenFeed = useRef(null);
+  // v1.21 櫃位營運連動：麵糊（最近一次收店盤點）、今日待取貨訂單
+  const [batter, setBatter] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const loadOps = async () => {
+    const [b, o] = await Promise.all([
+      apiGet({ action: "getBatterStock", empId: user.id }, 0),
+      apiGet({ action: "getOrders", empId: user.id, from: todayStr(), to: todayStr() }, 0),
+    ]);
+    if (b && b.success) setBatter(b.data || []);
+    if (o && o.success) setOrders(o.data || []);
+  };
 
   useEffect(() => {
     engine.current = createOffice(boxRef.current, { onPick: p => setPicked(p ? { ...p } : null) });
@@ -239,7 +250,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     setOnDuty(list); setProgress("");
     setUpdated(new Date().toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" }));
   };
-  useEffect(() => { load(); loadShort(); loadAvatars(); const t = setInterval(() => { load(); loadShort(); loadAvatars(); }, 3 * 60 * 1000); return () => clearInterval(t); }, []);
+  useEffect(() => { load(); loadShort(); loadAvatars(); loadOps(); const t = setInterval(() => { load(); loadShort(); loadAvatars(); loadOps(); }, 3 * 60 * 1000); return () => clearInterval(t); }, []);
   useEffect(() => {
     loadGame(); loadWeather();
     apiGet({ action: "gmMe", empId: user.id }, 0).then(r => { if (r && r.success) { const m = {}; (r.data.sentToday || []).forEach(k => (m[k] = 1)); setSent(m); } });
@@ -258,6 +269,24 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     stores.sort((a, b) => n(a) - n(b));
     return ["office", "factory", ...stores, "street"];
   })();
+  // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
+  const opsMap = (() => {
+    const today = todayStr(), map = {};
+    SCENE_KEYS.filter(k => SCENES[k].store).forEach(k => (map[k] = { state: count(k) ? "open" : "before", batter: null, bDate: "", pickup: 0 }));
+    batter.forEach(x => {
+      const k = sceneOf(x.loc), m = map[k]; if (!m) return;
+      if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = x.rem; }
+      if (x.date === today && !count(k)) m.state = "closed";
+    });
+    orders.forEach(o => {
+      if (String(o.date) !== today || o.method === "外送" || o.status === "已交付" || o.status === "已取消") return;
+      const m = map[sceneOf(o.loc)]; if (m) m.pickup++;
+    });
+    return map;
+  })();
+  const opsSig = JSON.stringify(opsMap);
+  useEffect(() => { engine.current && engine.current.setOps && engine.current.setOps(opsMap); }, [opsSig]);
+  const curOps = opsMap[view];
   const focusPerson = (p) => { const k = sceneOf(p.location); setView(k); engine.current && engine.current.focusCrew && engine.current.focusCrew(p.id); };
   const pk = picked && (shown.find(x => String(x.id) === String(picked.id)) || picked);
   const timeOf = t => { if (!t) return ""; const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); };
@@ -297,7 +326,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           </div>
           {isStore && here.length === 0 && (
             <div style={{ position: "absolute", top: full ? "calc(48px + env(safe-area-inset-top))" : 10, left: 10, zIndex: 2, background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 12, padding: "4px 10px", borderRadius: 8 }}>
-              此櫃位目前無人在班
+              {curOps && curOps.state === "closed" ? "🌙 今日已打烊" : curOps && curOps.state === "before" ? "☕ 準備中・尚未開店" : "此櫃位目前無人在班"}
             </div>
           )}
           {pk && (
@@ -344,6 +373,13 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       {isStore && (
         <div style={s.card}>
           <div style={s.sectionTitle}>📋 {SCENES[view].name} 缺貨看板</div>
+          {curOps && (curOps.batter || curOps.pickup > 0) && (
+            <div style={{ background: C.warm, borderRadius: 10, padding: "7px 10px", marginBottom: 8, fontSize: 12.5 }}>
+              {curOps.batter && <div>🥣 麵糊（包）：{["原味", "可可", "紅玉", "抹茶"].map(f => { const v = curOps.batter[f]; return <span key={f} style={{ marginRight: 8, fontWeight: 600, color: v != null && v <= 2 ? C.red : C.text }}>{f} {v == null ? "—" : v}</span>; })}
+                <span style={{ fontSize: 10.5, color: C.light }}>{curOps.bDate.slice(5).replace("-", "/")} 收店盤點</span></div>}
+              {curOps.pickup > 0 && <div style={{ marginTop: curOps.batter ? 3 : 0 }}>📦 今日待取貨 <b style={{ color: C.accent }}>{curOps.pickup}</b> 筆</div>}
+            </div>
+          )}
           {short.filter(x => x.scene === view).length === 0 && <div style={{ fontSize: 13, color: C.green, padding: "4px 0 8px" }}>✅ 目前不缺</div>}
           {short.filter(x => x.scene === view).map(x => (
             <div key={x.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
