@@ -20,6 +20,13 @@ const CSS = `
 .uo-rest{background:rgba(90,90,110,.6)}
 .uo-petsay{background:#fff3c4;font-size:10.5px;padding:3px 7px}.uo-petsay:after{border-top-color:#fff3c4}
 .uo-frame_wood{background:#8e5b3a;border:1.5px solid #d4a373}
+.uo-ctl{position:absolute;z-index:3;display:flex;gap:6px}
+.uo-ctl button{width:34px;height:34px;border-radius:10px;border:none;background:rgba(20,18,36,.62);color:#fff;font-size:17px;line-height:34px;padding:0;cursor:pointer;font-family:inherit;backdrop-filter:blur(4px)}
+.uo-full{position:fixed!important;inset:0;z-index:250;border-radius:0!important}
+.uo-ftabs{position:absolute;z-index:3;left:0;right:50px;top:calc(8px + env(safe-area-inset-top));padding:0 6px 0 10px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.uo-ftabs button{flex:0 0 auto;border:none;border-radius:10px;padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;background:rgba(20,18,36,.55);color:#fff;font-family:inherit;backdrop-filter:blur(4px)}
+.uo-ftabs button.on{background:rgba(192,57,43,.92)}
+.uo-card{position:absolute;z-index:4;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:420px;margin:0 auto;background:rgba(255,250,242,.97);border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.35);color:#2b1d14}
 .uo-frame_glow{background:#c0392b;border:1.5px solid #ffe066;box-shadow:0 0 8px #ffe066}
 `;
 
@@ -64,13 +71,21 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
+  const [full, setFull] = useState(false);          // v1.21 全螢幕
+  const [picked, setPicked] = useState(null);       // v1.21 點人拉近 → 名片
+  const [locNo, setLocNo] = useState({});           // 場景 → 〈櫃位設定〉編號(分頁排序用)
   // v1.20:分頁只顯示營運中的門市(依〈櫃位設定〉狀態);辦公室、工廠、商店街一直都在
   const [openScenes, setOpenScenes] = useState(null);
   useEffect(() => {
     apiGet({ action: "getLocations" }, 1).then(r => {
       if (!r || !r.success) return;
-      const set = {}; Object.keys(r.data || {}).forEach(n => { const st = r.data[n].status; if (!st || st === "營運中") set[sceneOf(n)] = 1; });
-      setOpenScenes(set);
+      const set = {}, no = {};
+      Object.keys(r.data || {}).forEach(n => {
+        const st = r.data[n].status, k = sceneOf(n), m = String(n).match(/^\d+/);
+        if (!st || st === "營運中") set[k] = 1;
+        if (m && (no[k] == null || +m[0] < no[k])) no[k] = +m[0];
+      });
+      setOpenScenes(set); setLocNo(no);
     });
   }, []);
   const [onDuty, setOnDuty] = useState([]);
@@ -89,10 +104,16 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const seenFeed = useRef(null);
 
   useEffect(() => {
-    engine.current = createOffice(boxRef.current);
+    engine.current = createOffice(boxRef.current, { onPick: p => setPicked(p ? { ...p } : null) });
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
+  useEffect(() => {
+    engine.current && engine.current.setFullscreen && engine.current.setFullscreen(full);
+    const prev = document.body.style.overflow;
+    if (full) document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [full]);
   // v1.19:場景名單＝在班的人＋隊長(連大隊長帳號,常駐辦公室)＋沒上班的自己(在休息區)
   const sceneList = (() => {
     if (demo) return DEMO;
@@ -230,6 +251,16 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const count = k => shown.filter(p => sceneOf(p.location) === k).length;
   const here = shown.filter(p => sceneOf(p.location) === view);
   const isStore = SCENES[view].store;
+  // v1.21 分頁：辦公室、工廠 → 營運中櫃位(依〈櫃位設定〉編號) → 商店街；「其他」只在有人打卡到未建場景的地點時才出現
+  const tabKeys = (() => {
+    const stores = SCENE_KEYS.filter(k => SCENES[k].store && (k === "other" ? count(k) > 0 || view === k : !openScenes || openScenes[k] || count(k) || view === k));
+    const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
+    stores.sort((a, b) => n(a) - n(b));
+    return ["office", "factory", ...stores, "street"];
+  })();
+  const focusPerson = (p) => { const k = sceneOf(p.location); setView(k); engine.current && engine.current.focusCrew && engine.current.focusCrew(p.id); };
+  const pk = picked && (shown.find(x => String(x.id) === String(picked.id)) || picked);
+  const timeOf = t => { if (!t) return ""; const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); };
 
   return (
     <div>
@@ -243,21 +274,52 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
-          {SCENE_KEYS.filter(k => !SCENES[k].store || !openScenes || openScenes[k] || count(k) || view === k).map(k => (
+          {tabKeys.map(k => (
             <button key={k} onClick={() => setView(k)} style={{
               flex: "0 0 auto", border: "none", borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer",
               background: view === k ? C.accent : C.warm, color: view === k ? "#fff" : C.text,
             }}>{SCENES[k].icon} {SCENES[k].short}{count(k) ? ` · ${count(k)}` : ""}</button>
           ))}
         </div>
-        <div className="uo-wrap" ref={boxRef}>
+        <div className={"uo-wrap" + (full ? " uo-full" : "")} ref={boxRef}>
+          {full && (
+            <div className="uo-ftabs">
+              {tabKeys.map(k => <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{SCENES[k].icon} {SCENES[k].short}{count(k) ? ` · ${count(k)}` : ""}</button>)}
+            </div>
+          )}
+          <div className="uo-ctl" style={{ top: full ? "calc(8px + env(safe-area-inset-top))" : 8, right: 8 }}>
+            <button onClick={() => setFull(f => !f)} title={full ? "離開全螢幕" : "全螢幕"}>{full ? "✕" : "⛶"}</button>
+          </div>
+          <div className="uo-ctl" style={{ bottom: pk ? (full ? "calc(118px + env(safe-area-inset-bottom))" : 112) : (full ? "calc(10px + env(safe-area-inset-bottom))" : 8), right: 8, flexDirection: "column" }}>
+            <button onClick={() => engine.current && engine.current.zoomBy(1.25)} title="放大">＋</button>
+            <button onClick={() => engine.current && engine.current.zoomBy(0.8)} title="縮小">－</button>
+            <button onClick={() => engine.current && engine.current.resetView()} title="回到預設視角">⟲</button>
+          </div>
           {isStore && here.length === 0 && (
-            <div style={{ position: "absolute", top: 10, left: 10, zIndex: 2, background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 12, padding: "4px 10px", borderRadius: 8 }}>
+            <div style={{ position: "absolute", top: full ? "calc(48px + env(safe-area-inset-top))" : 10, left: 10, zIndex: 2, background: "rgba(0,0,0,.55)", color: "#fff", fontSize: 12, padding: "4px 10px", borderRadius: 8 }}>
               此櫃位目前無人在班
             </div>
           )}
+          {pk && (
+            <div className="uo-card">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700 }}>{pk.resting ? "💤 " : ""}{pk.name} <span style={{ fontWeight: 400 }}>{((game && game.worn && game.worn[pk.id]) || []).join("")}</span></div>
+                  <div style={{ fontSize: 12, color: "#7a6a5c", marginTop: 2 }}>
+                    {SCENES[sceneOf(pk.location)].icon} {pk.isBoss ? "辦公室" : pk.resting ? "休息中" : shortLoc(pk.location)}{pk.inTime ? ` · ${timeOf(pk.inTime)} 上班` : ""}
+                  </div>
+                  {game && game.pets && game.pets[pk.id] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>🐾 寵物：{game.pets[pk.id].name || "（未命名）"}</div>}
+                </div>
+                {game && game.pets && game.pets[pk.id] && <PetSprite type={game.pets[pk.id].type} stage={game.pets[pk.id].stage} flavor={game.pets[pk.id].flavor} size={40} />}
+                <button onClick={() => engine.current && engine.current.resetView()} style={{ border: "none", background: "transparent", fontSize: 18, color: "#9a8a7c", cursor: "pointer", padding: 4 }}>✕</button>
+              </div>
+              {!demo && String(pk.id) !== String(user.id) && (
+                <button onClick={() => { setTarget(pk); setImsg(""); }} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 互動・加油打氣</button>
+              )}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>左右拖曳可旋轉 · 點下方在班名單的「互動」可以幫夥伴加油</div>
+        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點夥伴拉近看名片 · ⛶ 全螢幕可單指拖曳移動</div>
       </div>
 
       {game && game.birthdays && game.birthdays.length > 0 && (
@@ -313,7 +375,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         {shown.map(p => {
           const k = sceneOf(p.location);
           return (
-            <div key={p.id} onClick={() => setView(k)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
+            <div key={p.id} onClick={() => focusPerson(p)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}`, cursor: "pointer" }}>
               <span style={{ fontSize: 13, fontWeight: 700, flex: 1 }}>{p.name} <span style={{ fontWeight: 400 }}>{((game && game.worn && game.worn[p.id]) || []).join("")}</span></span>
               {!demo && String(p.id) !== String(user.id) && <button onClick={e => { e.stopPropagation(); setTarget(p); setImsg(""); setView(k); }} style={{ border: `1px solid ${C.accent}`, background: C.card, color: C.accent, borderRadius: 999, padding: "3px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit" }}>互動</button>}
               <span style={{ fontSize: 12, color: C.muted }}>{SCENES[k].icon} {shortLoc(p.location)}{p.inTime ? ` · ${(() => { const d = new Date(p.inTime); return isNaN(d) ? String(p.inTime) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); })()}` : ""}</span>
