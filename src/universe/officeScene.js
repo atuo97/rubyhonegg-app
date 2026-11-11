@@ -9,17 +9,17 @@ import { petLine } from "../pets/petSprites.jsx";
 export const SCENES = {
   office:  { x: 0,   name: "辦公室",       short: "辦公室", icon: "💼", aisle: 2.6 },
   factory: { x: 40,  name: "工廠",         short: "工廠",   icon: "🏭", aisle: 2.6 },
-  xinyi:   { x: 80,  name: "遠百信義",     short: "信義",   icon: "🏙️", aisle: -2.8, store: true },
-  hall:    { x: 120, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true },
-  nangang: { x: 160, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true },
-  zhubei:  { x: 200, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true },
-  // v1.20 新增門市(只有〈櫃位設定〉營運中的門市才會出現在分頁)
-  meili:   { x: 320, name: "美麗華",       short: "美麗華", icon: "🎡", aisle: -2.8, store: true },
-  huatai:  { x: 360, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true },
-  airport: { x: 400, name: "桃園機場 × 山海豆花", short: "桃機", icon: "✈️", aisle: -2.8, store: true },
-  guangfu: { x: 440, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -2.8, store: true },
+  xinyi:   { x: 80,  name: "遠百信義",     short: "信義",   icon: "🏙️", aisle: -2.8, store: true, focus: { x: 0.5, z: -0.8, zoom: 1.7 } },
+  hall:    { x: 120, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true, focus: { x: 0.2, z: -1.2, zoom: 1.6 } },
+  nangang: { x: 160, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true, focus: { x: 0.2, z: -0.8, zoom: 1.6 } },
+  zhubei:  { x: 200, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true, focus: { x: 0.3, z: -0.8, zoom: 1.6 } },
   other:   { x: 240, name: "其他櫃位・活動", short: "其他", icon: "🎪", aisle: -2.8, store: true },
   street:  { x: 280, name: "夥伴商店街",   short: "商店街", icon: "🏪", aisle: 2.6 },
+  meili:   { x: 320, name: "美麗華",       short: "美麗華", icon: "🎡", aisle: -2.8, store: true, focus: { x: -0.6, z: -1.0, zoom: 1.45 } },
+  airport: { x: 360, name: "桃園機場 × 山海豆花", short: "桃機", icon: "✈️", aisle: -5.2, store: true, focus: { x: -0.2, z: -2.0, zoom: 1.5 } },
+  huatai:  { x: 400, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true, focus: { x: -0.8, z: -1.2, zoom: 1.3 } },
+  event:   { x: 440, name: "活動",         short: "活動",   icon: "⛺", aisle: -2.8, store: true, focus: { x: 1.4, z: -0.6, zoom: 1.35 } },
+  guangfu: { x: 480, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -3.6, store: true, focus: { x: 0.6, z: -1.2, zoom: 1.9, az: 0.3 } },
 };
 export const SCENE_KEYS = Object.keys(SCENES);
 
@@ -29,13 +29,14 @@ export function sceneOf(loc = "") {
   if (/音樂廳|兩廳院/.test(loc)) return "hall";
   if (/南港/.test(loc)) return "nangang";
   if (/竹北/.test(loc)) return "zhubei";
-  if (/美麗華/.test(loc)) return "meili";
-  if (/華泰/.test(loc)) return "huatai";
-  if (/機場|山海/.test(loc)) return "airport";
-  if (/光復/.test(loc)) return "guangfu";
   if (/工廠|中央廚房/.test(loc)) return "factory";
   if (/辦公/.test(loc)) return "office";
   if (/商店街/.test(loc)) return "street";
+  if (/美麗華/.test(loc)) return "meili";
+  if (/機場|山海/.test(loc)) return "airport";
+  if (/華泰/.test(loc)) return "huatai";
+  if (/光復/.test(loc)) return "guangfu";
+  if (/活動/.test(loc)) return "event";
   return "other";
 }
 // "01正櫃遠百信義" → "遠百信義"
@@ -70,12 +71,12 @@ export function avatarFor(p) {
   return preset ? { ...base, ponytail: false, bob: false, glasses: false, ...AVATAR_PRESETS[preset] } : base;
 }
 
-const SHOP_LINES = ["歡迎光臨～現烤雞蛋糕！", "剛出爐的喔！", "原味一盒，好的～", "小暴龍可以拍照喔 📸", "紅玉跟抹茶都很推！", "謝謝光臨，慢走～"];
+const SHOP_LINES = ["歡迎光臨～現烤雞蛋糕！", "剛出爐的喔！", "原味一盒，好的～", "現烤的喔，小心燙！", "紅玉跟抹茶都很推！", "謝謝光臨，慢走～"];
 const FACTORY_LINES = ["麵糊備好了！", "這批烤色漂亮 👍", "今天要烤幾百顆呢～", "翻模！翻模！", "預拌粉補好了"];
 const OFFICE_LINES = ["排班表更新好了 📋", "這個月業績不錯喔！", "來開個小會吧～", "報表整理中…"];
 const REST_LINES = ["今天休假～", "休息一下 ☕", "大家加油！", "明天見 👋"];
 const PENGUIN_LINES = ["企鵝不怕熱 🐧", "翻模！翻模！", "這批烤色漂亮 👍", "麵糊備好了！"];
-const GUEST_LINES = ["我要一盒原味！", "紅玉跟抹茶各一盒～", "小暴龍好可愛，先拍照 📸", "現烤的好香喔！", "可以刷卡嗎？", "買回去給小孩吃 😊", "逛街逛到餓了～"];
+const GUEST_LINES = ["我要一盒原味！", "紅玉跟抹茶各一盒～", "造型好可愛，先拍照 📸", "現烤的好香喔！", "可以刷卡嗎？", "買回去給小孩吃 😊", "逛街逛到餓了～"];
 const pick = a => a[(Math.random() * a.length) | 0];
 
 export function createOffice(container) {
@@ -92,7 +93,7 @@ export function createOffice(container) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1d1b2e);
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
-  let view = "office", camX = 0, az = Math.PI / 4;
+  let camZ = 0, lastView = null, azT = null; let view = "office", camX = 0, az = Math.PI / 4;
 
   function size() {
     const w = container.clientWidth || 360, h = Math.round(Math.min(w * 0.85, 460));
@@ -245,13 +246,17 @@ export function createOffice(container) {
   }
 
   // ── 場景：各櫃位 ──
-  function trex(P, x, z) {
-    const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = Math.PI / 4; P.add(g);
-    const R = 0xd94a3a, Cr = 0xffe6c7, D = 0xa8322a;
+  function trex(P, x, z, o = {}) {
+    const g = new THREE.Group(); g.position.set(x, o.y || 0, z); g.rotation.y = o.rotY != null ? o.rotY : Math.PI / 4; if (o.scale) g.scale.setScalar(o.scale); P.add(g);
+    const R = o.color || 0xd94a3a, Cr = o.belly || 0xffe6c7, D = o.dark || 0xa8322a;
     const pm = {}; const ph = c => pm[c] || (pm[c] = new THREE.MeshPhongMaterial({ color: c, shininess: 90, specular: 0x666666 }));
     function pb(w, h, d, c, x, y, z, rx) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), ph(c)); m.position.set(x, y, z); if (rx) m.rotation.x = rx; m.castShadow = true; g.add(m); return m; }
-    box(1.9, 0.5, 1.9, 0xf4f1ec, 0, 0.25, 0, g); box(1.92, 0.1, 1.92, 0xc0392b, 0, 0.42, 0, g);
-    put(g, textPlane("小暴龍", 1.2, 0.3, { color: "#c0392b", size: 72 }), 0, 0.22, 0.96);
+    if (o.round) {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.85, 0.5, 24), new THREE.MeshPhongMaterial({ color: 0xd62b2b, shininess: 80 })); base.position.y = 0.25; g.add(base);
+    } else {
+      box(1.9, 0.5, 1.9, 0xf4f1ec, 0, 0.25, 0, g); box(1.92, 0.1, 1.92, 0xc0392b, 0, 0.42, 0, g);
+      put(g, textPlane("小暴龍", 1.2, 0.3, { color: "#c0392b", size: 72 }), 0, 0.22, 0.96);
+    }
     const y = 0.5;
     pb(0.42, 0.6, 0.5, R, -0.32, y + 0.3, 0); pb(0.42, 0.6, 0.5, R, 0.32, y + 0.3, 0);
     pb(0.5, 0.16, 0.7, D, -0.32, y + 0.08, 0.12); pb(0.5, 0.16, 0.7, D, 0.32, y + 0.08, 0.12);
@@ -288,7 +293,6 @@ export function createOffice(container) {
     put(P, textPlane(th.title, 5, 0.9, { color: th.titleColor || "rgba(120,40,30,.4)", size: 60 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
     box(0.08, 1.4, 0.08, 0x555555, -2.5, 3.9, -1.2, P); box(0.08, 1.4, 0.08, 0x555555, 1.6, 3.9, -1.2, P);
     put(P, textPlane("紅玉滿赤心｜" + th.title, 4.4, 0.6, { bg: th.signBg || "#c0392b", color: "#fff", size: 50 }), -0.45, 3.3, -1.15);
-    trex(P, 5, 1.6);
     plant(P, 7.3, 5.0);
     // 缺貨看板（立牌）
     const bg = new THREE.Group(); bg.position.set(6.6, 0, -1.4); bg.rotation.y = Math.PI / 4; P.add(bg);
@@ -437,6 +441,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
 
   const GUESTS = {};
+  const ROBOTS = [];
+  const TWINKLE = [], SNOW = [];
   const BOARDS = {};
   function drawBoard(k, items) {
     const b = BOARDS[k]; if (!b) return;
@@ -454,56 +460,469 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     }
     b.mesh.material.map.needsUpdate = true;
   }
-  storeScene("xinyi", { floor: [0x3b3a40, 0x4a4950], wall: 0xe8dcc8, trim: 0xc9a227, counter: 0x2c2c34, title: "遠百信義", titleColor: "rgba(255,240,200,.45)", signBg: "#2c2c34", deco: P => {
-    put(P, glassBox(0.2, 4, 12, 0xbfe0ff, 0.25), -8.2, 2, 0);
-    for (let z = -6; z <= 6; z += 3) box(0.25, 4, 0.2, 0x888888, -8.2, 2, z, P);
-    const T = 0x5e9c94; box(2, 1.4, 2, T, -11, 0.7, -2, P);
-    for (let i = 0; i < 8; i++) { box(1.25, 0.15, 1.25, 0x3d7068, -11, 1.45 + i * 0.95, -2, P); box(1.05, 0.8, 1.05, T, -11, 1.95 + i * 0.95, -2, P); }
-    box(0.7, 1.2, 0.7, T, -11, 9.6, -2, P); box(0.15, 1.6, 0.15, 0xcccccc, -11, 11, -2, P);
-    box(1.5, 4, 1.5, 0x6f7f8f, -11, 2, 2.5, P); box(1.2, 6, 1.2, 0x7d8b99, -12.5, 3, -5, P);
-  } });
-  storeScene("hall", { floor: [0xc9c1b0, 0xbdb4a2], wall: 0xf3e9d2, trim: 0xa93226, counter: 0x7b241c, title: "國家音樂廳", deco: P => {
-    [-7.6, -3.8, 0.2, 3.8, 7.4].forEach(x => box(0.55, 4.2, 0.55, 0xb0281e, x, 2.1, -5.6, P));
-    box(16.6, 0.45, 0.7, 0x8e1f17, 0, 4.25, -5.6, P);
-    box(17.4, 0.35, 2.6, 0xe0a526, 0, 4.75, -5.1, P).rotation.x = 0.35;
-    box(17.4, 0.25, 0.35, 0xc78a12, 0, 5.15, -5.9, P);
-    for (let i = -8; i <= 8; i += 0.8) box(0.12, 0.12, 2.4, 0xc78a12, i, 4.85, -5.1, P).rotation.x = 0.35;
-    [-6, -2, 2, 6].forEach(x => { box(0.04, 0.8, 0.04, 0x333333, x, 3.8, -4.4, P); box(0.6, 0.7, 0.6, 0xe74c3c, x, 3.1, -4.4, P); box(0.64, 0.1, 0.64, 0xf1c40f, x, 3.5, -4.4, P); box(0.64, 0.1, 0.64, 0xf1c40f, x, 2.72, -4.4, P); });
-    box(2.4, 0.15, 6, 0xb0281e, -6.5, 0.03, 2.5, P);
-  } });
-  storeScene("nangang", { floor: [0xe8d3b0, 0xdfc6a0], wall: 0xfafafa, trim: 0x7dbb6e, counter: 0xc89f6e, title: "南港 LaLaport", signBg: "#6aa35b", signZ: -5.6, deco: P => {
-    for (let x = -7.8; x <= 7.8; x += 0.6) box(0.15, 4, 0.1, 0xc89f6e, x, 2, -5.97, P);
-    [[-7.2, 3], [-7.2, -1], [6.8, -4.2]].forEach(p => { box(1.2, 0.6, 1.2, 0xc89f6e, p[0], 0.3, p[1], P); box(1.1, 1.0, 1.1, 0x58b368, p[0], 1.1, p[1], P); box(0.7, 0.8, 0.7, 0x3f9d52, p[0], 1.9, p[1], P); });
-    [-4, 0, 4].forEach((x, i) => { box(0.03, 1, 0.03, 0x999999, x, 4.2, 2, P); box(1.4, 0.9, 0.05, [0xf6c1c7, 0xa8e0f0, 0xfde49c][i], x, 3.3, 2, P); });
-  } });
-  storeScene("zhubei", { floor: [0xefe7da, 0xe5dccc], wall: 0xf0e6d6, trim: 0x2e8b8b, counter: 0x6e4b2a, title: "遠百竹北", signBg: "#2e8b8b", deco: P => {
-    [[-7.4, -5.6], [7.4, -5.6], [-7.4, 4.8]].forEach(p => box(0.9, 4.2, 0.9, 0xdcd3c6, p[0], 2.1, p[1], P));
-    box(5.5, 0.35, 1.3, 0x7f8c8d, 5.2, 1.6, -4.6, P).rotation.z = 0.55;
-    [-5.2, -4.0].forEach(z => { const g = put(P, glassBox(5.5, 0.7, 0.05, 0xcfefff, 0.35), 5.2, 2.1, z); g.rotation.z = 0.55; });
-  } });
-  storeScene("meili", { floor: [0xf3ece2, 0xe6dccd], wall: 0xfff6ea, trim: 0xd94a3a, counter: 0x8a5a3c, title: "美麗華 B1", signBg: "#d94a3a", deco: P => {
-    const R = new THREE.Group(); R.position.set(-10.5, 6, -4.5); P.add(R);                       // 摩天輪
-    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; box(0.12, 4, 0.12, 0xe8e8e8, Math.cos(a) * 2, Math.sin(a) * 2, 0, R).rotation.z = a + Math.PI / 2;
-      box(0.55, 0.55, 0.55, [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71][i % 4], Math.cos(a) * 4, Math.sin(a) * 4, 0, R); }
-    box(0.4, 6, 0.4, 0xbdc3c7, -10.5, 3, -4.5, P);
-  } });
-  storeScene("huatai", { floor: [0xe9e4dc, 0xdcd5ca], wall: 0xf7f2ea, trim: 0x2c3e50, counter: 0x2c3e50, title: "華泰名品城", signBg: "#2c3e50", deco: P => {
-    const tree = (x, z) => { box(0.3, 0.8, 0.3, 0x6e4b2a, x, 0.4, z, P); [[2.2, 1.2], [1.7, 2.1], [1.2, 2.9], [0.7, 3.6]].forEach(([w, y]) => box(w, 0.8, w, 0x2e7d4f, x, y, z, P)); box(0.4, 0.4, 0.4, 0xf1c40f, x, 4.2, z, P); };
-    tree(6.4, -3.6);                                                                               // 聖誕樹旁
-    [[5.4, -2.4, 0xe74c3c], [7.4, -2.6, 0x3498db], [6.4, -2.2, 0xf1c40f]].forEach(([x, z, c]) => box(0.6, 0.5, 0.6, c, x, 0.25, z, P));
-  } });
-  storeScene("airport", { floor: [0xdfe6ec, 0xcfd8df], wall: 0xf4f7f9, trim: 0x1f6f8b, counter: 0x6e4b2a, title: "桃園機場第二航廈 × 山海豆花", signBg: "#1f6f8b", deco: P => {
-    put(P, glassBox(0.2, 4, 12, 0xbfe0ff, 0.3), -8.2, 2, 0);
-    const pl = new THREE.Group(); pl.position.set(-11.5, 3.2, -1); P.add(pl);                    // 窗外的飛機
-    box(5, 0.7, 0.7, 0xffffff, 0, 0, 0, pl); box(0.6, 0.1, 4.2, 0xdfe6ec, 0.2, 0, 0, pl); box(0.6, 1.2, 0.1, 0x1f6f8b, -2.3, 0.6, 0, pl);
-    put(P, textPlane("✈ 出境 Departures", 3.6, 0.6, { bg: "#14365a", color: "#ffd84d", size: 56 }), 4.6, 3.3, -5.98);
-    box(1.3, 1.0, 1.3, 0xf5f0e6, 5.6, 0.5, 1.8, P); put(P, textPlane("山海豆花", 1.3, 0.4, { bg: "#7a4b2a", color: "#fff", size: 48 }), 5.6, 1.2, 2.46);
-  } });
-  storeScene("guangfu", { floor: [0xeadfce, 0xdccfba], wall: 0xfaf3e6, trim: 0x8e6e3a, counter: 0x6e4b2a, title: "新竹光復隊（加盟）", signBg: "#8e6e3a", deco: P => {
-    box(3.2, 2.6, 0.2, 0x9ad0ec, -10, 1.8, -2, P); box(3.4, 0.2, 0.4, 0x8e6e3a, -10, 3.2, -2, P);     // 街邊店面窗
-    [[-6.8, 3.2], [7, 3.4]].forEach(([x, z]) => { box(0.6, 0.6, 0.6, 0xc89f6e, x, 0.3, z, P); box(0.8, 0.9, 0.8, 0x58b368, x, 1.0, z, P); });
-    box(1.6, 0.9, 0.8, 0xd35400, 5.8, 0.45, 2.2, P); put(P, textPlane("風城 🌬", 1.6, 0.45, { bg: "#fff3e0", color: "#8e6e3a", size: 44 }), 5.8, 1.15, 2.62);
-  } });
+  // 小型雙軸烤爐（攤車、櫃屋用）：一組三台，中間那台有人就三台一起開
+  function miniOvens(P, xs, y, z) {
+    const ovens = xs.map((x, idx) => {
+      const g = new THREE.Group(); g.position.set(x, y, z); P.add(g);
+      box(0.46, 0.22, 0.6, 0xb8bec4, 0, 0.11, 0, g);
+      box(0.06, 0.55, 0.06, 0x777777, -0.2, 0.45, 0, g); box(0.06, 0.55, 0.06, 0x777777, 0.2, 0.45, 0, g);
+      const mold = new THREE.Group(); mold.position.set(0, 0.5, 0); g.add(mold);
+      box(0.36, 0.42, 0.08, 0x8f969c, 0, 0, 0.03, mold); box(0.36, 0.42, 0.08, 0x6d7378, 0, 0, -0.06, mold);
+      box(0.05, 0.05, 0.3, 0x222222, 0, -0.1, 0.22, mold);
+      const glow = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.06), new THREE.MeshBasicMaterial({ color: 0x3a2a2a })); glow.position.set(0, 0.1, 0.305); g.add(glow);
+      const puffs = [];
+      for (let i = 0; i < 2; i++) { const m = glassBox(0.14, 0.14, 0.14, 0xffffff, 0); m.material.opacity = 0; m.position.set(-0.08 + i * 0.16, 0.9, 0); m.userData.t = i * 0.9; g.add(m); puffs.push(m); }
+      const fx = { kind: "oven", mesh: glow, mold, puffs, flipT: 0, seed: idx * 0.7, on: false, small: true }; FX.push(fx); return fx;
+    });
+    ovens[1].link = [ovens[0], ovens[2]];
+    return ovens;
+  }
+  function stockBoard(P, k, x, z) {
+    const bg = new THREE.Group(); bg.position.set(x, 0, z); bg.rotation.y = Math.PI / 4; P.add(bg);
+    box(0.08, 1.6, 0.08, 0x555555, -0.9, 0.8, 0, bg); box(0.08, 1.6, 0.08, 0x555555, 0.9, 0.8, 0, bg);
+    box(2.3, 1.7, 0.08, 0x6e4b2a, 0, 2.1, -0.05, bg);
+    const bc = document.createElement("canvas"); bc.width = 512; bc.height = 384;
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
+    bm.position.set(0, 2.1, 0.0); bg.add(bm);
+    BOARDS[k] = { canvas: bc, mesh: bm }; drawBoard(k, []);
+  }
+  function makeGuests(k, spots) {
+    const cols = [[0xf5b7b1, 0x2e4053, 0x5d4037], [0x85c1e9, 0x34495e, 0x1c1c1c], [0xa9dfbf, 0x5d6d7e, 0x8d6e63], [0xf9e79f, 0x4a235a, 0x3e2723]];
+    GUESTS[k] = spots.map((p, i) => {
+      const c = cols[(SCENE_KEYS.indexOf(k) + i) % cols.length];
+      const g = makeChar({ shirt: c[0], pants: c[1], hair: c[2], ponytail: i === 2 });
+      g.g.position.set(SCENES[k].x + p[0], 0, p[1]); g.g.rotation.y = p[2]; g.bubble.classList.add("uo-guest"); g.scene = k;
+      return g;
+    });
+  }
+  function canvasPlane(w, h, cw, ch, draw, opt = {}) {
+    const c = document.createElement("canvas"); c.width = cw; c.height = ch; draw(c.getContext("2d"), cw, ch);
+    return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: opt.double ? THREE.DoubleSide : THREE.FrontSide, transparent: !!opt.transparent }));
+  }
+  // ── 遠百信義 A13 4F：依 2026-11-12 實景照片（木頭攤車＋布簾＋三台雙軸烤爐，大稻埕木樑、玻璃帷幕）──
+  function xinyiScene(k) {
+    const P = group(k);
+    const WOOD = 0x3b2b22, WOOD2 = 0x5a4232, BLACK = 0x1e1e22;
+    // 地板：淺灰石材大地磚
+    box(16, 0.4, 12, 0xa8a59e, 0, -0.2, 0, P);
+    for (let i = -7; i < 8; i += 2) for (let j = -5; j < 6; j += 2) box(1.96, 0.02, 1.96, ((i + j) / 2) % 2 ? 0xa3a099 : 0xafaca5, i, 0.01, j, P);
+    // 後方：左半白牆＋圓窗，右半玻璃帷幕
+    box(9.6, 4.6, 0.3, 0xefece6, -3.2, 2.3, -6.15, P);
+    const moon = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.08, 8, 32), mat(0xc8a57a)); moon.position.set(-1.6, 2.3, -5.98); P.add(moon);
+    put(P, new THREE.Mesh(new THREE.CircleGeometry(1.05, 32), new THREE.MeshBasicMaterial({ color: 0xfff3dd })), -1.6, 2.3, -5.99);
+    put(P, glassBox(6.4, 4.6, 0.12, 0x2b3f5c, 0.55), 4.8, 2.3, -6.15);
+    for (let x = 1.6; x <= 8; x += 1.6) box(0.12, 4.6, 0.16, 0x9aa3ad, x, 2.3, -6.1, P);
+    box(16, 0.14, 0.2, 0x9aa3ad, 0, 4.6, -6.1, P);
+    // 窗外夜景大樓（黃色窗燈）＋ 101
+    [[3, -9, 6, 0x3a4250], [6.5, -10, 8, 0x313846], [9, -8.5, 5, 0x3d4655]].forEach(b => {
+      box(2.2, b[2], 2, b[3], b[0], b[2] / 2, b[1], P);
+      for (let y = 0.8; y < b[2] - 0.4; y += 0.8) for (let xx = -0.6; xx <= 0.6; xx += 0.6) if ((y * 10 + xx * 7 + b[0]) % 3 > 1) box(0.25, 0.3, 0.04, 0xf5c86b, b[0] + xx, y, b[1] + 1.02, P);
+    });
+    const T = 0x5e9c94; box(1.6, 1.2, 1.6, T, 1, 0.6, -12, P);
+    for (let i = 0; i < 8; i++) { box(1.1, 0.12, 1.1, 0x3d7068, 1, 1.3 + i * 0.85, -12, P); box(0.9, 0.7, 0.9, T, 1, 1.75 + i * 0.85, -12, P); }
+    box(0.5, 1, 0.5, T, 1, 8.6, -12, P); box(0.12, 1.4, 0.12, 0xcccccc, 1, 9.8, -12, P);
+    // 大稻埕木造樑柱（只做後半，避免擋住攤車）
+    [[-7.6, -5.6], [-7.6, -1.4], [-3.6, -5.6], [0.6, -5.6]].forEach(p => box(0.35, 4.8, 0.35, WOOD, p[0], 2.4, p[1], P));
+    box(8.6, 0.3, 0.3, WOOD, -3.5, 4.6, -5.6, P); box(0.3, 0.3, 4.6, WOOD, -7.6, 4.6, -3.5, P);
+    const roof = box(8.8, 0.14, 2.4, WOOD2, -3.5, 5.0, -4.9, P); roof.rotation.x = -0.25;
+    for (let x = -7.2; x <= 0.2; x += 1.2) { box(0.18, 0.18, 0.18, BLACK, x, 4.35, -5.45, P); box(0.12, 0.12, 0.12, 0xfff1c1, x, 4.22, -5.38, P); }
+    // 左側：中藥櫃式木抽屜櫃台
+    box(3.2, 1.15, 1.0, 0x8b5a2b, -5.6, 0.575, -1.6, P); box(3.3, 0.08, 1.1, 0xa86c3c, -5.6, 1.19, -1.6, P);
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) {
+      box(0.7, 0.22, 0.03, 0x9b6a3c, -6.8 + c * 0.8, 0.22 + r * 0.26, -1.08, P);
+      box(0.08, 0.05, 0.04, 0xc9a24a, -6.8 + c * 0.8, 0.22 + r * 0.26, -1.06, P);
+    }
+    box(1.2, 0.4, 0.5, 0xa86c3c, -5.6, 1.43, -1.85, P);
+    // 右側：綠色皮沙發座位區＋小木桌
+    function armchair(x, z, ry) {
+      const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; P.add(g);
+      box(0.9, 0.4, 0.85, 0x3f4f3a, 0, 0.45, 0, g); box(0.9, 0.75, 0.18, 0x3f4f3a, 0, 0.85, -0.36, g);
+      box(0.14, 0.55, 0.85, 0x4a5b44, -0.45, 0.6, 0, g); box(0.14, 0.55, 0.85, 0x4a5b44, 0.45, 0.6, 0, g);
+      [[-0.35, -0.3], [0.35, -0.3], [-0.35, 0.3], [0.35, 0.3]].forEach(q => box(0.06, 0.25, 0.06, 0x6b4423, q[0], 0.12, q[1], g));
+    }
+    [[3.4, -3.8, 0.3], [5.0, -3.8, -0.3], [3.4, -5.1, Math.PI - 0.2], [5.0, -5.1, Math.PI + 0.2], [6.8, -4.4, -Math.PI / 2]].forEach(a => armchair(a[0], a[1], a[2]));
+    box(1.0, 0.06, 0.7, 0x8b5a2b, 4.2, 0.62, -4.45, P); box(0.08, 0.6, 0.08, 0x6b4423, 4.2, 0.3, -4.45, P);
+    // 橄欖樹
+    [[2.3, -5.3], [-7.2, 0.6], [7.4, -2.6]].forEach(t => {
+      box(0.6, 0.6, 0.6, 0xd9d4cc, t[0], 0.3, t[1], P); box(0.1, 1.6, 0.1, 0x6b4f3a, t[0], 1.4, t[1], P);
+      box(1.0, 0.8, 1.0, 0x6f8f5a, t[0], 2.4, t[1], P); box(0.7, 0.6, 0.7, 0x7fa168, t[0] + 0.2, 2.9, t[1] - 0.1, P);
+    });
+
+    // ── 紅玉滿攤車（正面朝客人 +z）──
+    const CX = -1.0, CZ = -1.2;
+    box(3.6, 1.0, 1.4, WOOD, CX, 0.62, CZ, P);
+    for (let x = -1.7; x <= 1.7; x += 0.3) box(0.03, 0.95, 0.02, 0x2a1f19, CX + x, 0.62, CZ + 0.71, P);
+    box(3.65, 0.06, 1.45, BLACK, CX, 1.15, CZ, P);
+    [[-1.6, -0.6], [1.6, -0.6], [-1.6, 0.6], [1.6, 0.6]].forEach(q => box(0.14, 0.14, 0.14, 0x111111, CX + q[0], 0.07, CZ + q[1], P));
+    // 正面紅布條
+    {
+      const c = document.createElement("canvas"); c.width = 512; c.height = 300; const g = c.getContext("2d");
+      g.fillStyle = "#c8262c"; g.fillRect(0, 0, 512, 300);
+      g.fillStyle = "#fff4e6"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.font = 'bold 58px "PingFang TC","Noto Sans TC",serif'; g.fillText("紅玉滿 赤心雞蛋糕", 256, 62);
+      g.font = '22px sans-serif'; g.fillText("Hong Yu Man Egg Pancakes", 256, 108);
+      g.fillStyle = "#e8a04a"; [[200, 170], [256, 158], [312, 170]].forEach(p => { g.beginPath(); g.arc(p[0] - 10, p[1], 13, 0, Math.PI * 2); g.arc(p[0] + 10, p[1], 13, 0, Math.PI * 2); g.fill(); g.beginPath(); g.moveTo(p[0] - 23, p[1] + 4); g.lineTo(p[0] + 23, p[1] + 4); g.lineTo(p[0], p[1] + 30); g.fill(); });
+      g.fillStyle = "#fff4e6"; g.font = '26px "PingFang TC","Noto Sans TC",sans-serif'; g.fillText("♡ 願食雞蛋糕 常保赤子心 ♡", 256, 232);
+      g.font = '18px sans-serif'; g.fillText("「台灣十大人氣造型雞蛋糕」", 256, 272);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.1), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) }));
+      m.position.set(CX - 0.4, 0.62, CZ + 0.73); P.add(m);
+    }
+    // 黑鐵柱＋木屋頂（半透明，才看得到裡面的夥伴）
+    [[-1.75, -0.65], [1.75, -0.65], [-1.75, 0.65], [1.75, 0.65]].forEach(q => box(0.07, 1.9, 0.07, BLACK, CX + q[0], 2.12, CZ + q[1], P));
+    box(3.6, 0.08, 0.08, BLACK, CX, 3.05, CZ + 0.65, P);
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 2.2), new THREE.MeshLambertMaterial({ color: WOOD, transparent: true, opacity: 0.45 }));
+    canopy.position.set(CX, 3.2, CZ); canopy.rotation.x = -0.1; P.add(canopy);
+    // 五片米色布簾
+    ["紅", "玉", "滿", "赤心", "雞蛋糕"].forEach((t, i) => {
+      const c = document.createElement("canvas"); c.width = 128; c.height = 128; const g = c.getContext("2d");
+      g.fillStyle = "#e9dfc8"; g.fillRect(0, 0, 128, 128); g.fillStyle = "#1f1a16"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.font = 'bold ' + (t.length === 1 ? 84 : t.length === 2 ? 44 : 32) + 'px "PingFang TC","Noto Sans TC",serif'; g.fillText(t, 64, 64);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.66, 0.62), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide }));
+      m.position.set(CX - 1.4 + i * 0.7, 2.68, CZ + 0.68); P.add(m);
+    });
+    // 檯面：散熱風扇、三台雙軸烤爐、收銀平板、瓶罐
+    box(0.7, 0.45, 0.3, 0xdfe2e5, CX - 1.35, 1.42, CZ - 0.1, P);
+    [-0.15, 0.15].forEach(dx => { const f = new THREE.Mesh(new THREE.CircleGeometry(0.12, 16), mat(0x333333)); f.position.set(CX - 1.35 + dx, 1.42, CZ + 0.06); P.add(f); });
+    const ovens = miniOvens(P, [CX - 0.6, CX, CX + 0.6], 1.18, CZ);
+    box(0.32, 0.22, 0.04, 0x222222, CX + 1.25, 1.35, CZ - 0.1, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.18), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), CX + 1.25, 1.35, CZ - 0.125, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    [[1.55, 0xffffff], [1.62, 0xc0392b], [1.48, 0x2ecc71]].forEach((b, i) => box(0.1, 0.3, 0.1, b[1], CX + b[0], 1.33, CZ + 0.3 - i * 0.15, P));
+    // 高溫警示立牌
+    {
+      box(0.06, 1.6, 0.06, BLACK, CX + 2.3, 0.8, CZ + 1.1, P); box(0.5, 0.04, 0.4, BLACK, CX + 2.3, 0.02, CZ + 1.1, P);
+      const c = document.createElement("canvas"); c.width = 128; c.height = 320; const g = c.getContext("2d");
+      g.fillStyle = "#fff"; g.fillRect(0, 0, 128, 320); g.fillStyle = "#c0392b"; g.fillRect(0, 210, 128, 110);
+      g.fillStyle = "#c0392b"; g.textAlign = "center"; g.font = "bold 40px sans-serif"; g.fillText("⚠", 64, 50);
+      g.fillStyle = "#222"; g.font = 'bold 22px "PingFang TC",sans-serif'; ["機器高溫", "運作中", "請勿靠近"].forEach((t, i) => g.fillText(t, 64, 100 + i * 32));
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 1.25), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide }));
+      m.position.set(CX + 2.3, 1.95, CZ + 1.12); m.rotation.y = Math.PI / 8; P.add(m);
+    }
+    put(P, textPlane("遠百信義 A13・4F", 5, 0.9, { color: "rgba(90,70,50,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    // 缺貨看板（立牌）
+    const bg = new THREE.Group(); bg.position.set(6.6, 0, -0.6); bg.rotation.y = Math.PI / 4; P.add(bg);
+    box(0.08, 1.6, 0.08, 0x555555, -0.9, 0.8, 0, bg); box(0.08, 1.6, 0.08, 0x555555, 0.9, 0.8, 0, bg);
+    box(2.3, 1.7, 0.08, 0x6e4b2a, 0, 2.1, -0.05, bg);
+    const bc = document.createElement("canvas"); bc.width = 512; bc.height = 384;
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
+    bm.position.set(0, 2.1, 0.0); bg.add(bm);
+    BOARDS[k] = { canvas: bc, mesh: bm }; drawBoard(k, []);
+    // 夥伴站位：攤車後方，面向客人
+    SLOTS[k] = [
+      { x: CX, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[1] },
+      { x: CX + 1.2, z: CZ - 1.15, rotY: 0, anim: "serve", fx: posFx },
+      { x: CX - 0.6, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[0] },
+      { x: CX + 0.6, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[2] },
+      { x: CX - 1.6, z: CZ - 1.6, rotY: Math.PI / 6, anim: "stand" },
+      { x: CX + 2.2, z: CZ - 1.6, rotY: -Math.PI / 6, anim: "stand" },
+    ];
+    GUESTS[k] = [[CX + 1.3, 0.55, Math.PI], [CX + 1.6, 1.65, Math.PI], [3.6, 3.4, -Math.PI * 0.75]].map((p, i) => {
+      const cols = [[0xf5b7b1, 0x2e4053, 0x5d4037], [0x85c1e9, 0x34495e, 0x1c1c1c], [0xa9dfbf, 0x5d6d7e, 0x8d6e63]];
+      const g = makeChar({ shirt: cols[i][0], pants: cols[i][1], hair: cols[i][2], ponytail: i === 2 });
+      g.g.position.set(SCENES[k].x + p[0], 0, p[1]); g.g.rotation.y = p[2]; g.bubble.classList.add("uo-guest"); g.scene = k;
+      return g;
+    });
+  }
+  xinyiScene("xinyi");
+  // ── 02 兩廳院・音樂廳 2 號門：依 2026-11-12 實景照片（淺木紋櫃屋、三格窗、仙人走獸紅布簾、屋脊神獸燈箱）──
+  function hallScene(k) {
+    const P = group(k);
+    const OAK = 0xc8a57c, OAK2 = 0xd8bb92, BRICK = 0x5a3a2e;
+    // 地板：灰色小方磚（貼圖）
+    const fl = canvasPlane(16, 12, 512, 384, (g, w, h) => {
+      g.fillStyle = "#8e8c88"; g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 16) for (let x = (y / 16) % 2 ? -12 : 0; x < w; x += 24) { g.fillStyle = ["#a3a19c", "#9b9994", "#aaa8a3"][((x + y) / 8) % 3 | 0]; g.fillRect(x + 1, y + 1, 22, 14); }
+    });
+    fl.rotation.x = -Math.PI / 2; fl.position.set(0, 0.011, 0); P.add(fl);
+    box(16, 0.4, 12, 0x8e8c88, 0, -0.2, 0, P);
+    // 騎樓後牆：深咖啡磚牆＋上方白牆
+    const bw = canvasPlane(16.4, 2.4, 512, 80, (g, w, h) => {
+      g.fillStyle = "#3e2a22"; g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 8) for (let x = (y / 8) % 2 ? -10 : 0; x < w; x += 20) { g.fillStyle = (x * 7 + y) % 3 ? "#5a3a2e" : "#4d3228"; g.fillRect(x + 1, y + 1, 18, 6); }
+    });
+    box(16.4, 4.6, 0.4, 0xf0eee9, 0, 2.3, -6.2, P); bw.position.set(0, 1.2, -5.99); P.add(bw);
+    box(0.4, 4.6, 12.4, 0xf0eee9, -8.2, 2.3, 0, P);
+    // 右牆上：屋脊神獸燈箱（紅色翹脊＋黃琉璃瓦＋兩隻金色神獸）
+    {
+      const g = new THREE.Group(); g.position.set(4.2, 3.0, -5.85); P.add(g);
+      box(2.6, 0.35, 0.3, 0xd62e2e, 0, 0, 0, g); const tip = box(0.7, 0.3, 0.3, 0xd62e2e, 1.45, 0.25, 0, g); tip.rotation.z = 0.6;
+      for (let x = -1.1; x <= 1.1; x += 0.36) box(0.3, 0.22, 0.32, 0xf2c230, x, 0.27, 0.02, g);
+      box(2.6, 0.12, 0.32, 0x2f9e5a, 0, -0.24, 0.01, g);
+      [-0.4, 0.3].forEach(x => { box(0.3, 0.45, 0.25, 0xe8b23a, x, 0.65, 0.05, g); box(0.25, 0.25, 0.3, 0xe8b23a, x + 0.08, 0.95, 0.08, g); });
+      const lt = new THREE.PointLight(0xffd27a, 0.5, 5); lt.position.set(0, 0.5, 0.8); g.add(lt);
+    }
+    // 左側：不鏽鋼回收桶兩個
+    [-7.2, -6.4].forEach((x, i) => { box(0.75, 1.2, 0.7, 0xc5cacf, x, 0.6, -5.4, P); box(0.3, 0.3, 0.02, i ? 0x2e8b57 : 0x2e6fb5, x, 0.8, -5.04, P); box(0.2, 0.12, 0.02, 0x222222, x, 1.05, -5.04, P); });
+
+    // ── 紅玉滿櫃屋（正面朝 +z）──
+    const X0 = -3.75, X1 = 1.75, ZF = -1.2, ZB = -3.4, CX = (X0 + X1) / 2;
+    // 正面下牆＋木頭靠台
+    box(X1 - X0, 1.45, 0.12, OAK, CX, 0.725, ZF, P);
+    for (let y = 0.15; y < 1.45; y += 0.18) box(X1 - X0, 0.01, 0.13, 0xb8956c, CX, y, ZF, P);
+    box(X1 - X0 + 0.2, 0.07, 0.35, OAK2, CX, 1.5, ZF + 0.17, P);
+    for (let x = X0 + 0.4; x < X1; x += 0.9) box(0.05, 0.25, 0.25, OAK2, x, 1.35, ZF + 0.12, P);
+    // 開放式窗口（第二張照片：窗框捲簾已拆）：上橫樑＋軌道投射燈
+    box(X1 - X0, 0.12, 0.14, OAK2, CX, 2.82, ZF, P);
+    for (let x = X0 + 0.9; x < X1; x += 1.3) { box(0.1, 0.12, 0.16, 0x222222, x, 2.7, ZF - 0.12, P); box(0.06, 0.06, 0.06, 0xfff1c1, x, 2.62, ZF - 0.12, P); }
+    // 櫃內原木屋架（只做後半）
+    [X0 + 0.6, CX, X1 - 0.6].forEach(x => { box(0.12, 0.12, ZF - ZB, OAK2, x, 3.3, (ZF + ZB) / 2 - 0.3, P); });
+    box(X1 - X0, 0.12, 0.12, OAK2, CX, 2.9, ZB + 0.3, P);
+    // 仙人走獸紅布簾
+    {
+      const m = canvasPlane(X1 - X0 - 0.5, 0.5, 512, 64, (g, w, h) => {
+        g.fillStyle = "#a8222b"; g.fillRect(0, 0, w, h);
+        for (let x = 0; x < w; x += 46) { g.fillStyle = "#7d1820"; g.fillRect(x, 0, 2, 12); }
+        g.fillStyle = "#c98a4b"; for (let i = 0; i < 5; i++) { const x = 30 + i * 52; g.beginPath(); g.ellipse(x, 38, 12, 16, 0, 0, Math.PI * 2); g.fill(); g.fillRect(x - 4, 18, 8, 10); }
+        g.fillStyle = "#fff4e6"; g.font = 'bold 30px "PingFang TC","Noto Sans TC",serif'; g.textAlign = "right"; g.textBaseline = "middle"; g.fillText("仙人走獸雞蛋糕", w - 10, 36);
+      });
+      m.position.set(CX + 0.1, 3.08, ZF + 0.02); P.add(m);
+    }
+    for (let x = X0 + 0.5; x < X1; x += 0.16) box(0.05, 0.3, 0.05, OAK2, x, 3.48, ZF - 0.02, P);
+    const log = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, X1 - X0, 10), mat(0xd9b98c)); log.rotation.z = Math.PI / 2; log.position.set(CX, 3.7, ZF); P.add(log);
+    // 側牆（只做到檯面高度，鏡頭才看得到裡面）＋後側門口
+    box(0.12, 1.45, ZF - ZB, OAK, X0, 0.725, (ZF + ZB) / 2, P);
+    box(0.12, 1.45, 0.9, OAK, X1, 0.725, ZF - 0.45, P);
+    box(0.12, 3.75, 0.12, OAK2, X1, 1.87, ZF, P);
+    // 櫃內：磚牆、工作檯、電扇、三台烤爐、價目牌、收銀
+    const ib = canvasPlane(X1 - X0, 2.7, 512, 160, (g, w, h) => {
+      g.fillStyle = "#6b4535"; g.fillRect(0, 0, w, h);
+      for (let y = 0; y < h; y += 10) for (let x = (y / 10) % 2 ? -14 : 0; x < w; x += 28) { g.fillStyle = (x + y) % 3 ? "#7e5240" : "#6a4334"; g.fillRect(x + 1, y + 1, 26, 8); }
+    });
+    box(X1 - X0, 2.7, 0.15, 0x6b4535, CX, 1.35, ZB, P); ib.position.set(CX, 1.35, ZB + 0.08); P.add(ib);
+    box(X1 - X0 - 0.3, 1.0, 0.55, 0xd0b48c, CX, 0.5, ZF - 0.4, P); box(X1 - X0 - 0.3, 0.05, 0.6, 0xe8d8bc, CX, 1.02, ZF - 0.4, P);
+    { const g = new THREE.Group(); g.position.set(X0 + 0.55, 1.05, ZF - 0.45); P.add(g); box(0.06, 0.6, 0.06, 0x555555, 0, 0.3, 0, g); const f = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16), mat(0xd9c49a)); f.rotation.x = Math.PI / 2; f.position.set(0, 0.7, 0.05); g.add(f); }
+    const ovens = miniOvens(P, [-2.45, -1.65, -0.85], 1.05, ZF - 0.45);
+    for (let i = 0; i < 2; i++) box(0.5, 0.05, 0.3, 0xd2552e, -0.2 + i * 0.45, 1.08, ZF - 0.25, P);
+    box(0.32, 0.45, 0.32, 0xf2a7a0, -3.1, 1.28, ZF - 0.45, P); box(0.34, 0.06, 0.34, 0xf7c9c4, -3.1, 1.53, ZF - 0.45, P);
+    put(P, canvasPlane(0.7, 0.5, 140, 100, (g, w, h) => { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.strokeStyle = "#1f4fa8"; g.lineWidth = 6; g.strokeRect(3, 3, w - 6, h - 6); g.fillStyle = "#c0392b"; g.font = "bold 13px sans-serif"; g.textAlign = "center"; g.fillText("兩廳院造型雞蛋糕", w / 2, 22); g.fillStyle = "#444"; for (let i = 0; i < 3; i++) g.fillRect(14, 36 + i * 18, w - 28, 8); }), -1.25, 1.33, ZF - 0.14);
+    box(0.32, 0.22, 0.04, 0x222222, 0.6, 1.2, ZF - 0.5, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.18), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), 0.6, 1.2, ZF - 0.525, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    put(P, canvasPlane(0.6, 0.75, 120, 150, (g, w, h) => { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.fillStyle = "#c0392b"; g.fillRect(0, 0, w, 30); g.fillStyle = "#fff"; g.font = "bold 13px sans-serif"; g.textAlign = "center"; g.fillText("兩廳院 X 紅玉滿", w / 2, 13); g.fillText("雞蛋糕 Menu", w / 2, 27); g.fillStyle = "#555"; for (let i = 0; i < 6; i++) g.fillRect(12, 44 + i * 16, w - 24, 6); }), 1.3, 1.42, ZF - 0.16);
+    // 左側立柱：兩廳院＋紅玉滿 logo、電視、海報
+    {
+      const PX = X0 - 0.55;
+      box(1.1, 3.8, 0.7, OAK, PX, 1.9, ZF - 0.25, P);
+      put(P, canvasPlane(1.0, 0.75, 200, 150, (g, w, h) => {
+        g.fillStyle = "#c8a57c"; g.fillRect(0, 0, w, h);
+        g.fillStyle = "#3a2a22"; g.font = 'bold 22px "PingFang TC",serif'; g.fillText("國家", 14, 50); g.fillText("兩廳院", 14, 80);
+        g.fillStyle = "#a8222b"; g.fillRect(14, 96, 20, 30); g.fillRect(40, 104, 14, 22);
+        g.fillStyle = "#a8222b"; g.beginPath(); g.arc(148, 72, 44, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#fff"; g.font = 'bold 22px "PingFang TC",serif'; g.textAlign = "center"; g.fillText("紅玉滿", 148, 70); g.font = "11px sans-serif"; g.fillText("赤心雞蛋糕", 148, 90);
+      }), PX, 3.2, ZF + 0.11);
+      box(0.85, 0.5, 0.06, 0x111111, PX, 2.5, ZF + 0.13, P);
+      put(P, canvasPlane(0.78, 0.43, 156, 86, (g, w, h) => { g.fillStyle = "#3a8fe0"; g.fillRect(0, 0, w, h); g.fillStyle = "#e8b06a"; g.beginPath(); g.ellipse(110, 46, 22, 30, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = "#e9f2fb"; g.fillRect(14, 50, 70, 22); }), PX, 2.5, ZF + 0.17);
+      put(P, canvasPlane(0.85, 1.1, 120, 156, (g, w, h) => { g.fillStyle = "#6a3b22"; g.fillRect(0, 0, w, h); g.fillStyle = "#e9c99b"; g.fillRect(10, 70, 100, 70); g.fillStyle = "#c98a4b"; for (let i = 0; i < 4; i++) g.fillRect(18 + i * 22, 90 - i * 4, 12, 40 + i * 4); g.fillStyle = "#f3e1c2"; g.font = "10px sans-serif"; g.fillText("音樂廳鎮館之寶雞蛋糕", 8, 30); }), PX, 1.4, ZF + 0.11);
+    }
+    put(P, textPlane("國家音樂廳・2 號門", 5, 0.9, { color: "rgba(60,50,40,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.6, -0.6);
+    // 夥伴站位：櫃屋內，面向窗口
+    SLOTS[k] = [
+      { x: -1.65, z: -2.3, rotY: 0, anim: "cook", fx: ovens[1] },
+      { x: 0.6, z: -2.3, rotY: 0, anim: "serve", fx: posFx },
+      { x: -2.45, z: -2.3, rotY: 0, anim: "cook", fx: ovens[0] },
+      { x: -0.85, z: -2.3, rotY: 0, anim: "cook", fx: ovens[2] },
+      { x: -3.1, z: -3.0, rotY: Math.PI / 6, anim: "stand" },
+      { x: 1.2, z: -3.0, rotY: -Math.PI / 6, anim: "stand" },
+    ];
+    makeGuests(k, [[0.4, 0.2, Math.PI], [0.7, 1.3, Math.PI], [3.6, 3.4, -Math.PI * 0.75]]);
+  }
+  hallScene("hall");
+  // ── 21 南港 LaLaport 5F：依 2026-11-12 實景照片 IMG_8127（原木攤車、木條人字屋頂、藏青布簾、腳踏車輪、橘色 FRP 小暴龍、藏青旗幟）──
+  function nangangScene(k) {
+    const P = group(k);
+    const PINE = 0xc99a5c, PINE2 = 0xb4874d, NAVY = "#1f2f5c";
+    // 地板：米色六角磚（貼圖）
+    const fl = canvasPlane(16, 12, 512, 384, (g, w, h) => {
+      g.fillStyle = "#cdbfa9"; g.fillRect(0, 0, w, h); g.strokeStyle = "#f2ece2"; g.lineWidth = 2;
+      const r = 18, dx = r * Math.sqrt(3);
+      for (let row = 0, y = 0; y < h + r; row++, y += r * 1.5) for (let x = (row % 2) * dx / 2; x < w + dx; x += dx) {
+        g.fillStyle = ["#d6c9b4", "#cfc1aa", "#dacdb9"][(row + Math.round(x / dx)) % 3]; g.beginPath();
+        for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); }
+        g.closePath(); g.fill(); g.stroke();
+      }
+    });
+    fl.rotation.x = -Math.PI / 2; fl.position.set(0, 0.011, 0); P.add(fl);
+    box(16, 0.4, 12, 0xcdbfa9, 0, -0.2, 0, P);
+    // 後方：白磚柱、美食街桌椅、吊掛綠植、玻璃球燈
+    box(1.6, 5, 1.6, 0xefe9dc, -0.5, 2.5, -5.4, P);
+    for (let y = 0.3; y < 5; y += 0.35) box(1.62, 0.02, 1.62, 0xdcd4c4, -0.5, y, -5.4, P);
+    box(9, 0.6, 1.2, 0x9e3326, -4.5, 4.8, -4.5, P);
+    function table(x, z) { box(1.1, 0.06, 1.1, 0xc9a77c, x, 0.78, z, P); box(0.08, 0.76, 0.08, 0xa88458, x, 0.38, z, P);
+      [[-0.75, 0], [0.75, 0]].forEach(c => { box(0.5, 0.06, 0.5, 0xb89468, x + c[0], 0.48, z, P); box(0.5, 0.5, 0.06, 0xb89468, x + c[0], 0.75, z + (c[0] < 0 ? -0.25 : 0.25), P); }); }
+    [[-6.5, -4.5], [-4.2, -4.8], [-6.8, -2.4], [-4.4, -2.6]].forEach(t => table(t[0], t[1]));
+    [[-3.2, -3.6], [2.0, -3.0], [4.2, -4.6], [-6.0, 1.0]].forEach(l => {
+      box(0.02, 1.2, 0.02, 0x666666, l[0], 4.4, l[1], P);
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe2a8, transparent: true, opacity: 0.9 })); m.position.set(l[0], 3.7, l[1]); P.add(m);
+    });
+    [[-2.0, -4.6], [3.0, -5.2], [6.0, -4.2]].forEach(h => { box(0.02, 0.8, 0.02, 0x666666, h[0], 4.6, h[1], P); box(0.5, 0.35, 0.5, 0x8a6a4c, h[0], 4.05, h[1], P); box(0.8, 0.5, 0.8, 0x4f8a45, h[0], 3.75, h[1], P); });
+    box(6.5, 0.12, 0.1, 0xeeeeee, 4.5, 1.1, -6.1, P); box(6.5, 1.0, 0.04, 0xcfe6f0, 4.5, 0.6, -6.1, P);
+
+    // ── 紅玉滿原木攤車（正面朝 +z）──
+    const CX = 0.4, CZ = -1.2, W = 3.2;
+    box(W, 1.1, 1.3, PINE, CX, 0.72, CZ, P);
+    for (let x = -W / 2 + 0.2; x < W / 2; x += 0.32) box(0.02, 1.05, 0.02, PINE2, CX + x, 0.72, CZ + 0.66, P);
+    box(W + 0.15, 0.08, 1.45, PINE2, CX, 1.3, CZ, P);
+    [[-1.4, -0.55], [1.4, -0.55], [-1.4, 0.55], [1.4, 0.55]].forEach(q => box(0.12, 0.12, 0.12, 0x333333, CX + q[0], 0.08, CZ + q[1], P));
+    // 腳踏車輪
+    {
+      const g = new THREE.Group(); g.position.set(CX + 0.3, 0.68, CZ + 0.72); P.add(g);
+      const tire = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 6, 28), mat(0x1c1c1c)); g.add(tire);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.025, 6, 28), mat(0xeeeeee)); g.add(rim);
+      for (let a = 0; a < 12; a++) { const sp = box(0.012, 1.1, 0.012, 0xcccccc, 0, 0, 0, g); sp.rotation.z = a * Math.PI / 12; }
+      box(0.1, 0.1, 0.06, 0x888888, 0, 0, 0.02, g);
+    }
+    // 柱子＋木條人字屋頂（條狀有縫，看得到裡面）
+    [[-1.5, -0.6], [1.5, -0.6], [-1.5, 0.6], [1.5, 0.6]].forEach(q => box(0.1, 1.75, 0.1, PINE2, CX + q[0], 2.2, CZ + q[1], P));
+    [-1, 1].forEach(side => {
+      const r = new THREE.Group(); r.position.set(CX, 3.35, CZ); r.rotation.x = side * 0.42; P.add(r);
+      const sm = new THREE.MeshLambertMaterial({ color: PINE, transparent: true, opacity: 0.55 });
+      for (let x = -W / 2 - 0.25; x <= W / 2 + 0.25; x += 0.26) { const sl = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 1.0), sm); sl.position.set(x, 0, side * 0.45); r.add(sl); }
+    });
+    box(W + 0.5, 0.12, 0.12, PINE2, CX, 3.08, CZ + 0.62, P); box(W + 0.5, 0.12, 0.12, PINE2, CX, 3.08, CZ - 0.62, P);
+    // 藏青布簾
+    put(P, canvasPlane(2.6, 0.75, 400, 115, (g, w, h) => {
+      g.fillStyle = NAVY; g.fillRect(0, 0, w, h); g.fillStyle = "#16234a"; for (let i = 1; i < 3; i++) g.fillRect(i * w / 3, 0, 3, h);
+      g.fillStyle = "#f3ead8"; g.textBaseline = "middle"; g.font = 'bold 44px "PingFang TC","Noto Sans TC",serif'; g.fillText("紅玉滿赤心 雞蛋糕", 18, 48);
+      g.font = '16px sans-serif'; g.fillText("홍차계란빵  紅玉心形燒", 150, 95);
+    }), CX - 0.2, 2.72, CZ + 0.64);
+    // 正面白招牌、Menu、乾洗手、小盆栽
+    put(P, canvasPlane(1.4, 0.42, 280, 84, (g, w, h) => { g.fillStyle = "#fbfaf6"; g.fillRect(0, 0, w, h); g.fillStyle = "#b8202a"; g.font = 'bold 30px "PingFang TC",serif'; g.fillText("紅玉滿", 8, 40); g.fillStyle = "#222"; g.font = 'bold 22px "PingFang TC",serif'; g.fillText("赤心雞蛋糕", 112, 40); g.font = "13px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes  紅玉心形燒", 8, 70); }), CX - 0.8, 1.55, CZ + 0.62);
+    put(P, canvasPlane(0.5, 0.42, 100, 84, (g, w, h) => { g.fillStyle = "#c62828"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.fillRect(4, 18, w - 8, h - 22); g.fillStyle = "#fff"; g.font = "bold 13px sans-serif"; g.fillText("Menu", 6, 14); g.fillStyle = "#555"; for (let i = 0; i < 4; i++) g.fillRect(10, 26 + i * 13, 80, 5); g.fillStyle = "#06c755"; g.fillRect(60, 68, 30, 10); }), CX + 0.2, 1.55, CZ + 0.63);
+    put(P, canvasPlane(0.32, 0.42, 64, 84, (g, w, h) => { g.fillStyle = "#f2e3c9"; g.fillRect(0, 0, w, h); g.fillStyle = "#b5651d"; g.beginPath(); g.arc(32, 40, 18, 0, Math.PI * 2); g.fill(); }), CX + 0.6, 1.55, CZ + 0.63);
+    box(0.1, 0.3, 0.1, 0xf6f6f6, CX - 1.4, 1.48, CZ + 0.55, P);
+    [CX + 0.95, CX + 1.35].forEach(x => { box(0.14, 0.12, 0.14, 0xf4f4f4, x, 1.4, CZ + 0.5, P); box(0.18, 0.12, 0.18, 0x5a9e5a, x, 1.52, CZ + 0.5, P); });
+    // 攤車內：白色冷凍櫃、三台烤爐、收銀螢幕
+    box(1.1, 0.75, 0.6, 0xf2f2f2, CX - 0.7, 1.7, CZ - 0.3, P);
+    const ovens = miniOvens(P, [CX - 0.2, CX + 0.35, CX + 0.9], 1.34, CZ - 0.25);
+    box(0.08, 0.4, 0.08, 0x222222, CX + 0.9, 1.9, CZ - 0.5, P); box(0.6, 0.4, 0.05, 0x1a1a1a, CX + 0.9, 2.25, CZ - 0.5, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.32), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), CX + 0.9, 2.25, CZ - 0.53, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    // 左側：粉紅放射圖案木櫃＋橘色 FRP 小暴龍（紅色圓底座）
+    {
+      const SX = CX - 2.6;
+      box(1.7, 1.25, 0.9, PINE2, SX, 0.625, CZ + 0.1, P); box(1.85, 0.06, 1.0, PINE, SX, 1.28, CZ + 0.1, P);
+      put(P, canvasPlane(1.55, 1.1, 300, 214, (g, w, h) => {
+        g.fillStyle = "#fbeee9"; g.fillRect(0, 0, w, h); g.strokeStyle = "#f2b8a8"; g.lineWidth = 3;
+        for (let a = 0; a < 24; a++) { g.beginPath(); g.moveTo(w / 2, h / 2); g.lineTo(w / 2 + Math.cos(a * Math.PI / 12) * w, h / 2 + Math.sin(a * Math.PI / 12) * w); g.stroke(); }
+        g.fillStyle = "#fff"; g.beginPath(); g.arc(w / 2, h / 2 + 6, 82, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#1f1a16"; g.textAlign = "center"; g.font = 'bold 34px "PingFang TC",serif'; g.fillText("紅玉滿", w / 2, 90); g.font = 'bold 22px "PingFang TC",serif'; g.fillText("赤心雞蛋糕", w / 2, 122);
+        g.font = "bold 12px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes", w / 2, 146); g.font = "11px sans-serif"; g.fillText("홍차계란빵 紅玉心形燒", w / 2, 164);
+      }), SX, 0.62, CZ + 0.56);
+      trex(P, SX, CZ + 0.1, { y: 1.31, round: true, scale: 0.6, rotY: Math.PI / 5, color: 0xf08a24, belly: 0xf59a3a, dark: 0xd9731a });
+      box(0.6, 0.2, 0.35, 0x8b5a2b, SX + 0.55, 1.42, CZ + 0.3, P);
+    }
+    // 右側：藏青直立旗（竹竿）＋紅龍柱
+    {
+      const FX0 = CX + 2.2;
+      box(0.08, 3.6, 0.08, 0xd8c08a, FX0 + 0.55, 1.8, CZ + 0.3, P); box(0.9, 0.05, 0.05, 0xd8c08a, FX0 + 0.1, 3.4, CZ + 0.3, P);
+      put(P, canvasPlane(0.85, 2.6, 120, 368, (g, w, h) => {
+        g.fillStyle = NAVY; g.fillRect(0, 0, w, h); g.fillStyle = "#f3ead8"; g.textAlign = "center";
+        g.font = 'bold 48px "PingFang TC",serif'; ["紅", "玉", "滿"].forEach((t, i) => g.fillText(t, 50, 70 + i * 62));
+        g.font = 'bold 22px "PingFang TC",serif'; ["赤", "心", "雞", "蛋", "糕"].forEach((t, i) => g.fillText(t, 50, 240 + i * 25));
+        g.font = "12px sans-serif"; g.fillText("有心，八顆無敵。", 60, 22);
+      }, { double: true }), FX0 + 0.1, 2.05, CZ + 0.32);
+      [[FX0 + 1.3, 0.4], [FX0 + 1.3, 1.6]].forEach(q => { box(0.12, 1.0, 0.12, 0x222222, q[0], 0.5, q[1], P); box(0.35, 0.04, 0.35, 0x222222, q[0], 0.02, q[1], P); });
+      box(0.04, 0.06, 1.2, 0x333333, FX0 + 1.3, 0.9, 1.0, P);
+    }
+    put(P, textPlane("南港 LaLaport・5F", 5, 0.9, { color: "rgba(90,70,50,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.6, -0.4);
+    SLOTS[k] = [
+      { x: CX + 0.35, z: CZ - 1.1, rotY: 0, anim: "cook", fx: ovens[1] },
+      { x: CX + 1.1, z: CZ - 1.1, rotY: 0, anim: "serve", fx: posFx },
+      { x: CX - 0.2, z: CZ - 1.1, rotY: 0, anim: "cook", fx: ovens[0] },
+      { x: CX - 0.9, z: CZ - 1.1, rotY: 0, anim: "stand" },
+      { x: CX - 2.4, z: CZ - 1.4, rotY: Math.PI / 6, anim: "stand" },
+      { x: CX + 2.0, z: CZ - 1.6, rotY: -Math.PI / 6, anim: "stand" },
+    ];
+    makeGuests(k, [[CX + 1.7, 0.8, Math.PI], [CX + 2.0, 1.9, Math.PI], [4.6, 3.0, -Math.PI * 0.75]]);
+  }
+  nangangScene("nangang");
+  // ── 03 遠百竹北 6F：依 2026-11-12 實景照片 IMG_3296（大木輪攤車、灰木屋頂、米色布簾、美食街紅牆燈籠、日式格窗）──
+  function zhubeiScene(k) {
+    const P = group(k);
+    const WOOD = 0x4a3b30, POST = 0x6b6158, ROOF = 0xa8a39b;
+    // 地板：前方灰石地磚、右後方木地板
+    box(16, 0.4, 12, 0xa9a7a2, 0, -0.2, 0, P);
+    for (let i = -7; i < 8; i += 2) for (let j = -5; j < 6; j += 2) box(1.96, 0.02, 1.96, ((i + j) / 2) % 2 ? 0xb4b2ad : 0xaaa8a3, i, 0.01, j, P);
+    box(5, 0.03, 4, 0x8a6a4c, 5.5, 0.03, -4, P);
+    for (let x = 3.2; x < 8; x += 0.5) box(0.02, 0.035, 4, 0x6e533b, x, 0.035, -4, P);
+    // 後方：美食街紅牆、木框、紙燈籠
+    box(9.5, 4.6, 0.4, 0x9e2b25, -3.25, 2.3, -6.2, P);
+    [-7.6, -4.5, -1.4].forEach(x => box(0.15, 4.6, 0.12, 0xd8c3a0, x, 2.3, -5.98, P));
+    box(9.5, 0.12, 0.12, 0xd8c3a0, -3.25, 3.2, -5.98, P);
+    put(P, canvasPlane(1.2, 0.9, 120, 90, (g, w, h) => { g.fillStyle = "#2b2b2b"; g.fillRect(0, 0, w, h); g.fillStyle = "#e8b06a"; g.beginPath(); g.ellipse(60, 50, 40, 25, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = "#c0392b"; g.fillRect(30, 40, 60, 10); }), -3.0, 2.2, -5.97);
+    [[-6.0, -5.0], [-4.8, -4.6], [-2.4, -5.0], [-0.6, -4.7]].forEach(l => {
+      box(0.03, 1.2, 0.03, 0x333333, l[0], 4.0, l[1], P);
+      const m = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 10), new THREE.MeshBasicMaterial({ color: 0xffe9b8 })); m.scale.set(1, 0.85, 1); m.position.set(l[0], 3.2, l[1]); P.add(m);
+    });
+    // 右後方：日式格子窗＋灰磚牆
+    box(6.5, 1.1, 0.4, 0x8d8d88, 4.75, 0.55, -6.2, P);
+    box(6.5, 3.5, 0.4, 0x3b2b22, 4.75, 2.85, -6.2, P);
+    for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) box(0.7, 0.68, 0.04, 0xe9e6df, 2.6 + c * 1.45 + (c > 1 ? 0.3 : 0), 1.55 + r * 0.78, -5.98, P);
+    // 左邊鄰櫃（其他品牌甜點攤車，不放品牌名）
+    {
+      box(2.6, 1.0, 1.2, WOOD, -6.0, 0.6, -1.4, P); box(2.65, 0.05, 1.25, 0x222222, -6.0, 1.12, -1.4, P);
+      [[-7.0, -0.75], [-5.0, -0.75]].forEach(w => { const t = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 6, 16), mat(0x2b211b)); t.position.set(w[0], 0.55, w[1]); P.add(t); });
+      [-7.2, -4.8].forEach(x => box(0.1, 2.3, 0.1, 0x3b2b22, x, 2.25, -1.4, P));
+      box(2.8, 0.1, 1.6, 0x3b2b22, -6.0, 3.4, -1.4, P);
+      for (let i = 0; i < 4; i++) box(0.5, 0.55, 0.02, 0xf1e8d6, -6.75 + i * 0.5, 2.9, -0.62, P);
+      for (let i = 0; i < 5; i++) box(0.35, 0.22, 0.3, [0xe67e22, 0xf1c40f][i % 2], -6.9 + i * 0.42, 1.25, -1.5, P);
+    }
+    // 吊掛指示牌
+    box(0.03, 1.0, 0.03, 0x333333, -6.5, 4.7, 1.2, P);
+    put(P, canvasPlane(2.0, 0.5, 200, 50, (g, w, h) => { g.fillStyle = "#e6e8ea"; g.fillRect(0, 0, w, h); g.fillStyle = "#334"; g.font = "bold 26px sans-serif"; g.fillText("← 🚻", 14, 35); }, { double: true }), -6.5, 4.0, 1.2);
+
+    // ── 紅玉滿大木輪攤車（正面朝 +z）──
+    const CX = -0.6, CZ = -1.2, W = 4.4;
+    box(W, 0.95, 1.4, WOOD, CX, 0.7, CZ, P);
+    for (let x = -W / 2 + 0.25; x < W / 2; x += 0.35) box(0.02, 0.9, 0.02, 0x3b2f27, CX + x, 0.7, CZ + 0.71, P);
+    box(W + 0.1, 0.06, 1.5, 0x2a2622, CX, 1.2, CZ, P);
+    [CX - W / 2 + 0.6, CX + W / 2 - 0.6].forEach(wx => {
+      const g = new THREE.Group(); g.position.set(wx, 0.68, CZ + 0.78); P.add(g);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.07, 6, 20), mat(0x2b211b)); g.add(rim);
+      for (let a = 0; a < 6; a++) { const sp = box(0.05, 1.22, 0.04, 0x3a2c22, 0, 0, 0, g); sp.rotation.z = a * Math.PI / 6; }
+      box(0.18, 0.18, 0.1, 0x2b211b, 0, 0, 0.02, g);
+    });
+    // 灰木屋頂＋柱子＋斜撐＋軌道燈（屋頂半透明）
+    [[-W / 2 + 0.15, -0.6], [W / 2 - 0.15, -0.6], [-W / 2 + 0.15, 0.6], [W / 2 - 0.15, 0.6]].forEach(q => box(0.12, 2.3, 0.12, POST, CX + q[0], 2.35, CZ + q[1], P));
+    [-1, 1].forEach(sx => { const b = box(0.08, 1.0, 0.08, POST, CX + sx * (W / 2 - 0.5), 3.1, CZ + 0.6, P); b.rotation.z = sx * 0.6; });
+    const roofM = new THREE.Mesh(new THREE.BoxGeometry(W + 0.9, 0.14, 2.3), new THREE.MeshLambertMaterial({ color: ROOF, transparent: true, opacity: 0.45 }));
+    roofM.position.set(CX, 3.55, CZ + 0.15); roofM.rotation.x = 0.08; P.add(roofM);
+    box(W - 0.4, 0.04, 0.04, 0x111111, CX, 3.35, CZ + 0.45, P);
+    for (let i = 0; i < 4; i++) { box(0.14, 0.18, 0.2, 0x111111, CX - 1.4 + i * 0.95, 3.2, CZ + 0.45, P); box(0.08, 0.08, 0.06, 0xfff1c1, CX - 1.4 + i * 0.95, 3.1, CZ + 0.56, P); }
+    // 米色布簾：紅玉滿｜赤心雞蛋糕（英韓日）
+    put(P, canvasPlane(3.8, 0.85, 512, 115, (g, w, h) => {
+      g.fillStyle = "#efe7d4"; g.fillRect(0, 0, w, h);
+      g.fillStyle = "#cfc5ae"; for (let i = 1; i < 5; i++) g.fillRect(i * w / 5, 0, 2, h);
+      g.fillStyle = "#1f1a16"; g.textBaseline = "middle"; g.textAlign = "center";
+      g.font = 'bold 60px "PingFang TC","Noto Sans TC",serif'; ["紅", "玉", "滿"].forEach((t, i) => g.fillText(t, w / 10 + i * w / 5, 48));
+      g.font = 'bold 26px "PingFang TC","Noto Sans TC",serif'; g.fillText("赤心雞蛋糕", w * 0.8, 38);
+      g.font = "bold 15px sans-serif"; g.fillText("Hong Yu Man   Egg Pancakes", w * 0.32, 98); g.fillText("홍차계란   玉心形焼", w * 0.8, 74);
+    }), CX + 0.1, 2.75, CZ + 0.62);
+    // 檯面：木箱、三台烤爐、Menu 牌、收銀螢幕、多肉、乾洗手
+    box(0.7, 0.45, 0.5, 0x6b5a4a, CX - 1.75, 1.45, CZ - 0.05, P);
+    const ovens = miniOvens(P, [CX - 1.05, CX - 0.45, CX + 0.15], 1.23, CZ - 0.05);
+    put(P, canvasPlane(0.75, 0.5, 150, 100, (g, w, h) => { g.fillStyle = "#d62b2b"; g.fillRect(0, 0, w, h); g.fillStyle = "#1f5fbf"; g.beginPath(); g.moveTo(0, h); g.lineTo(w, h * 0.45); g.lineTo(w, h); g.fill(); g.fillStyle = "#fff"; g.font = "bold 16px sans-serif"; g.fillText("Menu", 8, 18); g.font = "11px sans-serif"; g.fillText("初心原味  5入 8入", 8, 38); g.fillText("綜合口味  5入 8入", 8, 56); g.fillText("今日口味", 8, 80); }), CX + 0.75, 1.5, CZ + 0.4);
+    box(0.08, 0.35, 0.08, 0x222222, CX + 1.45, 1.4, CZ - 0.2, P); box(0.6, 0.4, 0.05, 0x1a1a1a, CX + 1.45, 1.75, CZ - 0.2, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.52, 0.32), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), CX + 1.45, 1.75, CZ - 0.23, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    [CX + 1.0, CX + 1.25].forEach(x => { box(0.14, 0.14, 0.14, 0xf4f4f4, x, 1.3, CZ + 0.45, P); box(0.12, 0.12, 0.12, 0x5a9e5a, x, 1.43, CZ + 0.45, P); });
+    box(0.12, 0.3, 0.1, 0xf6f6f6, CX + 1.95, 1.38, CZ + 0.45, P); box(0.03, 0.1, 0.03, 0x333333, CX + 1.95, 1.58, CZ + 0.45, P);
+    [1.7, 2.3].forEach(y => box(0.6, 0.04, 0.35, POST, CX + W / 2 + 0.15, y, CZ + 0.4, P));
+    put(P, textPlane("遠百竹北・6F", 5, 0.9, { color: "rgba(60,50,40,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.6, -0.4);
+    SLOTS[k] = [
+      { x: CX - 0.45, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[1] },
+      { x: CX + 1.45, z: CZ - 1.15, rotY: 0, anim: "serve", fx: posFx },
+      { x: CX - 1.05, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[0] },
+      { x: CX + 0.3, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[2] },
+      { x: CX - 1.9, z: CZ - 1.6, rotY: Math.PI / 6, anim: "stand" },
+      { x: CX + 2.3, z: CZ - 1.6, rotY: -Math.PI / 6, anim: "stand" },
+    ];
+    makeGuests(k, [[CX + 1.5, 0.6, Math.PI], [CX + 1.8, 1.7, Math.PI], [3.6, 3.4, -Math.PI * 0.75]]);
+  }
+  zhubeiScene("zhubei");
   storeScene("other", { floor: [0xf2e6d8, 0xe8d8c4], wall: 0xfdf0e2, trim: 0xc0392b, counter: 0x6e4b2a, title: "其他櫃位・活動", deco: P => {
     box(0.1, 3, 0.1, 0x888888, 6.5, 1.5, -2.5, P); box(0.1, 3, 0.1, 0x888888, 6.5, 1.5, 0.5, P);
     const tent = box(3.4, 0.2, 3.4, 0xc0392b, 6.5, 3.1, -1, P); tent.rotation.z = 0.12;
@@ -524,6 +943,442 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     SLOTS.street = [{ x: 0, z: 3.5, rotY: Math.PI, anim: "stand" }];
     streetStalls = new THREE.Group(); P.add(streetStalls);
   }
+
+  // 共用：花崗岩拼色地板、六角磚地板
+  function floorCanvas(P, draw, base) {
+    const fl = canvasPlane(16, 12, 512, 384, draw); fl.rotation.x = -Math.PI / 2; fl.position.set(0, 0.011, 0); P.add(fl);
+    box(16, 0.4, 12, base, 0, -0.2, 0, P);
+  }
+  function hexFloor(cols) {
+    return (g, w, h) => {
+      g.fillStyle = cols[0]; g.fillRect(0, 0, w, h); g.strokeStyle = "#f4f1ea"; g.lineWidth = 2;
+      const r = 18, dx = r * Math.sqrt(3);
+      for (let row = 0, y = 0; y < h + r; row++, y += r * 1.5) for (let x = (row % 2) * dx / 2; x < w + dx; x += dx) {
+        g.fillStyle = cols[(row * 7 + Math.round(x / dx) * 3) % cols.length]; g.beginPath();
+        for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; g.lineTo(x + r * Math.cos(a), y + r * Math.sin(a)); }
+        g.closePath(); g.fill(); g.stroke();
+      }
+    };
+  }
+
+  // ── 22 美麗華 B1：依 2026-11-12 實景照片 IMG_9429～9431（原木攤車＋L 型木板櫃台四台烤爐、紅色 FRP 大機器人、彩色磚柱）──
+  function miramarScene(k) {
+    const P = group(k);
+    const PINE = 0xd2a868, PINE2 = 0xbb8f52, NAVY = "#1f2f5c";
+    floorCanvas(P, (g, w, h) => {
+      g.fillStyle = "#b9b2a6"; g.fillRect(0, 0, w, h);
+      const cs = ["#8f8a83", "#c9bfae", "#5e5b58", "#d8cdb9", "#a49d92"];
+      for (let y = 0; y < h; y += 48) for (let x = -((y / 48) % 2) * 60; x < w; x += 120) { g.fillStyle = cs[((x + y) / 24 | 0) % cs.length]; g.fillRect(x, y, 118, 46); for (let i = 0; i < 40; i++) { g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(x + Math.random() * 118, y + Math.random() * 46, 2, 2); } }
+    }, 0xb9b2a6);
+    // 後方：白牆、不鏽鋼電梯門、彩色磚柱
+    box(16.4, 4.6, 0.4, 0xf2efe8, 0, 2.3, -6.2, P);
+    box(2.2, 3.2, 0.1, 0xb8bdc2, -5.6, 1.6, -5.96, P); box(0.04, 3.2, 0.12, 0x8a9096, -5.6, 1.6, -5.94, P);
+    put(P, canvasPlane(0.5, 0.2, 100, 40, (g, w, h) => { g.fillStyle = "#1aa37a"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.font = "bold 22px sans-serif"; g.fillText("🏃 EXIT", 8, 28); }), -5.6, 3.5, -5.94);
+    {
+      const T = canvasPlane(1.6, 4.6, 120, 345, (g, w, h) => {
+        const cs = ["#c0392b", "#e8d36a", "#3d7a4f"];
+        for (let y = 0; y < h; y += 15) for (let x = ((y / 15) % 2) * -15; x < w; x += 30) { g.fillStyle = cs[(x / 30 + y / 15 * 2 + 9) % 3 | 0]; g.fillRect(x + 1, y + 1, 28, 13); }
+      });
+      box(1.6, 4.6, 1.6, 0xe8d36a, -2.6, 2.3, -5.1, P);
+      const a = T.clone(); a.position.set(-2.6, 2.3, -4.29); P.add(a);
+      const b = T.clone(); b.position.set(-1.79, 2.3, -5.1); b.rotation.y = Math.PI / 2; P.add(b);
+    }
+    // 左邊鄰櫃：薄荷綠木櫃（不放品牌）
+    box(1.6, 1.2, 1.2, 0xbfe0d6, -7.0, 0.6, -1.4, P); box(1.65, 0.06, 1.25, 0xc9a77c, -7.0, 1.22, -1.4, P);
+
+    // ── L 型木板櫃台（四台烤爐）──
+    const LX0 = -5.2, LX1 = -1.5, LZ = -0.7;
+    box(LX1 - LX0, 1.25, 0.15, PINE, (LX0 + LX1) / 2, 0.62, LZ, P);
+    for (let y = 0.12; y < 1.25; y += 0.21) box(LX1 - LX0, 0.015, 0.16, PINE2, (LX0 + LX1) / 2, y, LZ, P);
+    box(0.15, 1.25, 2.4, PINE, LX0, 0.62, LZ - 1.2, P);
+    box(LX1 - LX0, 0.95, 0.7, 0x9a8f80, (LX0 + LX1) / 2, 0.47, LZ - 0.6, P); box(LX1 - LX0, 0.05, 0.75, 0x7d756b, (LX0 + LX1) / 2, 0.97, LZ - 0.6, P);
+    // 正面大圖：愛心雞蛋糕照片＋藏青品牌板＋機器人雞蛋糕
+    put(P, canvasPlane(1.6, 1.15, 240, 172, (g, w, h) => {
+      g.fillStyle = "#d9b98d"; g.fillRect(0, 0, w, h); g.strokeStyle = "#8a7a62"; g.lineWidth = 1; for (let i = 0; i < w; i += 10) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i - 40, h); g.stroke(); }
+      [[60, 50, "#7a3b1c"], [120, 40, "#8e4522"], [180, 60, "#6a3216"], [80, 110, "#b5612c"], [150, 115, "#a05428"], [100, 150, "#c06a33"]].forEach(c => { g.fillStyle = c[2]; g.beginPath(); g.arc(c[0] - 12, c[1], 16, 0, Math.PI * 2); g.arc(c[0] + 12, c[1], 16, 0, Math.PI * 2); g.fill(); g.beginPath(); g.moveTo(c[0] - 28, c[1] + 4); g.lineTo(c[0] + 28, c[1] + 4); g.lineTo(c[0], c[1] + 32); g.fill(); });
+    }), -4.35, 0.68, LZ + 0.08);
+    put(P, canvasPlane(1.9, 1.15, 286, 172, (g, w, h) => {
+      g.fillStyle = "#1f2f5c"; g.fillRect(0, 0, w, h); g.fillStyle = "#f3ead8"; g.textAlign = "center";
+      g.font = 'bold 30px "PingFang TC",serif'; g.fillText("紅玉滿 赤心雞蛋糕", w / 2, 72);
+      g.font = "11px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes 홍차계란빵 紅玉心形燒", w / 2, 92);
+      g.font = '15px "PingFang TC",serif'; g.fillText("吃心", 34, 60); g.fillText("補心", w - 34, 60); g.fillText("願食雞蛋糕 常保赤子心", w / 2 + 40, 135);
+      g.fillStyle = "#c06a33"; [[60, 125], [80, 115], [100, 125]].forEach(c => { g.beginPath(); g.arc(c[0], c[1], 9, 0, Math.PI * 2); g.fill(); });
+      g.fillStyle = "#f3ead8"; g.font = "10px sans-serif"; g.fillText("「台灣十大人氣造型雞蛋糕」", w / 2, 162);
+    }), -2.55, 0.68, LZ + 0.08);
+    { // 上緣機器人雞蛋糕剪影
+      const r = canvasPlane(0.7, 0.55, 112, 88, (g) => { g.fillStyle = "#1f2f5c"; g.fillRect(0, 0, 112, 88); g.fillStyle = "#d9773a"; [18, 62].forEach(x => { g.fillRect(x + 6, 10, 22, 18); g.fillRect(x, 30, 34, 30); g.fillRect(x + 4, 62, 10, 20); g.fillRect(x + 20, 62, 10, 20); }); });
+      r.position.set(-2.0, 1.52, LZ + 0.08); P.add(r);
+    }
+    const lOvens = miniOvens(P, [-4.4, -3.7, -3.0, -2.3], 1.0, LZ - 0.6);
+    lOvens[1].link = [lOvens[0], lOvens[2], lOvens[3]];
+    box(1.1, 0.8, 0.8, 0xf2f2f2, -4.4, 0.4, LZ - 2.0, P);
+
+    // ── 原木攤車 ──
+    const CX = 0.2, CZ = -1.1, W = 3.0;
+    box(W, 1.1, 1.3, PINE, CX, 0.72, CZ, P);
+    for (let x = -W / 2 + 0.2; x < W / 2; x += 0.32) box(0.02, 1.05, 0.02, PINE2, CX + x, 0.72, CZ + 0.66, P);
+    box(W + 0.15, 0.08, 1.45, PINE2, CX, 1.3, CZ, P);
+    put(P, glassBox(W - 0.3, 0.35, 0.5, 0xcfefff, 0.35), CX, 1.52, CZ + 0.35);
+    {
+      const g = new THREE.Group(); g.position.set(CX, 0.68, CZ + 0.72); P.add(g);
+      g.add(new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.05, 6, 28), mat(0x1c1c1c)));
+      g.add(new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.025, 6, 28), mat(0xeeeeee)));
+      for (let a = 0; a < 12; a++) { const sp = box(0.012, 1.1, 0.012, 0xcccccc, 0, 0, 0, g); sp.rotation.z = a * Math.PI / 12; }
+    }
+    [[-1.4, -0.6], [1.4, -0.6], [-1.4, 0.6], [1.4, 0.6]].forEach(q => box(0.1, 1.75, 0.1, PINE2, CX + q[0], 2.2, CZ + q[1], P));
+    [-1, 1].forEach(side => {
+      const r = new THREE.Group(); r.position.set(CX, 3.35, CZ); r.rotation.x = side * 0.42; P.add(r);
+      const sm = new THREE.MeshLambertMaterial({ color: PINE, transparent: true, opacity: 0.55 });
+      for (let x = -W / 2 - 0.25; x <= W / 2 + 0.25; x += 0.26) { const sl = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 1.0), sm); sl.position.set(x, 0, side * 0.45); r.add(sl); }
+    });
+    put(P, canvasPlane(2.4, 0.7, 380, 110, (g, w, h) => {
+      g.fillStyle = NAVY; g.fillRect(0, 0, w, h); g.fillStyle = "#16234a"; for (let i = 1; i < 3; i++) g.fillRect(i * w / 3, 0, 3, h);
+      g.fillStyle = "#f3ead8"; g.font = 'bold 42px "PingFang TC","Noto Sans TC",serif'; g.fillText("紅玉滿赤心 雞蛋糕", 14, 50); g.font = "15px sans-serif"; g.fillText("홍차계란빵  紅玉心形燒", 140, 92);
+    }), CX + 0.1, 2.72, CZ + 0.64);
+    // 藍色圓燈箱「三角龍［阿萌］」
+    put(P, canvasPlane(0.7, 0.7, 128, 128, (g) => { g.fillStyle = "#2f80d1"; g.beginPath(); g.arc(64, 64, 62, 0, Math.PI * 2); g.fill(); g.fillStyle = "#f2a48a"; g.beginPath(); g.ellipse(64, 66, 34, 20, 0, 0, Math.PI * 2); g.fill(); g.fillStyle = "#fff"; g.font = "bold 14px sans-serif"; g.textAlign = "center"; g.fillText("紅玉滿", 64, 28); g.fillText("三角龍[阿萌]", 64, 108); }, { transparent: true }), CX - 1.62, 2.75, CZ + 0.62);
+    put(P, canvasPlane(0.55, 0.42, 110, 84, (g, w, h) => { g.fillStyle = "#c62828"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.fillRect(4, 18, w - 8, h - 22); g.font = "bold 13px sans-serif"; g.fillText("Menu", 6, 14); g.fillStyle = "#555"; for (let i = 0; i < 4; i++) g.fillRect(10, 26 + i * 13, 90, 5); g.fillStyle = "#1f5fbf"; g.fillRect(4, 70, w - 8, 10); }), CX + 0.3, 1.55, CZ + 0.62);
+    box(0.2, 0.15, 0.2, 0xb8bec4, CX + 1.1, 1.42, CZ + 0.45, P); box(0.26, 0.2, 0.26, 0x5a9e5a, CX + 1.1, 1.6, CZ + 0.45, P);
+    box(0.08, 0.4, 0.08, 0x222222, CX + 0.8, 1.55, CZ - 0.35, P); box(0.55, 0.38, 0.05, 0x1a1a1a, CX + 0.8, 1.9, CZ - 0.35, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.48, 0.3), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), CX + 0.8, 1.9, CZ - 0.38, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    // 後方木板牆＋紅色看板
+    box(0.15, 1.6, 1.8, PINE, 2.4, 0.8, -3.9, P);
+    for (let y = 0.15; y < 1.6; y += 0.22) box(0.16, 0.015, 1.8, PINE2, 2.4, y, -3.9, P);
+    put(P, canvasPlane(1.3, 1.05, 200, 162, (g, w, h) => { g.fillStyle = "#c62828"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.font = "bold 14px sans-serif"; g.fillText("台灣最有型雞蛋糕品牌", 12, 22); g.font = 'bold 22px "PingFang TC",serif'; g.fillText("紅玉滿 赤心雞蛋糕", 18, 70); g.fillStyle = "#8e3b1c"; [80, 100, 120].forEach((x, i) => { g.beginPath(); g.arc(x, 100 + (i % 2) * 8, 10, 0, Math.PI * 2); g.fill(); }); g.fillStyle = "#fff"; g.font = "11px sans-serif"; g.fillText("♡ 願食雞蛋糕 常保赤子心 ♡", 30, 145); }), 2.49, 0.95, -3.9, Math.PI / 2);
+    // 紅色 FRP 大機器人（揮手）
+    {
+      const g = new THREE.Group(); g.position.set(2.7, 0, -1.2); g.rotation.y = -Math.PI / 10; P.add(g);
+      const pm = {}; const ph = c => pm[c] || (pm[c] = new THREE.MeshPhongMaterial({ color: c, shininess: 100, specular: 0x777777 }));
+      const pb = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), ph(c)); m.position.set(x, y, z); m.castShadow = true; g.add(m); return m; };
+      const RED = 0xd8222a, NAV = 0x1f3a8a, SIL = 0xb9bcc0;
+      [-0.38, 0.38].forEach(x => { pb(0.55, 0.3, 0.8, NAV, x, 0.15, 0.08); pb(0.45, 1.0, 0.5, RED, x, 0.8, 0); });
+      pb(1.7, 1.75, 0.9, RED, 0, 2.15, 0);
+      const chest = canvasPlane(1.55, 1.6, 200, 206, (c) => {
+        c.fillStyle = "#d8222a"; c.fillRect(0, 0, 200, 206);
+        [10, 104].forEach(x => { c.fillStyle = "#f4e6c8"; c.fillRect(x + 20, 10, 50, 10); c.fillStyle = "#f2c76a"; c.beginPath(); c.arc(x + 35, 50, 12, 0, Math.PI * 2); c.arc(x + 55, 50, 12, 0, Math.PI * 2); c.fill(); c.beginPath(); c.moveTo(x + 22, 54); c.lineTo(x + 68, 54); c.lineTo(x + 45, 76); c.fill(); c.fillStyle = "#e9e3d6"; c.fillRect(x + 10, 90, 70, 34); c.fillStyle = "#d8222a"; c.beginPath(); c.ellipse(x + 45, 107, 16, 9, 0, 0, Math.PI * 2); c.fill(); });
+        c.fillStyle = "#efeae0"; c.fillRect(8, 140, 184, 60);
+        for (let i = 0; i < 8; i++) { c.fillStyle = ["#888", "#c0392b", "#e0a030"][i % 3]; c.beginPath(); c.arc(22 + i * 22, 158, 7, 0, Math.PI * 2); c.fill(); }
+        [[30, "#e0a030"], [70, "#a0241f"], [130, "#a0241f"], [170, "#e0a030"]].forEach(p => { c.fillStyle = p[1]; c.beginPath(); c.arc(p[0], 184, 12, 0, Math.PI * 2); c.fill(); });
+      });
+      chest.position.set(0, 2.15, 0.46); g.add(chest);
+      pb(1.2, 1.0, 0.9, RED, 0, 3.55, 0); pb(1.0, 0.6, 0.1, SIL, 0, 3.55, 0.46);
+      [-0.24, 0.24].forEach(x => { const e = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16), ph(0xd8dadc)); e.rotation.x = Math.PI / 2; e.position.set(x, 3.6, 0.52); g.add(e); const s2 = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8), ph(0x8a8d90)); s2.rotation.x = Math.PI / 2; s2.position.set(x, 3.6, 0.55); g.add(s2); });
+      [-0.7, 0.7].forEach(x => { pb(0.2, 0.45, 0.2, SIL, x, 3.55, 0); const ball = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), ph(SIL)); ball.position.set(x * 0.75, 4.2, 0); g.add(ball); pb(0.05, 0.3, 0.05, SIL, x * 0.75, 4.05, 0); });
+      // 右臂舉起揮手、左臂平舉
+      const armR = new THREE.Group(); armR.position.set(1.05, 2.8, 0); g.add(armR);
+      const a1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.45), ph(RED)); a1.position.set(0.2, 0.3, 0); a1.rotation.z = -0.6; armR.add(a1);
+      const a2 = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.8, 0.42), ph(RED)); a2.position.set(0.45, 0.95, 0); armR.add(a2);
+      g.userData.wave = armR;
+      const armL = new THREE.Group(); armL.position.set(-1.05, 2.8, 0); g.add(armL);
+      const b1 = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.9, 0.45), ph(RED)); b1.position.set(-0.15, -0.35, 0.15); b1.rotation.x = -0.5; armL.add(b1);
+      ROBOTS.push(g);
+    }
+    put(P, textPlane("美麗華・B1", 5, 0.9, { color: "rgba(60,50,40,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.6, -0.4);
+    SLOTS[k] = [
+      { x: -3.35, z: LZ - 1.4, rotY: 0, anim: "cook", fx: lOvens[1] },
+      { x: CX + 0.8, z: CZ - 1.1, rotY: 0, anim: "serve", fx: posFx },
+      { x: -4.4, z: LZ - 1.4, rotY: 0, anim: "cook", fx: lOvens[0] },
+      { x: CX - 0.5, z: CZ - 1.1, rotY: 0, anim: "serve" },
+      { x: -2.3, z: LZ - 1.4, rotY: 0, anim: "cook", fx: lOvens[3] },
+      { x: -1.2, z: -3.2, rotY: Math.PI / 6, anim: "stand" },
+    ];
+    makeGuests(k, [[CX + 0.9, 0.7, Math.PI], [CX + 1.2, 1.8, Math.PI], [-3.0, 1.2, Math.PI]]);
+  }
+
+  // ── 41 桃園機場 T2 4F（合作品牌：山海豆花）：依 2026-11-12 實景照片 IMG_4336（轉角雙面櫃、白布簾、紅色檯面板、聖誕花圈、兒童遊戲區）──
+  function airportScene(k) {
+    const P = group(k);
+    const CREAM = 0xe9e1d2;
+    floorCanvas(P, hexFloor(["#b7b2a6", "#c9c3b5", "#a8a397", "#d4cdbf"]), 0xb7b2a6);
+    // 後牆：白色地鐵磚（櫃內那段）＋米白牆
+    box(16.4, 4.6, 0.4, 0xf3efe7, 0, 2.3, -6.2, P);
+    put(P, canvasPlane(5, 3, 300, 180, (g, w, h) => { g.fillStyle = "#fbfbf8"; g.fillRect(0, 0, w, h); g.strokeStyle = "#d8d8d2"; for (let y = 0; y < h; y += 14) for (let x = (y / 14) % 2 ? -14 : 0; x < w; x += 28) g.strokeRect(x, y, 28, 14); }), -1.7, 1.6, -5.99);
+    // 天花六角燈框（只做左側一列）
+    for (let i = 0; i < 4; i++) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.05, 4, 6), new THREE.MeshBasicMaterial({ color: 0xdfe8ff })); h.rotation.x = Math.PI / 2; h.position.set(-6.4 + (i % 2) * 1.1, 4.8, -4.8 + i * 1.6); P.add(h); }
+    // 左側鄰櫃（速食店，不放品牌）
+    box(1.8, 1.2, 3.5, 0xf2f2f2, -7.1, 0.6, -3.2, P); box(0.05, 0.7, 3.2, 0xb02a2a, -6.18, 0.7, -3.2, P);
+
+    // ── 轉角雙面櫃：+z 面山海豆花、+x 面紅玉滿 ──
+    const XL = -3.8, XR = 0.75, ZF = -0.5, ZB = -4.6;
+    // 山海豆花面（+z）下牆＋食物照片板
+    box(XR - XL - 0.85, 1.1, 0.85, CREAM, (XL + XR - 0.85) / 2, 0.55, ZF - 0.42, P);
+    box(XR - XL - 0.85, 0.05, 0.9, 0x222222, (XL + XR - 0.85) / 2, 1.12, ZF - 0.42, P);
+    put(P, canvasPlane(3.4, 1.0, 340, 100, (g, w, h) => { g.fillStyle = "#f4f2ee"; g.fillRect(0, 0, w, h); for (let i = 0; i < 8; i++) { const x = 30 + (i % 4) * 85, y = 28 + (i / 4 | 0) * 48; g.fillStyle = "#e8e2d6"; g.beginPath(); g.arc(x, y, 18, 0, Math.PI * 2); g.fill(); g.fillStyle = ["#c79a5a", "#8a3b2e", "#e8d9b0", "#6b4a2a"][i % 4]; g.beginPath(); g.arc(x, y, 11, 0, Math.PI * 2); g.fill(); } }), (XL + XR - 0.85) / 2, 0.55, ZF + 0.03);
+    // 紅玉滿面（+x）下牆＋紅色檯面板
+    box(0.85, 1.1, ZF - ZB, CREAM, XR - 0.42, 0.55, (ZF + ZB) / 2, P);
+    box(0.9, 0.05, ZF - ZB, 0x222222, XR - 0.42, 1.12, (ZF + ZB) / 2, P);
+    put(P, canvasPlane(3.8, 0.95, 380, 95, (g, w, h) => { g.fillStyle = "#c8262c"; g.fillRect(0, 0, w, h); g.fillStyle = "#fff"; g.font = "bold 16px sans-serif"; g.fillText("台灣最有型雞蛋糕品牌", 12, 22); g.font = "10px sans-serif"; g.fillText("The most stylish Taiwanese Traditional Egg Pancake brand", 12, 38); g.font = 'bold 24px "PingFang TC",serif'; g.fillText("紅玉滿 赤心雞蛋糕", 150, 72); }), XR + 0.03, 0.55, (ZF + ZB) / 2, Math.PI / 2);
+    // 聖誕花圈
+    const garland = (x0, z0, x1, z1) => { const n = 14; for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n; box(0.28, 0.16, 0.28, 0x2f6b34, x, 1.22, z, P); if (i % 2) box(0.08, 0.08, 0.08, i % 4 === 1 ? 0xd62b2b : 0xe8c547, x + 0.05, 1.32, z + 0.05, P); } };
+    garland(XL + 0.2, ZF - 0.1, XR - 0.9, ZF - 0.1); garland(XR - 0.1, ZF - 0.2, XR - 0.1, ZB + 0.2);
+    // 轉角柱、門楣與斜屋頂線條
+    box(0.22, 4.2, 0.22, CREAM, XR, 2.1, ZF, P); box(0.22, 4.2, 0.22, CREAM, XL, 2.1, ZF, P); box(0.22, 4.2, 0.22, CREAM, XR, 2.1, ZB, P);
+    box(XR - XL, 0.25, 0.2, CREAM, (XL + XR) / 2, 4.1, ZF, P); box(0.2, 0.25, ZF - ZB, CREAM, XR, 4.1, (ZF + ZB) / 2, P);
+    // 白布簾：山海豆花（+z）、紅玉滿（+x）
+    put(P, canvasPlane(XR - XL - 0.3, 1.25, 400, 110, (g, w, h) => {
+      g.fillStyle = "#fbfaf6"; g.fillRect(0, 0, w, h); g.fillStyle = "#e3ded3"; for (let i = 1; i < 4; i++) g.fillRect(i * w / 4, 0, 2, h);
+      g.fillStyle = "#1f1a16"; g.font = 'bold 52px "PingFang TC",serif'; g.fillText("山海", 18, 70); g.fillText("豆花", 270, 70);
+      g.strokeStyle = "#c0392b"; g.lineWidth = 4; g.beginPath(); g.moveTo(140, 70); g.lineTo(170, 30); g.lineTo(190, 55); g.lineTo(210, 30); g.lineTo(240, 70); g.stroke();
+      g.fillStyle = "#555"; g.font = "11px sans-serif"; g.fillText("MATA Tofu Pudding", 140, 92);
+    }), (XL + XR) / 2, 3.35, ZF + 0.02);
+    put(P, canvasPlane(ZF - ZB - 0.3, 1.25, 400, 110, (g, w, h) => {
+      g.fillStyle = "#fbfaf6"; g.fillRect(0, 0, w, h); g.fillStyle = "#e3ded3"; for (let i = 1; i < 3; i++) g.fillRect(i * w / 3, 0, 2, h);
+      g.fillStyle = "#1f1a16"; g.font = 'bold 50px "PingFang TC",serif'; g.fillText("紅玉滿", 12, 58); g.font = 'bold 28px "PingFang TC",serif'; g.fillText("赤心 雞蛋糕", 196, 56);
+      g.font = "bold 12px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes 홍차계란빵 紅玉心形燒", 14, 94);
+    }), XR + 0.02, 3.35, (ZF + ZB) / 2, Math.PI / 2);
+    // 櫃內：不鏽鋼機器、鍋具、三台烤爐（朝 +x）、收銀
+    box(0.7, 0.6, 0.6, 0xc4c9ce, -0.9, 1.45, -3.9, P); box(0.4, 0.3, 0.4, 0x9aa0a6, -1.6, 1.3, -3.9, P);
+    box(1.4, 1.1, 0.8, 0xdcdcdc, -2.6, 0.55, -3.9, P);
+    const OG = new THREE.Group(); OG.position.set(XR - 0.45, 0, -2.6); OG.rotation.y = Math.PI / 2; P.add(OG);
+    const ovens = miniOvens(OG, [-0.6, 0, 0.6], 1.15, 0);
+    box(0.08, 0.3, 0.08, 0x222222, XR - 0.45, 1.3, -1.0, P); box(0.04, 0.25, 0.35, 0x1a1a1a, XR - 0.4, 1.55, -1.0, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.2), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), XR - 0.43, 1.55, -1.0, -Math.PI / 2);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    // 右側兒童遊戲區：拱窗矮牆、紅色六角座、木溜板、黃色玩具飛機、藍柱
+    box(0.2, 1.8, 3.6, 0xf3efe7, 7.6, 0.9, -3.0, P);
+    [-4.0, -2.4].forEach(z => box(0.05, 0.9, 0.6, 0xd9d2c4, 7.48, 0.75, z, P));
+    { const hx = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.5, 6), mat(0xd9422e)); hx.position.set(6.2, 0.25, -2.6); P.add(hx); }
+    { const pl = box(2.4, 0.08, 0.9, 0xd9a65c, 5.0, 0.6, -4.2, P); pl.rotation.z = 0.35; }
+    { const ap = new THREE.Group(); ap.position.set(5.6, 4.0, -3.6); P.add(ap); box(1.4, 0.35, 0.35, 0xf2c230, 0, 0, 0, ap); box(0.3, 0.06, 1.8, 0xf2c230, 0.1, 0, 0, ap); box(0.15, 0.4, 0.06, 0xf2c230, -0.65, 0.2, 0, ap); box(0.02, 1.0, 0.02, 0x666666, 0, 0.6, 0, ap); }
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.8, 12), mat(0xa9c6e0)); pole.position.set(3.4, 2.4, -5.0); P.add(pole);
+    put(P, textPlane("桃園機場 T2・4F", 5, 0.9, { color: "rgba(60,50,40,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.0, 1.6);
+    // 夥伴站位：櫃內面向 +x（紅玉滿那面）
+    const RY = Math.PI / 2;
+    SLOTS[k] = [
+      { x: -0.55, z: -2.6, rotY: RY, anim: "cook", fx: ovens[1] },
+      { x: -0.55, z: -1.1, rotY: RY, anim: "serve", fx: posFx },
+      { x: -0.55, z: -2.0, rotY: RY, anim: "cook", fx: ovens[0] },
+      { x: -0.55, z: -3.2, rotY: RY, anim: "cook", fx: ovens[2] },
+      { x: -2.0, z: -1.7, rotY: 0, anim: "serve" },
+      { x: -3.0, z: -1.7, rotY: 0, anim: "serve" },
+    ];
+    makeGuests(k, [[2.3, -0.5, -Math.PI / 2], [3.4, -0.3, -Math.PI / 2], [-1.6, 0.6, Math.PI]]);
+  }
+
+  // ── 3 米帳（3m×3m 快速帳篷）：華泰名品城與活動場景共用 ──
+  function tent3m(P, x, z, o = {}) {
+    const S = 4.0, H = 2.8, col = o.color || 0xc8262c;
+    const g = new THREE.Group(); g.position.set(x, 0, z); P.add(g);
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(q => { box(0.1, H, 0.1, 0xc9ced3, q[0] * S / 2, H / 2, q[1] * S / 2, g); box(0.3, 0.05, 0.3, 0x555555, q[0] * S / 2, 0.03, q[1] * S / 2, g); });
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(S / Math.SQRT2 + 0.15, 1.3, 4, 1, true), new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: 0.45, side: THREE.DoubleSide }));
+    roof.rotation.y = Math.PI / 4; roof.position.y = H + 0.65; g.add(roof);
+    // 帳篷前沿與右側垂邊（印品牌）
+    const val = (w, txt) => canvasPlane(w, 0.42, 400, 42, (c, cw, ch) => { c.fillStyle = o.css || "#c8262c"; c.fillRect(0, 0, cw, ch); c.fillStyle = "#fff4e6"; c.font = 'bold 28px "PingFang TC","Noto Sans TC",serif'; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(txt, cw / 2, ch / 2 + 1); }, { double: true });
+    const vf = val(S, o.valance || "紅玉滿 赤心雞蛋糕"); vf.position.set(0, H - 0.2, S / 2 + 0.01); g.add(vf);
+    const vr = val(S, o.valance || "紅玉滿 赤心雞蛋糕"); vr.position.set(S / 2 + 0.01, H - 0.2, 0); vr.rotation.y = Math.PI / 2; g.add(vr);
+    // 前方折疊桌（紅桌布）＋烤爐＋收銀＋菜單立牌
+    box(3.4, 0.05, 0.8, 0xf4f4f4, 0, 0.98, S / 2 - 0.7, g);
+    box(3.4, 0.9, 0.02, 0xc8262c, 0, 0.53, S / 2 - 0.3, g);
+    put(g, canvasPlane(2.2, 0.6, 330, 90, (c, w, h) => { c.fillStyle = "#c8262c"; c.fillRect(0, 0, w, h); c.fillStyle = "#fff4e6"; c.font = 'bold 34px "PingFang TC",serif'; c.textAlign = "center"; c.fillText("紅玉滿 赤心雞蛋糕", w / 2, 44); c.font = "13px sans-serif"; c.fillText("♡ 願食雞蛋糕 常保赤子心 ♡", w / 2, 74); }), -0.3, 0.55, S / 2 - 0.28);
+    const ovens = miniOvens(g, [-1.1, -0.5, 0.1], 1.0, S / 2 - 0.75);
+    box(0.32, 0.22, 0.04, 0x222222, 1.0, 1.15, S / 2 - 0.85, g);
+    const scr = put(g, new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.18), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), 1.0, 1.15, S / 2 - 0.875, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    put(g, canvasPlane(0.45, 0.6, 90, 120, (c, w, h) => { c.fillStyle = "#fff"; c.fillRect(0, 0, w, h); c.fillStyle = "#c62828"; c.fillRect(0, 0, w, 24); c.fillStyle = "#fff"; c.font = "bold 13px sans-serif"; c.fillText("Menu", 8, 17); c.fillStyle = "#555"; for (let i = 0; i < 5; i++) c.fillRect(8, 36 + i * 15, w - 16, 5); }), 1.5, 1.32, S / 2 - 0.5);
+    // 後方工作桌、麵糊桶、紙箱
+    box(3.0, 0.05, 0.7, 0xf4f4f4, 0, 0.8, -S / 2 + 0.6, g); [-1.3, 1.3].forEach(x2 => box(0.05, 0.8, 0.6, 0x999999, x2, 0.4, -S / 2 + 0.6, g));
+    [-1.0, -0.5].forEach(x2 => { box(0.4, 0.5, 0.4, 0xf7f7f7, x2, 1.08, -S / 2 + 0.6, g); box(0.42, 0.05, 0.42, 0xf1c40f, x2, 1.35, -S / 2 + 0.6, g); });
+    for (let i = 0; i < 4; i++) box(0.5, 0.3, 0.4, 0xc0392b, 0.4 + (i % 2) * 0.55, 0.98 + ((i / 2) | 0) * 0.3, -S / 2 + 0.6, g);
+    // 側邊羽毛旗
+    if (o.flag !== false) {
+      box(0.04, 3.2, 0.04, 0xcccccc, S / 2 + 0.5, 1.6, S / 2 - 0.2, g);
+      put(g, canvasPlane(0.6, 2.4, 80, 320, (c, w, h) => { c.fillStyle = "#c8262c"; c.fillRect(0, 0, w, h); c.fillStyle = "#fff4e6"; c.font = 'bold 40px "PingFang TC",serif'; c.textAlign = "center"; ["紅", "玉", "滿"].forEach((t, i) => c.fillText(t, w / 2, 60 + i * 52)); c.font = 'bold 20px "PingFang TC",serif'; ["雞", "蛋", "糕"].forEach((t, i) => c.fillText(t, w / 2, 230 + i * 26)); }, { double: true }), S / 2 + 0.82, 1.9, S / 2 - 0.2, Math.PI / 4);
+    }
+    const tz = z + S / 2 - 1.45;
+    return {
+      ovens, posFx,
+      slots: [
+        { x: x - 0.5, z: tz, rotY: 0, anim: "cook", fx: ovens[1] },
+        { x: x + 1.0, z: tz, rotY: 0, anim: "serve", fx: posFx },
+        { x: x - 1.1, z: tz, rotY: 0, anim: "cook", fx: ovens[0] },
+        { x: x + 0.1, z: tz, rotY: 0, anim: "cook", fx: ovens[2] },
+        { x: x - 0.7, z: z - S / 2 + 1.3, rotY: Math.PI, anim: "cook" },
+        { x: x + 0.8, z: z - S / 2 + 1.3, rotY: Math.PI, anim: "stand" },
+      ],
+      front: z + S / 2,
+    };
+  }
+
+  // ── 23 華泰名品城（聖誕樹旁）：大聖誕樹＋一頂 3 米帳（隊長 11/12 指示）──
+  function huataiScene(k) {
+    const P = group(k);
+    floorCanvas(P, (g, w, h) => { g.fillStyle = "#9c9488"; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 16) for (let x = (y / 16) % 2 ? -16 : 0; x < w; x += 32) { g.fillStyle = ["#a89f92", "#948b7f", "#b0a79a"][((x + y) / 16 | 0) % 3]; g.fillRect(x + 1, y + 1, 30, 14); } }, 0x9c9488);
+    // 大聖誕樹（左後方）
+    {
+      const T = new THREE.Group(); T.position.set(-4.6, 0, -3.4); P.add(T);
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 1.0, 10), mat(0x6b4423)); trunk.position.y = 0.5; T.add(trunk);
+      [[3.0, 3.0, 2.4], [2.4, 2.6, 4.3], [1.7, 2.2, 6.0], [1.0, 1.8, 7.4]].forEach(l => { const c = new THREE.Mesh(new THREE.ConeGeometry(l[0], l[1], 10), mat(0x1f6b3a)); c.position.y = l[2]; c.castShadow = true; T.add(c); });
+      const cols = [0xd62b2b, 0xf1c40f, 0xffffff, 0x3498db];
+      for (let i = 0; i < 46; i++) { const y = 1.6 + Math.random() * 6.4, r = (8.3 - y) * 0.36 + 0.1, a = Math.random() * Math.PI * 2; const b = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), new THREE.MeshBasicMaterial({ color: cols[i % 4] })); b.position.set(Math.cos(a) * r, y, Math.sin(a) * r); T.add(b); TWINKLE.push(b); }
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.45), new THREE.MeshBasicMaterial({ color: 0xffd84a })); star.position.y = 8.6; T.add(star);
+      [[1.4, 0.8, 0xc0392b], [-1.2, 1.3, 0x2e86de], [0.4, 1.8, 0xf1c40f], [1.9, -0.4, 0x27ae60]].forEach(gf => { box(0.7, 0.55, 0.7, gf[2], gf[0], 0.28, gf[1], T); box(0.72, 0.1, 0.12, 0xffffff, gf[0], 0.56, gf[1], T); });
+    }
+    // 掛燈串路燈
+    [[3.6, -5.0], [7.2, -1.0], [-7.2, 2.6]].forEach(l => { box(0.1, 4.2, 0.1, 0x333333, l[0], 2.1, l[1], P); box(0.4, 0.3, 0.4, 0xfff1c1, l[0], 4.3, l[1], P); });
+    for (let i = 0; i <= 16; i++) { const t = i / 16, x = 3.6 + (7.2 - 3.6) * t, z = -5 + 4 * t, y = 4.0 - Math.sin(t * Math.PI) * 0.6; const b = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), new THREE.MeshBasicMaterial({ color: 0xfff1a8 })); b.position.set(x, y, z); P.add(b); }
+    // 飄雪（整點飄雪的氣氛，持續小量）
+    for (let i = 0; i < 40; i++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), new THREE.MeshBasicMaterial({ color: 0xffffff })); f.position.set(Math.random() * 14 - 7, Math.random() * 9, Math.random() * 10 - 6); P.add(f); SNOW.push(f); }
+    const t = tent3m(P, 1.2, -1.6);
+    put(P, textPlane("華泰名品城・聖誕樹旁", 5.5, 0.9, { color: "rgba(255,255,255,.4)", size: 52 }), -4.0, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.6, 1.4);
+    SLOTS[k] = t.slots;
+    makeGuests(k, [[2.3, 1.2, Math.PI], [2.5, 2.3, Math.PI], [-2.2, 0.4, -Math.PI * 0.7]]);
+  }
+
+  // ── 66 活動：3 米帳市集（招牌顯示當天活動名稱）──
+  let eventSign = null, EVENT_CAR = null;
+  function eventScene(k) {
+    const P = group(k);
+    floorCanvas(P, (g, w, h) => { g.fillStyle = "#7fa865"; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { g.fillStyle = Math.random() > 0.5 ? "#8cb571" : "#729b59"; g.fillRect(Math.random() * w, Math.random() * h, 3, 5); } g.fillStyle = "#cbbd9e"; g.fillRect(0, h * 0.62, w, h * 0.2); }, 0x7fa865);
+    // 隔壁的攤位帳篷（不同顏色，不放品牌）
+    [[-5.6, -2.0, 0x2e86de], [-5.6, 3.2, 0xf1c40f], [6.0, -3.6, 0x27ae60]].forEach(n => {
+      const g = new THREE.Group(); g.position.set(n[0], 0, n[1]); P.add(g);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(q => box(0.08, 2.6, 0.08, 0xc9ced3, q[0] * 1.6, 1.3, q[1] * 1.6, g));
+      const r = new THREE.Mesh(new THREE.ConeGeometry(2.4, 1.0, 4), mat(n[2])); r.rotation.y = Math.PI / 4; r.position.y = 3.1; g.add(r);
+      box(2.8, 0.05, 0.7, 0xf4f4f4, 0, 0.95, 1.0, g); box(2.8, 0.9, 0.02, 0xeeeeee, 0, 0.5, 1.33, g);
+    });
+    const t = tent3m(P, 0.6, -1.6);
+    // 大隊長開 Volvo XC60 載物資到 3 米帳（每次切到活動場景就重播一次）
+    {
+      const car = new THREE.Group(); P.add(car);
+      const pm = {}; const ph = c => pm[c] || (pm[c] = new THREE.MeshPhongMaterial({ color: c, shininess: 80, specular: 0x555555 }));
+      const cb = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), ph(c)); m.position.set(x, y, z); m.castShadow = true; car.add(m); return m; };
+      const BODY = 0xe9ecee, GLASS = 0x26323d, DARK = 0x2a2d30;
+      // 車身朝 -x 前進：x 負方向是車頭
+      cb(3.9, 0.85, 1.75, BODY, 0, 0.78, 0);
+      cb(2.5, 0.7, 1.62, BODY, 0.25, 1.52, 0);
+      cb(2.3, 0.55, 1.64, GLASS, 0.25, 1.53, 0);
+      cb(0.06, 0.55, 1.5, GLASS, -1.0, 1.5, 0).rotation.z = -0.5;
+      cb(0.08, 0.5, 1.55, GLASS, 1.48, 1.52, 0).rotation.z = 0.25;
+      cb(0.1, 0.4, 1.0, DARK, -1.96, 0.78, 0);
+      [-0.55, 0.55].forEach(z => { cb(0.08, 0.06, 0.4, 0xffffff, -1.96, 0.98, z); cb(0.08, 0.2, 0.06, 0xffffff, -1.96, 0.92, z + (z < 0 ? 0.15 : -0.15)); });
+      [-0.6, 0.6].forEach(z => cb(0.06, 0.45, 0.12, 0xc0392b, 1.96, 0.95, z));
+      cb(1.9, 0.05, 0.06, 0xc8ccd0, 0.25, 1.9, -0.7); cb(1.9, 0.05, 0.06, 0xc8ccd0, 0.25, 1.9, 0.7);
+      cb(3.95, 0.2, 1.8, DARK, 0, 0.36, 0);
+      const plate = canvasPlane(0.6, 0.18, 120, 36, (g, w, h) => { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.fillStyle = "#222"; g.font = "bold 24px sans-serif"; g.textAlign = "center"; g.fillText("XC60", w / 2, 27); }); plate.position.set(1.99, 0.62, 0); plate.rotation.y = Math.PI / 2; car.add(plate);
+      [[-1.25, -0.88], [-1.25, 0.88], [1.25, -0.88], [1.25, 0.88]].forEach(q => { const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), ph(0x1b1b1b)); w.rotation.x = Math.PI / 2; w.position.set(q[0], 0.42, q[1]); car.add(w); const r = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.32, 10), ph(0xb8bcc0)); r.rotation.x = Math.PI / 2; r.position.set(q[0], 0.42, q[1]); car.add(r); });
+      // 後車廂物資紙箱
+      [[1.0, 0], [1.3, 0.35]].forEach(b2 => cb(0.4, 0.3, 0.4, 0xc0392b, b2[0], 1.3, b2[1]));
+      const cap = makeChar({ shirt: 0x2c3e50, pants: 0x1b2631, hair: 0x222222, cap: 0xc0392b });
+      nameTag(cap, "大隊長"); cap.bubble.classList.add("uo-boss"); cap.g.visible = false;
+      EVENT_CAR = { car, cap, x0: SCENES[k].x + 11, x1: SCENES[k].x + 5.0, z: 1.0, t: 0, state: "idle" };
+      car.position.set(11, 0, 1.3);
+    }
+    // 活動名稱看板（打卡時填的活動名稱）
+    {
+      const g = new THREE.Group(); g.position.set(-2.4, 0, 1.6); g.rotation.y = Math.PI / 4; P.add(g);
+      box(0.06, 1.4, 0.06, 0x8b5a2b, -0.55, 0.7, 0, g); box(0.06, 1.4, 0.06, 0x8b5a2b, 0.55, 0.7, 0, g);
+      const c = document.createElement("canvas"); c.width = 256; c.height = 160;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), side: THREE.DoubleSide })); m.position.set(0, 1.6, 0); g.add(m);
+      eventSign = { c, m }; drawEventSign("今日活動");
+    }
+    put(P, textPlane("活動・3 米帳", 5, 0.9, { color: "rgba(255,255,255,.45)", size: 56 }), -4.2, 0.03, 4.6, 0, -Math.PI / 2);
+    stockBoard(P, k, -3.0, 4.2);
+    SLOTS[k] = t.slots;
+    makeGuests(k, [[1.6, 1.2, Math.PI], [1.9, 2.3, Math.PI], [-0.6, 2.6, -Math.PI * 0.8]]);
+  }
+  function drawEventSign(name) {
+    if (!eventSign) return; const g = eventSign.c.getContext("2d");
+    g.fillStyle = "#fff8ec"; g.fillRect(0, 0, 256, 160); g.fillStyle = "#c8262c"; g.fillRect(0, 0, 256, 40);
+    g.fillStyle = "#fff"; g.font = 'bold 24px "PingFang TC",sans-serif'; g.textAlign = "center"; g.fillText("紅玉滿 出攤中", 128, 28);
+    g.fillStyle = "#333"; g.font = 'bold ' + (name.length > 8 ? 20 : 28) + 'px "PingFang TC",sans-serif'; g.fillText(name.slice(0, 14), 128, 100);
+    eventSign.m.material.map.needsUpdate = true;
+  }
+
+  // ── 51 新竹光復（加盟）：依 2026-11-12 實景照片 IMG_0769～0771（店面右側外帶窗口：上掀霧面玻璃窗、風扇條、米白布簾）──
+  function guangfuScene(k) {
+    const P = group(k);
+    const OAK = 0xe6d9c3, OAK2 = 0xd8c6a6, BROWN = 0x5a3e2b;
+    floorCanvas(P, (g, w, h) => { g.fillStyle = "#c9c2b6"; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 22) for (let x = (y / 22) % 2 ? -22 : 0; x < w; x += 44) { g.fillStyle = ["#d3ccc0", "#c4bdb1", "#cdc6ba"][((x + y) / 22 | 0) % 3]; g.fillRect(x + 1, y + 1, 42, 20); } }, 0xc9c2b6);
+    // 門口人工草皮
+    box(8.6, 0.04, 1.6, 0x4f8a3c, -0.6, 0.03, -1.0, P);
+    // 店面立面（朝 +z），z = -1.9
+    const FZ = -1.9;
+    box(5.2, 3.3, 0.25, 0xf3eee5, -3.4, 1.65, FZ - 0.15, P); box(3.0, 3.3, 0.25, 0xf3eee5, 3.5, 1.65, FZ - 0.15, P);
+    // 店內（地板與後牆，從窗口看進去）
+    box(11, 2.6, 0.25, 0xe8e2d8, -0.5, 1.3, -4.8, P);
+    // 淺木人字形框
+    box(9.2, 0.18, 0.2, OAK2, -1.0, 3.2, FZ + 0.05, P);
+    // 上方招牌（只寫「日式飯糰」，不放同店品牌名）
+    box(9.6, 0.8, 0.3, 0xf7f5f0, -1.0, 3.7, FZ + 0.1, P);
+    put(P, canvasPlane(9.4, 0.75, 600, 48, (g, w, h) => { g.fillStyle = "#f7f5f0"; g.fillRect(0, 0, w, h); g.strokeStyle = "#5a3e2b"; g.lineWidth = 3; g.beginPath(); g.arc(120, 24, 18, 0, Math.PI * 2); g.stroke(); g.fillStyle = "#5a3e2b"; g.font = 'bold 28px "PingFang TC",sans-serif'; g.fillText("日式飯糰", 160, 34); g.font = "15px sans-serif"; g.fillText("新竹光復店", 470, 32); }), -1.0, 3.7, FZ + 0.26);
+    // 左側：點餐機、菜單板
+    box(0.9, 1.9, 0.5, 0xf2f2f2, -5.2, 0.95, FZ + 0.3, P); box(0.6, 0.5, 0.04, 0x222222, -5.2, 1.4, FZ + 0.56, P);
+    put(P, canvasPlane(2.2, 1.6, 220, 160, (g, w, h) => { g.fillStyle = "#6b4a33"; g.fillRect(0, 0, w, h); g.fillStyle = "#f4e9d8"; g.fillRect(8, 8, w - 16, 90); for (let i = 0; i < 8; i++) { g.fillStyle = "#d8a35a"; g.fillRect(16 + (i % 4) * 50, 18 + (i / 4 | 0) * 40, 36, 22); } g.fillStyle = "#fff"; g.font = 'bold 22px "PingFang TC",sans-serif'; g.fillText("休息中", 70, 135); }), -3.4, 2.0, FZ + 0.02);
+    // 中間玻璃門
+    box(1.4, 2.6, 0.06, 0xd8c6a6, -1.6, 1.3, FZ + 0.02, P);
+    put(P, glassBox(1.2, 2.4, 0.04, 0xcfe6f0, 0.35), -1.6, 1.3, FZ + 0.06);
+    box(0.8, 0.5, 0.06, 0x111111, -1.6, 2.5, FZ + 0.1, P);
+
+    // ── 紅玉滿外帶窗口（右側）──
+    const WX = 0.6, W = 2.2, WY0 = 1.25, WY1 = 2.55;
+    // 窗洞：用四塊牆遮出開口（覆蓋立面該區域）
+    box(W + 0.6, WY0, 0.3, OAK, WX, WY0 / 2, FZ + 0.02, P);
+    box(0.3, WY1 - WY0, 0.3, OAK, WX - W / 2 - 0.15, (WY0 + WY1) / 2, FZ + 0.02, P);
+    box(W + 0.6, 3.3 - WY1, 0.3, OAK, WX, (WY1 + 3.3) / 2, FZ + 0.02, P);
+    // 木窗框、白底紅字招牌
+    box(W, 0.08, 0.32, BROWN, WX, WY1, FZ + 0.04, P); box(0.08, WY1 - WY0, 0.32, BROWN, WX - W / 2, (WY0 + WY1) / 2, FZ + 0.04, P);
+    put(P, canvasPlane(W, 0.6, 360, 98, (g, w, h) => { g.fillStyle = "#fbfaf7"; g.fillRect(0, 0, w, h); g.fillStyle = "#c8262c"; g.font = 'bold 44px "PingFang TC","Noto Sans TC",serif'; g.fillText("紅玉滿", 14, 52); g.font = 'bold 26px "PingFang TC",serif'; g.fillText("赤心雞蛋糕", 176, 50); g.font = "bold 12px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes 홍차계란빵 紅玉心形燒", 14, 84); }), WX, WY1 + 0.36, FZ + 0.19);
+    // 上掀霧面玻璃窗（兩片）
+    [0, 1].forEach(i => {
+      const g = new THREE.Group(); g.position.set(WX - 0.2, WY1 - i * 0.02, FZ + 0.18); g.rotation.x = -1.5 - i * 0.05; P.add(g);
+      box(W - 0.5, 0.06, 0.48, BROWN, 0, 0, 0.24 + i * 0.5, g);
+      const gl = glassBox(W - 0.65, 0.04, 0.36, 0xe6eef0, 0.35); gl.position.set(0, 0.02, 0.24 + i * 0.5); g.add(gl);
+      box(0.12, 0.07, 0.06, 0xc9a24a, -0.5, 0.03, 0.02 + i * 0.5, g); box(0.12, 0.07, 0.06, 0xc9a24a, 0.5, 0.03, 0.02 + i * 0.5, g);
+    });
+    // 右側黑色風扇條
+    box(0.42, WY1 - WY0 + 0.2, 0.3, 0x1a1a1a, WX + W / 2 + 0.05, (WY0 + WY1) / 2, FZ + 0.03, P);
+    for (let i = 0; i < 4; i++) { const f = new THREE.Mesh(new THREE.CircleGeometry(0.15, 12), mat(0x444444)); f.position.set(WX + W / 2 + 0.05, WY0 + 0.2 + i * 0.32, FZ + 0.19); P.add(f); }
+    // 窗台：木層板＋Menu、草皮墊木托盤、竹籤杯、乾洗手、兩層木架雞蛋糕
+    box(W + 0.4, 0.06, 0.45, 0xeadfcb, WX, WY0, FZ + 0.32, P);
+    put(P, canvasPlane(0.42, 0.52, 84, 104, (g, w, h) => { g.fillStyle = "#c63b2b"; g.fillRect(0, 0, w, h); g.fillStyle = "#f3d29b"; g.fillRect(6, 30, w - 12, 50); g.fillStyle = "#fff"; g.font = "bold 13px sans-serif"; g.fillText("Menu", 6, 20); g.font = "10px sans-serif"; g.fillText("初心原味", 10, 96); }), WX - 0.8, WY0 + 0.29, FZ + 0.4);
+    box(0.55, 0.03, 0.28, 0x4f8a3c, WX - 0.25, WY0 + 0.05, FZ + 0.36, P); box(0.5, 0.04, 0.22, 0x5a3e2b, WX - 0.25, WY0 + 0.08, FZ + 0.36, P);
+    box(0.12, 0.16, 0.12, 0xc9a24a, WX + 0.12, WY0 + 0.11, FZ + 0.38, P);
+    box(0.1, 0.3, 0.08, 0xf2f2f2, WX + 0.32, WY0 + 0.18, FZ + 0.38, P);
+    box(0.5, 0.03, 0.3, 0x4f8a3c, WX + 0.75, WY0 + 0.05, FZ + 0.36, P);
+    [0.12, 0.42].forEach(y => box(0.42, 0.03, 0.26, 0xc9a77c, WX + 0.75, WY0 + y, FZ + 0.36, P));
+    [0, 1, 2].forEach(i => box(0.1, 0.07, 0.1, 0xb5651d, WX + 0.6 + i * 0.13, WY0 + 0.17, FZ + 0.36, P));
+    // 窗下米白布簾＋綠葉束、醒獅吊飾
+    put(P, canvasPlane(W + 0.1, 1.05, 330, 160, (g, w, h) => { g.fillStyle = "#f3efe4"; g.fillRect(0, 0, w, h); g.fillStyle = "#2b2420"; g.textAlign = "center"; g.font = 'bold 30px "PingFang TC",serif'; g.fillText("紅玉滿 赤心雞蛋糕", w / 2, 70); g.font = "11px sans-serif"; g.fillText("Hong Yu Man Egg Pancakes 홍차계란빵 紅玉心形燒", w / 2, 92); g.font = '14px "PingFang TC",sans-serif'; g.fillText("願食雞蛋糕，常保赤子心。", w / 2, 122); }), WX, 0.62, FZ + 0.19);
+    box(0.28, 0.5, 0.12, 0x3f7a3a, WX - W / 2 + 0.05, 0.95, FZ + 0.25, P);
+    box(0.22, 0.26, 0.06, 0xe8e2d6, WX - W / 2 - 0.25, 2.05, FZ + 0.2, P); box(0.04, 0.3, 0.04, 0xc0392b, WX - W / 2 - 0.25, 1.75, FZ + 0.2, P);
+    // 鐵桶垃圾桶
+    { const c = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.25, 0.75, 14), mat(0x555a5e)); c.position.set(WX + W / 2 + 0.25, 0.38, FZ + 0.5); P.add(c); }
+    // 窗內：三台烤爐、收銀
+    const ovens = miniOvens(P, [WX - 0.6, WX, WX + 0.6], 0.8, FZ - 0.42);
+    box(W + 0.4, 0.8, 0.4, 0xd9d4ca, WX, 0.4, FZ - 0.42, P);
+    box(0.32, 0.22, 0.04, 0x222222, WX + 0.9, 1.15, FZ - 0.6, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.18), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), WX + 0.9, 1.15, FZ - 0.625, Math.PI);
+    const posFx = { kind: "pos", mesh: scr, on: false }; FX.push(posFx);
+    // 右側不鏽鋼柱＋灰磚柱＋瓦斯錶
+    box(0.5, 4.4, 0.5, 0xb8bdc2, 2.6, 2.2, FZ + 0.05, P);
+    box(1.6, 4.4, 0.8, 0x8e857c, 3.7, 2.2, FZ - 0.1, P);
+    for (let y = 0.2; y < 4.4; y += 0.22) box(1.62, 0.02, 0.82, 0x6f675f, 3.7, y, FZ - 0.1, P);
+    [2.6, 2.0].forEach(y => { box(0.45, 0.4, 0.2, 0xcfd3d6, 3.6, y, FZ + 0.4, P); box(0.04, 1.2, 0.04, 0xc9b26a, 3.3, y - 0.2, FZ + 0.35, P); });
+    // 左前方：棕色桌布長桌＋保溫箱＋直立看板「流心芋圓豆花」
+    box(2.4, 0.05, 1.0, 0x8b6a52, -4.3, 0.95, 0.4, P); box(2.4, 0.9, 1.02, 0x7d5d47, -4.3, 0.5, 0.4, P);
+    box(0.9, 0.45, 0.6, 0x6b6b6b, -4.6, 1.2, 0.3, P); box(0.7, 0.4, 0.5, 0x333333, -3.8, 1.18, 0.3, P);
+    put(P, canvasPlane(0.45, 1.8, 60, 240, (g, w, h) => { g.fillStyle = "#2b2b30"; g.fillRect(0, 0, w, h); g.fillStyle = "#f4f1ea"; g.font = 'bold 30px "PingFang TC",serif'; g.textAlign = "center"; ["流", "心", "芋", "圓", "豆", "花"].forEach((t, i) => g.fillText(t, 30, 36 + i * 36)); }), -5.6, 0.9, 1.1, Math.PI / 6);
+    put(P, textPlane("新竹光復・加盟店", 5, 0.9, { color: "rgba(80,70,60,.35)", size: 56 }), -4.0, 0.03, 4.3, 0, -Math.PI / 2);
+    stockBoard(P, k, 6.4, 0.8);
+    SLOTS[k] = [
+      { x: WX, z: FZ - 0.95, rotY: 0, anim: "cook", fx: ovens[1] },
+      { x: WX + 0.9, z: FZ - 0.95, rotY: 0, anim: "serve", fx: posFx },
+      { x: WX - 0.6, z: FZ - 0.95, rotY: 0, anim: "cook", fx: ovens[0] },
+      { x: WX + 0.6, z: FZ - 1.5, rotY: 0, anim: "cook", fx: ovens[2] },
+      { x: -1.6, z: -3.0, rotY: 0, anim: "stand" },
+      { x: -3.4, z: -3.0, rotY: 0, anim: "stand" },
+    ];
+    makeGuests(k, [[WX - 0.9, -0.9, Math.PI * 0.85], [WX - 1.4, 0.1, Math.PI * 0.85], [-4.3, 1.5, Math.PI]]);
+  }
+  miramarScene("meili");
+  airportScene("airport");
+  huataiScene("huatai");
+  eventScene("event");
+  guangfuScene("guangfu");
   const STALL_COLOR = { "咖啡店": 0x6f4e37, "甜點店": 0xf8a5c2, "花店": 0x58b368, "武器鋪": 0x7f8c8d, "卡片屋": 0x8e44ad, "雜貨店": 0xe67e22 };
   const STALL_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸" };
   function syncShops(list) {
@@ -709,7 +1564,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   let dragX = null;
   const onDown = e => { dragX = e.clientX; };
   const onUp = () => { dragX = null; };
-  const onMove = e => { if (dragX === null) return; az -= (e.clientX - dragX) * 0.008; az = Math.max(-0.2, Math.min(Math.PI / 2 + 0.2, az)); dragX = e.clientX; };
+  const onMove = e => { if (dragX === null) return; azT = null; az -= (e.clientX - dragX) * 0.008; az = Math.max(-0.2, Math.min(Math.PI / 2 + 0.2, az)); dragX = e.clientX; };
   renderer.domElement.addEventListener("pointerdown", onDown);
   window.addEventListener("pointerup", onUp); window.addEventListener("pointermove", onMove);
 
@@ -991,8 +1846,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   let raf, last = performance.now(), guestClock = 3;
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    camX += (SCENES[view].x - camX) * Math.min(1, dt * 4);
-    camera.position.set(camX + Math.sin(az) * 30, 24, Math.cos(az) * 30); camera.lookAt(camX, 0.5, 0);
+    const fc = SCENES[view].focus || { x: 0, z: 0, zoom: 1 };
+    if (view !== lastView) { lastView = view; azT = fc.az != null ? fc.az : Math.PI / 4; }
+    if (azT != null) { az += (azT - az) * Math.min(1, dt * 4); if (Math.abs(azT - az) < 0.002) azT = null; }
+    const kk = Math.min(1, dt * 4);
+    camX += (SCENES[view].x + fc.x - camX) * kk; camZ += (fc.z - camZ) * kk;
+    if (Math.abs(camera.zoom - fc.zoom) > 0.002) { camera.zoom += (fc.zoom - camera.zoom) * kk; camera.updateProjectionMatrix(); }
+    camera.position.set(camX + Math.sin(az) * 30, 24, camZ + Math.cos(az) * 30); camera.lookAt(camX, 0.5, camZ);
     sun.position.set(camX + 8, 18, 10); sun.target.position.set(camX, 0, 0);
     GROUPS.forEach(g => (g.visible = Math.abs(g.position.x - camX) < 34));
 
@@ -1013,14 +1873,27 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     }
     boss.g.visible = camX < 34 && !GAME.boss; animChar(boss, dt); place(boss);
     tickGame(dt);
+    TWINKLE.forEach((b, i) => b.visible = Math.sin(now / 300 + i * 1.7) > -0.6);
+    SNOW.forEach(f => { f.position.y -= dt * 0.8; if (f.position.y < 0) f.position.y = 9; });
+    if (EVENT_CAR) {
+      const E = EVENT_CAR, cx = E.car.position, wx = SCENES.event.x;
+      if (view === "event" && E.state === "idle") { E.state = "drive"; cx.x = 11; E.cap.g.visible = false; }
+      if (view !== "event" && E.state !== "idle" && Math.abs(camX - wx) > 20) { E.state = "idle"; cx.x = 11; E.cap.g.visible = false; }
+      if (E.state === "drive") { cx.x = Math.max(5.0, cx.x - dt * 4.0); if (cx.x <= 5.0) { E.state = "park"; E.t = 0; } }
+      if (E.state === "park") { E.t += dt; if (E.t > 0.6 && !E.cap.g.visible) { E.cap.g.visible = true; E.cap.g.position.set(wx + 4.4, 0, 2.6); E.cap.g.rotation.y = -Math.PI * 0.75; say(E.cap, "物資送到了！加油 💪", 3500); } }
+      if (E.cap.g.visible) { animChar(E.cap, dt); place(E.cap); } else E.cap.bubble.style.visibility = E.cap.tagEl.style.visibility = "hidden";
+    }
+    ROBOTS.forEach(r => { if (r.userData.wave) r.userData.wave.rotation.z = Math.sin(now / 400) * 0.25; });
     const blinkFast = now / 90;
+    FX.forEach(f => { if (f.link && f.on) f.link.forEach(l => (l.on = true)); });
     FX.forEach(f => {
       if (f.kind === "screen") f.mesh.material.color.setHex(f.on ? (Math.sin(now / 120 + f.mesh.position.x) > -0.6 ? 0x5dade2 : 0x85c1e9) : 0x2a2f45);
       if (f.kind === "pos") f.mesh.material.color.setHex(f.on ? 0x58d68d : 0x2a2f45);
       if (f.kind === "oven") {
+        if (f.link && f.on) f.link.forEach(l => (l.on = true));
         f.mesh.material.color.setHex(f.on ? (Math.sin(blinkFast + f.seed) > -0.5 ? 0xff6a1a : 0xffa040) : 0x3a2a2a);
         if (f.on) { f.flipT += dt; const k = Math.floor(f.flipT / 1.8), ph = Math.min(1, (f.flipT % 1.8) / 0.45); f.mold.rotation.x = (k + ph) * Math.PI; }
-        f.puffs.forEach(p => { if (f.on) { p.userData.t += dt; const tt = p.userData.t % 1.8; p.position.y = 1.95 + tt * 0.9; p.material.opacity = 0.55 * (1 - tt / 1.8); } else p.material.opacity = Math.max(0, p.material.opacity - dt); });
+        f.puffs.forEach(p => { if (f.on) { p.userData.t += dt; const tt = p.userData.t % 1.8; p.position.y = (f.small ? 0.75 : 1.95) + tt * (f.small ? 0.6 : 0.9); p.material.opacity = 0.55 * (1 - tt / 1.8); } else p.material.opacity = Math.max(0, p.material.opacity - dt); });
       }
     });
     // 客人
@@ -1040,6 +1913,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   return {
     setCrew,
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
+    setEventName(n) { drawEventSign(n || "今日活動"); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
     setView(k) { if (SCENES[k]) view = k; },
     // 遊戲化資料:{ pets, worn, birthdays, champion, fireworks, unlocks, holiday, weather }
