@@ -104,6 +104,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   })();
   const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss]));
   useEffect(() => { engine.current && engine.current.setCrew(sceneList); }, [sceneSig]);
+  // 活動場景招牌：顯示在「活動」打卡的夥伴填的活動名稱（後端 getOnDutyCrew 需回傳打卡備註 note，格式「活動:○○」）
+  useEffect(() => {
+    const ev = (onDuty || []).find(p => /活動/.test(p.location || "") && p.note);
+    const name = ev ? String(ev.note).replace(/^活動[:：]\s*/, "") : "";
+    engine.current && engine.current.setEventName && engine.current.setEventName(name || "今日活動");
+  }, [onDuty]);
   useEffect(() => {
     const map = {};
     short.forEach(x => (map[x.scene] = map[x.scene] || []).push(x.item));
