@@ -79,7 +79,8 @@ const PENGUIN_LINES = ["企鵝不怕熱 🐧", "翻模！翻模！", "這批烤�
 const GUEST_LINES = ["我要一盒原味！", "紅玉跟抹茶各一盒～", "造型好可愛，先拍照 📸", "現烤的好香喔！", "可以刷卡嗎？", "買回去給小孩吃 😊", "逛街逛到餓了～"];
 const pick = a => a[(Math.random() * a.length) | 0];
 
-export function createOffice(container) {
+export function createOffice(container, opts) {
+  opts = opts || {};
   // ── 基本設定 ──
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -94,15 +95,23 @@ export function createOffice(container) {
   scene.background = new THREE.Color(0x1d1b2e);
   const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 200);
   let camZ = 0, lastView = null, azT = null; let view = "office", camX = 0, az = Math.PI / 4;
+  // v1.21 放大：使用者縮放倍率 uz、平移 pan、點人跟拍 follow、全螢幕 full
+  let uz = 1, panX = 0, panZ = 0, follow = null, full = false;
+  const ZMIN = 0.6, ZMAX = 3.5;
 
   function size() {
-    const w = container.clientWidth || 360, h = Math.round(Math.min(w * 0.85, 460));
+    const w = container.clientWidth || 360;
+    // 一般模式：畫面上限＝螢幕高度 65%；全螢幕：鋪滿
+    const h = full ? (container.clientHeight || window.innerHeight) : Math.round(Math.max(260, Math.min(w * 1.15, window.innerHeight * 0.65)));
     renderer.setSize(w, h);
-    const a = w / h, s = Math.max(7.5, 12.5 / a);
+    // 直式畫面較高：左右可視範圍收窄一點，小人更大（可再用雙指縮放）
+    const a = w / h, s = a < 1 ? 10.5 / a : Math.max(7.5, 12.5 / a);
     camera.left = -s * a; camera.right = s * a; camera.top = s; camera.bottom = -s;
     camera.updateProjectionMatrix();
   }
   window.addEventListener("resize", size);
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => size()) : null;
+  ro && ro.observe(container);
 
   scene.add(new THREE.HemisphereLight(0xfff4e6, 0x3a3350, 0.75));
   const sun = new THREE.DirectionalLight(0xffffff, 0.75);
@@ -1560,13 +1569,93 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (c.tagEl) { v.set(c.g.position.x, c.g.position.y + 2.5, c.g.position.z).project(camera); c.tagEl.style.left = ((v.x + 1) / 2 * w) + "px"; c.tagEl.style.top = ((1 - v.y) / 2 * h + 4) + "px"; }
   }
 
-  // 拖曳旋轉
-  let dragX = null;
-  const onDown = e => { dragX = e.clientX; };
-  const onUp = () => { dragX = null; };
-  const onMove = e => { if (dragX === null) return; azT = null; az -= (e.clientX - dragX) * 0.008; az = Math.max(-0.2, Math.min(Math.PI / 2 + 0.2, az)); dragX = e.clientX; };
-  renderer.domElement.addEventListener("pointerdown", onDown);
-  window.addEventListener("pointerup", onUp); window.addEventListener("pointermove", onMove);
+  // ── v1.21 手勢：單指（全螢幕）拖曳平移／（一般模式）左右旋轉；雙指縮放＋平移＋旋轉；滑鼠滾輪縮放；點人拉近 ──
+  const ptrs = new Map(); let tap = null, pinch = null;
+  const cv = renderer.domElement;
+  cv.style.touchAction = "pan-y";
+  function worldPerPx() { return (camera.right - camera.left) / camera.zoom / (cv.clientWidth || 1); }
+  function unfollowKeep() {
+    if (!follow) return;
+    const m = crew.get(follow), fc = SCENES[view].focus || { x: 0, z: 0 };
+    if (m) { panX = m.c.g.position.x - SCENES[view].x - (fc.x || 0); panZ = m.c.g.position.z - (fc.z || 0); }
+    follow = null; opts.onPick && opts.onPick(null);
+  }
+  function panBy(dx, dy) {
+    unfollowKeep();
+    const k = worldPerPx(), rx = Math.cos(az), rz = -Math.sin(az), fx = -Math.sin(az), fz = -Math.cos(az);
+    panX += -rx * dx * k + fx * dy * k / 0.625; panZ += -rz * dx * k + fz * dy * k / 0.625;
+    panX = Math.max(-14, Math.min(14, panX)); panZ = Math.max(-10, Math.min(10, panZ));
+  }
+  const clampZ = () => (uz = Math.max(ZMIN, Math.min(ZMAX, uz)));
+  const pinchOf = () => { const [a, b] = [...ptrs.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; };
+  const onDown = e => {
+    if (e.target !== cv) return;
+    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    if (ptrs.size === 1) tap = { x: e.clientX, y: e.clientY, t: performance.now() };
+    else { tap = null; if (ptrs.size === 2) pinch = pinchOf(); }
+  };
+  const onUp = e => {
+    if (!ptrs.has(e.pointerId)) return;
+    ptrs.delete(e.pointerId);
+    if (ptrs.size < 2) pinch = null;
+    if (tap && e.type === "pointerup" && performance.now() - tap.t < 400 && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 10) pickAt(e.clientX, e.clientY);
+    tap = null;
+  };
+  const onMove = e => {
+    const p = ptrs.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+    if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) >= 10) tap = null;
+    if (ptrs.size === 1) {
+      if (tap) return;
+      if (full || (e.pointerType === "mouse" && !e.shiftKey)) panBy(dx, dy);
+      else { azT = null; az -= dx * 0.008; az = Math.max(-0.2, Math.min(Math.PI / 2 + 0.2, az)); }
+    } else if (ptrs.size === 2 && pinch) {
+      const q = pinchOf();
+      uz *= q.d / pinch.d; clampZ();
+      azT = null; let da = q.ang - pinch.ang; if (da > Math.PI) da -= 2 * Math.PI; if (da < -Math.PI) da += 2 * Math.PI;
+      az = Math.max(-0.2, Math.min(Math.PI / 2 + 0.2, az - da));
+      panBy(q.mx - pinch.mx, q.my - pinch.my);
+      pinch = q;
+    }
+  };
+  const onWheel = e => {
+    if (!full && !e.ctrlKey) return;
+    e.preventDefault(); uz *= Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0015)); clampZ();
+  };
+  // 點人：用射線找被點到的夥伴
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  function pickAt(cx, cy) {
+    const r = cv.getBoundingClientRect();
+    ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const list = [...crew.values()].filter(m => !m.leaving && m.c.g.visible && m.scene === view);
+    const hits = ray.intersectObjects(list.map(m => m.c.g), true);
+    let hit = null;
+    if (hits.length) { let o = hits[0].object; while (o && !hit) { hit = list.find(m => m.c.g === o) || null; o = o.parent; } }
+    if (!hit) {
+      // 點在名牌附近也算（小人在手機上很小）
+      let best = null, bd = 34;
+      list.forEach(m => { v.set(m.c.g.position.x, m.c.g.position.y + 1.2, m.c.g.position.z).project(camera); const sx = r.left + (v.x + 1) / 2 * r.width, sy = r.top + (1 - v.y) / 2 * r.height, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = m; } });
+      hit = best;
+    }
+    if (hit) focusCrew(String(hit.p.id));
+    else if (follow) { follow = null; opts.onPick && opts.onPick(null); }
+  }
+  function focusCrew(id) {
+    const m = id && crew.get(String(id));
+    if (!m) { if (follow) { follow = null; opts.onPick && opts.onPick(null); } return false; }
+    if (m.scene !== view) { view = m.scene; resetCam(); }
+    follow = String(id);
+    const fc = SCENES[view].focus || { zoom: 1 };
+    uz = Math.max(uz, 2.8 / (fc.zoom || 1)); clampZ();
+    opts.onPick && opts.onPick(m.p);
+    return true;
+  }
+  function resetCam() { uz = 1; panX = panZ = 0; const fc = SCENES[view].focus || {}; azT = fc.az != null ? fc.az : Math.PI / 4; }
+  cv.addEventListener("pointerdown", onDown);
+  cv.addEventListener("wheel", onWheel, { passive: false });
+  window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp); window.addEventListener("pointermove", onMove);
 
   // ════════ 遊戲化圖層:寵物(v1.19:5 型態 × 5 階段、會說話、會互相玩)、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
   const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4] };
@@ -1843,15 +1932,42 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     tickParty(dt); tickFireworks(dt); tickRain(dt);
   }
 
-  let raf, last = performance.now(), guestClock = 3;
+  let raf, last = performance.now(), guestClock = 3; const talkUntil = {};
+  // v1.21 名牌避讓：同一畫面的名牌重疊時，後面的往上錯開
+  const tagSz = new WeakMap(); let tagN = 0;
+  function declutter() {
+    tagN++;
+    const arr = [];
+    const add = c => { const el = c && c.tagEl; if (!el || el.style.visibility === "hidden" || !c.g.visible) return;
+      let sz = tagSz.get(el); if (!sz || tagN % 30 === 0) { sz = [el.offsetWidth || 50, el.offsetHeight || 16]; tagSz.set(el, sz); }
+      arr.push({ el, x: parseFloat(el.style.left) || 0, y: parseFloat(el.style.top) || 0, w: sz[0], h: sz[1] }); };
+    for (const m of crew.values()) add(m.c);
+    add(boss); if (EVENT_CAR) add(EVENT_CAR.cap);
+    arr.sort((a, b) => b.y - a.y);
+    const done = [];
+    arr.forEach(t => {
+      for (let i = 0; i < 8; i++) {
+        const o = done.find(d => Math.abs(d.x - t.x) < (d.w + t.w) / 2 && t.y > d.y - d.h - 1 && t.y - t.h < d.y);
+        if (!o) break; t.y = o.y - o.h - 2;
+      }
+      t.el.style.top = t.y + "px"; done.push(t);
+    });
+  }
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const fc = SCENES[view].focus || { x: 0, z: 0, zoom: 1 };
     if (view !== lastView) { lastView = view; azT = fc.az != null ? fc.az : Math.PI / 4; }
     if (azT != null) { az += (azT - az) * Math.min(1, dt * 4); if (Math.abs(azT - az) < 0.002) azT = null; }
-    const kk = Math.min(1, dt * 4);
-    camX += (SCENES[view].x + fc.x - camX) * kk; camZ += (fc.z - camZ) * kk;
-    if (Math.abs(camera.zoom - fc.zoom) > 0.002) { camera.zoom += (fc.zoom - camera.zoom) * kk; camera.updateProjectionMatrix(); }
+    const kk = Math.min(1, dt * (ptrs.size ? 12 : 4));
+    let tx = SCENES[view].x + fc.x + panX, tz = fc.z + panZ;
+    if (follow) {
+      const fm = crew.get(follow);
+      if (!fm || fm.leaving || fm.scene !== view) { follow = null; opts.onPick && opts.onPick(null); }
+      else { tx = fm.c.g.position.x; tz = fm.c.g.position.z; }
+    }
+    const tzoom = fc.zoom * uz;
+    camX += (tx - camX) * kk; camZ += (tz - camZ) * kk;
+    if (Math.abs(camera.zoom - tzoom) > 0.002) { camera.zoom += (tzoom - camera.zoom) * kk; camera.updateProjectionMatrix(); }
     camera.position.set(camX + Math.sin(az) * 30, 24, camZ + Math.cos(az) * 30); camera.lookAt(camX, 0.5, camZ);
     sun.position.set(camX + 8, 18, 10); sun.target.position.set(camX, 0, 0);
     GROUPS.forEach(g => (g.visible = Math.abs(g.position.x - camX) < 34));
@@ -1863,7 +1979,9 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (m.arrived && !m.leaving) {
         const s = slotPos(m.scene, m.slot); if (s.fx) s.fx.on = true;
         m.talk -= dt;
+        if (m.talk <= 0 && (talkUntil[m.scene] || 0) > now) m.talk = 1.5 + Math.random() * 2.5;
         if (m.talk <= 0) {
+          talkUntil[m.scene] = now + 3200;
           m.talk = 10 + Math.random() * 12;
           m.sayN = (m.sayN || 0) + 1;
           const lines = m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "office" ? OFFICE_LINES : SHOP_LINES;
@@ -1903,8 +2021,9 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (guestClock <= 0) {
       guestClock = 3 + Math.random() * 4;
       const gs = staffed[view] && GUESTS[view];
-      if (gs) { const g = pick(gs); g.anim = "talk"; say(g, pick(GUEST_LINES), 2600); setTimeout(() => (g.anim = "stand"), 2600); }
+      if (gs && (talkUntil[view] || 0) < now) { talkUntil[view] = now + 2900; const g = pick(gs); g.anim = "talk"; say(g, pick(GUEST_LINES), 2600); setTimeout(() => (g.anim = "stand"), 2600); }
     }
+    declutter();
     renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
@@ -1915,7 +2034,12 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setEventName(n) { drawEventSign(n || "今日活動"); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
-    setView(k) { if (SCENES[k]) view = k; },
+    setView(k) { if (SCENES[k] && k !== view) { view = k; if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); } },
+    // v1.21 放大
+    setFullscreen(b) { full = !!b; cv.style.touchAction = full ? "none" : "pan-y"; size(); },
+    resetView() { if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); },
+    zoomBy(f) { uz *= f; clampZ(); },
+    focusCrew,
     // 遊戲化資料:{ pets, worn, birthdays, champion, fireworks, unlocks, holiday, weather }
     setGame(g) {
       const prev = GAME; GAME = Object.assign({}, GAME, g || {});
@@ -1934,7 +2058,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     dispose() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", size);
-      window.removeEventListener("pointerup", onUp); window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp); window.removeEventListener("pointercancel", onUp); window.removeEventListener("pointermove", onMove);
+      ro && ro.disconnect();
       renderer.dispose(); overlay.remove(); renderer.domElement.remove();
     },
   };
