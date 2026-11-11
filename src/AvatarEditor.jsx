@@ -14,7 +14,7 @@ const hex = n => "#" + n.toString(16).padStart(6, "0");
 const col = (list, id) => hex((list.find(x => x.id === id) || list[0]).c);
 
 // 2D 像素預覽(20×30 格,與 3D 小人同樣的配件組合)
-function Doll({ cfg, size = 190 }) {
+export function Doll({ cfg, size = 190 }) {
   const OC = { chefsuit: ["#ffffff", "#2c2c3a"], spacesuit: ["#dfe6ec", "#dfe6ec"], raincoat: ["#f4d03f", null] }[cfg.outfit];
   const skin = col(SKINS, cfg.skin), hair = col(HAIR_COLORS, cfg.hairColor), top = OC ? OC[0] : col(TOPS, cfg.top), pants = OC && OC[1] ? OC[1] : col(PANTS, cfg.pants);
   if (cfg.outfit === "goldtrex") cfg = { ...cfg, mascot: "trex", _gold: true };

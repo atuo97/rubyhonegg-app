@@ -13,6 +13,11 @@ export const SCENES = {
   hall:    { x: 120, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true },
   nangang: { x: 160, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true },
   zhubei:  { x: 200, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true },
+  // v1.20 新增門市(只有〈櫃位設定〉營運中的門市才會出現在分頁)
+  meili:   { x: 320, name: "美麗華",       short: "美麗華", icon: "🎡", aisle: -2.8, store: true },
+  huatai:  { x: 360, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true },
+  airport: { x: 400, name: "桃園機場 × 山海豆花", short: "桃機", icon: "✈️", aisle: -2.8, store: true },
+  guangfu: { x: 440, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -2.8, store: true },
   other:   { x: 240, name: "其他櫃位・活動", short: "其他", icon: "🎪", aisle: -2.8, store: true },
   street:  { x: 280, name: "夥伴商店街",   short: "商店街", icon: "🏪", aisle: 2.6 },
 };
@@ -21,9 +26,13 @@ export const SCENE_KEYS = Object.keys(SCENES);
 // 打卡地點 → 場景
 export function sceneOf(loc = "") {
   if (/信義/.test(loc)) return "xinyi";
-  if (/音樂廳/.test(loc)) return "hall";
+  if (/音樂廳|兩廳院/.test(loc)) return "hall";
   if (/南港/.test(loc)) return "nangang";
   if (/竹北/.test(loc)) return "zhubei";
+  if (/美麗華/.test(loc)) return "meili";
+  if (/華泰/.test(loc)) return "huatai";
+  if (/機場|山海/.test(loc)) return "airport";
+  if (/光復/.test(loc)) return "guangfu";
   if (/工廠|中央廚房/.test(loc)) return "factory";
   if (/辦公/.test(loc)) return "office";
   if (/商店街/.test(loc)) return "street";
@@ -471,6 +480,29 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     [[-7.4, -5.6], [7.4, -5.6], [-7.4, 4.8]].forEach(p => box(0.9, 4.2, 0.9, 0xdcd3c6, p[0], 2.1, p[1], P));
     box(5.5, 0.35, 1.3, 0x7f8c8d, 5.2, 1.6, -4.6, P).rotation.z = 0.55;
     [-5.2, -4.0].forEach(z => { const g = put(P, glassBox(5.5, 0.7, 0.05, 0xcfefff, 0.35), 5.2, 2.1, z); g.rotation.z = 0.55; });
+  } });
+  storeScene("meili", { floor: [0xf3ece2, 0xe6dccd], wall: 0xfff6ea, trim: 0xd94a3a, counter: 0x8a5a3c, title: "美麗華 B1", signBg: "#d94a3a", deco: P => {
+    const R = new THREE.Group(); R.position.set(-10.5, 6, -4.5); P.add(R);                       // 摩天輪
+    for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; box(0.12, 4, 0.12, 0xe8e8e8, Math.cos(a) * 2, Math.sin(a) * 2, 0, R).rotation.z = a + Math.PI / 2;
+      box(0.55, 0.55, 0.55, [0xe74c3c, 0xf1c40f, 0x3498db, 0x2ecc71][i % 4], Math.cos(a) * 4, Math.sin(a) * 4, 0, R); }
+    box(0.4, 6, 0.4, 0xbdc3c7, -10.5, 3, -4.5, P);
+  } });
+  storeScene("huatai", { floor: [0xe9e4dc, 0xdcd5ca], wall: 0xf7f2ea, trim: 0x2c3e50, counter: 0x2c3e50, title: "華泰名品城", signBg: "#2c3e50", deco: P => {
+    const tree = (x, z) => { box(0.3, 0.8, 0.3, 0x6e4b2a, x, 0.4, z, P); [[2.2, 1.2], [1.7, 2.1], [1.2, 2.9], [0.7, 3.6]].forEach(([w, y]) => box(w, 0.8, w, 0x2e7d4f, x, y, z, P)); box(0.4, 0.4, 0.4, 0xf1c40f, x, 4.2, z, P); };
+    tree(6.4, -3.6);                                                                               // 聖誕樹旁
+    [[5.4, -2.4, 0xe74c3c], [7.4, -2.6, 0x3498db], [6.4, -2.2, 0xf1c40f]].forEach(([x, z, c]) => box(0.6, 0.5, 0.6, c, x, 0.25, z, P));
+  } });
+  storeScene("airport", { floor: [0xdfe6ec, 0xcfd8df], wall: 0xf4f7f9, trim: 0x1f6f8b, counter: 0x6e4b2a, title: "桃園機場第二航廈 × 山海豆花", signBg: "#1f6f8b", deco: P => {
+    put(P, glassBox(0.2, 4, 12, 0xbfe0ff, 0.3), -8.2, 2, 0);
+    const pl = new THREE.Group(); pl.position.set(-11.5, 3.2, -1); P.add(pl);                    // 窗外的飛機
+    box(5, 0.7, 0.7, 0xffffff, 0, 0, 0, pl); box(0.6, 0.1, 4.2, 0xdfe6ec, 0.2, 0, 0, pl); box(0.6, 1.2, 0.1, 0x1f6f8b, -2.3, 0.6, 0, pl);
+    put(P, textPlane("✈ 出境 Departures", 3.6, 0.6, { bg: "#14365a", color: "#ffd84d", size: 56 }), 4.6, 3.3, -5.98);
+    box(1.3, 1.0, 1.3, 0xf5f0e6, 5.6, 0.5, 1.8, P); put(P, textPlane("山海豆花", 1.3, 0.4, { bg: "#7a4b2a", color: "#fff", size: 48 }), 5.6, 1.2, 2.46);
+  } });
+  storeScene("guangfu", { floor: [0xeadfce, 0xdccfba], wall: 0xfaf3e6, trim: 0x8e6e3a, counter: 0x6e4b2a, title: "新竹光復隊（加盟）", signBg: "#8e6e3a", deco: P => {
+    box(3.2, 2.6, 0.2, 0x9ad0ec, -10, 1.8, -2, P); box(3.4, 0.2, 0.4, 0x8e6e3a, -10, 3.2, -2, P);     // 街邊店面窗
+    [[-6.8, 3.2], [7, 3.4]].forEach(([x, z]) => { box(0.6, 0.6, 0.6, 0xc89f6e, x, 0.3, z, P); box(0.8, 0.9, 0.8, 0x58b368, x, 1.0, z, P); });
+    box(1.6, 0.9, 0.8, 0xd35400, 5.8, 0.45, 2.2, P); put(P, textPlane("風城 🌬", 1.6, 0.45, { bg: "#fff3e0", color: "#8e6e3a", size: 44 }), 5.8, 1.15, 2.62);
   } });
   storeScene("other", { floor: [0xf2e6d8, 0xe8d8c4], wall: 0xfdf0e2, trim: 0xc0392b, counter: 0x6e4b2a, title: "其他櫃位・活動", deco: P => {
     box(0.1, 3, 0.1, 0x888888, 6.5, 1.5, -2.5, P); box(0.1, 3, 0.1, 0x888888, 6.5, 1.5, 0.5, P);

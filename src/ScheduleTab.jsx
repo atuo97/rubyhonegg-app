@@ -3,7 +3,8 @@
 //   ScheduleManager:分隊長/管理員排班(個人月曆「刷子」連點、櫃位週檢視、換班核准、打卡對帳、班型設定)
 //   MyShifts:夥伴「我的班表」(本月/下月班、填空檔、轉讓/釋出/認領空班)
 // 規則(隊長定案):一人一天預設只能一個櫃位;Lv.3 以上可加排第二個櫃位,但時間不能重疊。
-// 改動先存在手機(草稿),按「發布」才一次寫入〈班表〉。薪資一律仍依實際打卡計算。
+// 改動先存在手機(草稿),按「發布」才一次寫入〈班表〉。
+// v1.20:已排的班可「改時間」;對帳頁加「待確認（影響薪資）」:核准加班、確認無打卡、核准臨時支援(新工時規則,2026-12 起)。
 // ═══════════════════════════════════════════════
 import { useState, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -167,6 +168,14 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
     saveOps(cur); return fails;
   };
   const removeShift = x => saveOps(x.draft ? ops.filter(o => o.key !== x.id) : ops.concat([{ op:"del", id:x.id }]));
+  // v1.20:已排的班改時間(活動時間常變)= 刪掉原本那班 + 同櫃位排入新時間,一樣先存草稿、按發布才生效
+  const retime = (x, start, end) => {
+    if (!start || !end) return "請填上下班時間";
+    const base = x.draft ? ops.filter(o => o.key !== x.id) : ops.concat([{ op:"del", id:x.id }]);
+    const r = planAssign(base, x.empId, x.date, x.loc, start, end, true);
+    if (!r.err) saveOps(r.next);
+    return r.err;
+  };
 
   const publish = async () => {
     const payload = ops.map(o => o.op === "del" ? { op:"del", id:o.id } : { op:"add", date:o.date, loc:o.loc, empId:o.empId, start:o.start, end:o.end });
@@ -188,7 +197,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
           <div style={{ display:"flex", gap:6 }}>
             <button onClick={() => setYm(addMonth(ym, 1))} style={navBtn(C)}>›</button>
             <button onClick={load} title="重新整理" style={{ ...navBtn(C), opacity: loading ? .4 : 1 }}>↻</button>
-            <button onClick={() => setTplOpen(true)} title="班型設定" style={navBtn(C)}>⚙︎</button>
+            <button onClick={() => setTplOpen(true)} title="各櫃位平日／假日上班時間" style={{ ...navBtn(C), width:"auto", padding:"0 10px", fontSize:13 }}>⏰ 上班時間</button>
           </div>
         </div>
         <Seg C={C} value={view} onChange={setView} items={[["person","個人"],["loc","櫃位"],["req","申請",pendingReq],["rec","對帳"]]}/>
@@ -207,10 +216,10 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
       {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
       {!b && loading && <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>載入中…</div>}
 
-      {b && view === "person" && <PersonView {...{ b, ym, eff, ops, hol, wage, role, managed, locColor, assign, removeShift, C, s, today }}/>}
-      {b && view === "loc"    && <LocView {...{ b, ym, eff, hol, role, managed, locColor, assign, assignMany, removeShift, C, s, today }}/>}
+      {b && view === "person" && <PersonView {...{ b, ym, eff, ops, hol, wage, role, managed, locColor, assign, removeShift, retime, C, s, today }}/>}
+      {b && view === "loc"    && <LocView {...{ b, ym, eff, hol, role, managed, locColor, assign, assignMany, removeShift, retime, C, s, today }}/>}
       {b && view === "req"    && <ReqView {...{ b, user, apiPost, reload:load, managed, hol, C, s, today }}/>}
-      {b && view === "rec"    && <RecView {...{ user, ym, apiGet, C, s }}/>}
+      {b && view === "rec"    && <RecView {...{ user, ym, apiGet, apiPost, C, s }}/>}
 
       {ops.length > 0 && (
         <div style={{ position:"fixed", left:"50%", transform:"translateX(-50%)", bottom:"calc(74px + env(safe-area-inset-bottom))", width:"calc(100% - 24px)", maxWidth:456,
@@ -258,7 +267,7 @@ const navBtn = C => ({ width:34, height:34, borderRadius:10, border:`1px solid $
 const barBtn = { border:"none", borderRadius:10, padding:"8px 12px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" };
 
 // ── 個人:選夥伴 → 選刷子(櫃位・班型)→ 連點日子 ──
-function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, removeShift, C, s, today }) {
+function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, removeShift, retime, C, s, today }) {
   const [q, setQ] = useState("");
   const [empId, setEmpId] = useState("");
   const [brush, setBrush] = useState(null);     // {loc, name, start, end}
@@ -389,7 +398,7 @@ function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, re
           ))}
         </div>
 
-        {day && <DaySheet {...{ C, s, b, emp, day, mine, hol, role, managed, locColor, assign, removeShift, onClose:() => setDay(null) }}/>}
+        {day && <DaySheet {...{ C, s, b, emp, day, mine, hol, role, managed, locColor, assign, removeShift, retime, onClose:() => setDay(null) }}/>}
       </>}
     </>
   );
@@ -404,7 +413,20 @@ function Stat({ C, label, value, sub, ok }) {
   );
 }
 // 單日詳細:選櫃位班型、自訂時間、刪除
-function DaySheet({ C, s, b, emp, day, mine, hol, role, managed, locColor, assign, removeShift, onClose }) {
+// 已排的班:改時間(行內編輯)
+function Retime({ C, s, x, retime, onDone, setErr }) {
+  const [st, setSt] = useState(x.start), [en, setEn] = useState(x.end);
+  return (
+    <div style={{ display:"flex", gap:6, alignItems:"center", padding:"6px 0 10px", borderBottom:`1px solid ${C.border}` }}>
+      <input type="time" step="1800" value={st} onChange={e => setSt(e.target.value)} style={{ ...s.input, padding:"8px", flex:1 }}/>
+      <span style={{ color:C.muted }}>–</span>
+      <input type="time" step="1800" value={en} onChange={e => setEn(e.target.value)} style={{ ...s.input, padding:"8px", flex:1 }}/>
+      <button onClick={() => { const e = retime(x, st, en); if (e) setErr(e); else onDone(); }} style={{ ...s.btn("primary"), width:"auto", padding:"8px 12px", fontSize:12.5 }}>改好了</button>
+    </div>
+  );
+}
+function DaySheet({ C, s, b, emp, day, mine, hol, role, managed, locColor, assign, removeShift, retime, onClose }) {
+  const [editing, setEditing] = useState(null);
   const [err, setErr] = useState("");
   const [st, setSt] = useState("10:00"), [en, setEn] = useState("20:00"), [loc, setLoc] = useState(managed[0] || "");
   const cur = mine.filter(x => x.date === day);
@@ -418,9 +440,11 @@ function DaySheet({ C, s, b, emp, day, mine, hol, role, managed, locColor, assig
         <div key={x.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:`1px solid ${C.border}` }}>
           <span style={{ width:8, height:8, borderRadius:4, background: managed.includes(x.loc) ? locColor[x.loc] : C.light }}/>
           <div style={{ flex:1, fontSize:13.5 }}>{x.loc}<div style={{ fontSize:12, color:C.muted }}>{x.start}–{x.end}{x.draft ? "・未發布" : ""}{!managed.includes(x.loc) ? "・其他分隊長排定" : ""}</div></div>
+          {managed.includes(x.loc) && <button onClick={() => setEditing(editing === x.id ? null : x.id)} style={{ ...s.btn("ghost"), width:"auto", padding:"6px 10px", fontSize:12 }}>改時間</button>}
           {managed.includes(x.loc) && <button onClick={() => { removeShift(x); onClose(); }} style={{ ...s.btn("ghost"), width:"auto", padding:"6px 12px", fontSize:12, color:C.red }}>刪除</button>}
         </div>
       ))}
+      {cur.filter(x => x.id === editing).map(x => <Retime key={x.id} {...{ C, s, x, retime, setErr, onDone:onClose }}/>)}
       {locked ? (
         <div style={{ fontSize:13, color:C.muted, marginTop:12, lineHeight:1.7 }}>這天已排在 {elsewhere[0].loc}。<br/>一人一天只能一個櫃位;如需同日加排第二個櫃位,請 Lv.3 以上處理。</div>
       ) : <>
@@ -456,7 +480,7 @@ function DaySheet({ C, s, b, emp, day, mine, hol, role, managed, locColor, assig
 }
 
 // ── 櫃位:週檢視、人數夠不夠、加人 ──
-function LocView({ b, ym, eff, hol, role, managed, locColor, assign, assignMany, removeShift, C, s, today }) {
+function LocView({ b, ym, eff, hol, role, managed, locColor, assign, assignMany, removeShift, retime, C, s, today }) {
   const [loc, setLoc] = useState(managed[0] || "");
   const first = daysOf(ym)[0];
   const [wk, setWk] = useState(() => { const base = today.slice(0, 7) === ym ? today : first; return addDays(base, -wd(base)); });
@@ -508,11 +532,12 @@ function LocView({ b, ym, eff, hol, role, managed, locColor, assign, assignMany,
           </button>
         );
       })}
-      {day && <LocDaySheet {...{ C, s, b, loc, day, eff, hol, role, managed, assign, removeShift, onClose:() => setDay(null) }}/>}
+      {day && <LocDaySheet {...{ C, s, b, loc, day, eff, hol, role, managed, assign, removeShift, retime, onClose:() => setDay(null) }}/>}
     </>
   );
 }
-function LocDaySheet({ C, s, b, loc, day, eff, hol, role, managed, assign, removeShift, onClose }) {
+function LocDaySheet({ C, s, b, loc, day, eff, hol, role, managed, assign, removeShift, retime, onClose }) {
+  const [editing, setEditing] = useState(null);
   const ts = (b.templates[loc] || []).filter(t => tplFits(t, day, hol));
   const [ti, setTi] = useState(0);
   const t = ts[ti] || { start:"10:00", end:"20:00", name:"全天" };
@@ -527,9 +552,11 @@ function LocDaySheet({ C, s, b, loc, day, eff, hol, role, managed, assign, remov
       {here.map(x => (
         <div key={x.id} style={{ display:"flex", alignItems:"center", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
           <div style={{ flex:1, fontSize:13.5 }}>{x.name} <span style={{ color:C.muted, fontSize:12 }}>{x.start}–{x.end}{x.draft ? "・未發布" : ""}</span></div>
+          <button onClick={() => setEditing(editing === x.id ? null : x.id)} style={{ ...s.btn("ghost"), width:"auto", padding:"5px 10px", fontSize:12, marginRight:6 }}>改時間</button>
           <button onClick={() => removeShift(x)} style={{ ...s.btn("ghost"), width:"auto", padding:"5px 12px", fontSize:12, color:C.red }}>移除</button>
         </div>
       ))}
+      {here.filter(x => x.id === editing).map(x => <Retime key={x.id} {...{ C, s, x, retime, setErr, onDone:() => setEditing(null) }}/>)}
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", margin:"12px 0 10px" }}>
         {ts.map((x, i) => <button key={i} onClick={() => setTi(i)} style={chip(C, ti === i)}>{x.name} {x.start}–{x.end}</button>)}
       </div>
@@ -610,16 +637,69 @@ function ReqView({ b, user, apiPost, reload, managed, C, s, today }) {
 }
 
 // ── 排班 vs 打卡對帳 ──
-function RecView({ user, ym, apiGet, C, s }) {
+// v1.20:待確認（影響薪資）— 新工時規則:加班要核准、無打卡要確認出勤或缺勤、沒排班有打卡要核准
+const PAY_BTN = { "加班":[["核准","核准"],["不核准","不算"]], "無打卡":[["出勤","確認出勤"],["缺勤","缺勤"]], "臨時支援":[["核准","核准"],["不核准","不算"]] };
+const PAY_TIP = { "加班":"下班打卡比排班晚，往前取整點／半點；核准後才算加班", "無打卡":"有排班但沒打卡，目前先依排班時數計", "臨時支援":"沒排班但有打卡，核准後依實際打卡計" };
+function PayPending({ user, ym, apiGet, apiPost, C, s }) {
+  const [d, setD] = useState(null);
+  const [hrs, setHrs] = useState({});
+  const [busy, setBusy] = useState("");
+  const load = () => apiGet({ action:"payRecon", empId:user.id, ym }, 1).then(r => setD(r && r.success ? r : { error:(r && r.error) || "" }));
+  useEffect(() => { setD(null); load(); }, [ym]);
+  if (!d) return <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>讀取待確認…</div>;
+  if (d.error !== undefined) return /未知的動作/.test(d.error) || !d.error ? null : <div style={{ ...s.card, color:C.red, fontSize:13 }}>{d.error}</div>;
+  if (!d.newRule) return <div style={{ ...s.card, fontSize:12.5, color:C.muted }}>這個月薪資依實際打卡計算。{d.ruleStart} 起改用新工時規則（早到不算、遲到早退 15 分鐘內不扣、加班要核准），到時這裡會列出要確認的項目。</div>;
+  const decide = async (x, result) => {
+    setBusy(x.key);
+    const r = await apiPost({ action:"payDecide", empId:user.id, key:x.key, result, hours: hrs[x.key] ?? x.suggest }, 0);
+    setBusy(""); if (r && r.success) load(); else alert((r && r.error) || "失敗");
+  };
+  const undo = async x => { if (!confirm("撤銷這筆確認？")) return; const r = await apiPost({ action:"payUndo", empId:user.id, key:x.key }, 0); if (r && r.success) load(); else alert(r && r.error); };
+  return (
+    <div style={{ ...s.card, borderLeft: d.pending.length ? `4px solid ${C.gold}` : undefined }}>
+      <div style={s.sectionTitle}>待確認（影響薪資）{d.pending.length ? ` ${d.pending.length}` : ""}</div>
+      {!d.pending.length && <div style={{ fontSize:13, color:C.green }}>✓ 沒有待確認的項目</div>}
+      {d.pending.map(x => (
+        <div key={x.key} style={{ padding:"9px 0", borderBottom:`1px solid ${C.border}`, opacity: busy === x.key ? .5 : 1 }}>
+          <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+            <b style={{ fontWeight:600 }}>{md(x.date)} {x.name}</b>
+            <span style={{ fontSize:11.5, color:"#fff", background: x.type === "無打卡" ? C.red : C.gold, borderRadius:8, padding:"1px 8px" }}>{x.type}</span>
+          </div>
+          <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>{shortLoc(x.loc)}・排 {x.plan}{x.planH ? `（${x.planH}h）` : ""}・實際 {x.actual}</div>
+          <div style={{ fontSize:11.5, color:C.light, marginTop:2 }}>{PAY_TIP[x.type]}</div>
+          <div style={{ display:"flex", gap:6, alignItems:"center", marginTop:8 }}>
+            {x.type === "加班" && <select value={hrs[x.key] ?? x.suggest} onChange={e => setHrs({ ...hrs, [x.key]: +e.target.value })} style={{ ...s.input, width:96, padding:"7px" }}>
+              {Array.from({ length: Math.max(1, Math.round(Math.min(8, Math.max(x.suggest, 0.5)) * 2)) }, (_, i) => (i + 1) / 2).map(h => <option key={h} value={h}>{h} 小時</option>)}
+            </select>}
+            {PAY_BTN[x.type].map(([v, label], i) => (
+              <button key={v} disabled={!!busy} onClick={() => decide(x, v)} style={{ ...s.btn(i ? "ghost" : "primary"), width:"auto", padding:"7px 12px", fontSize:12.5, color: i ? C.red : undefined }}>{label}</button>
+            ))}
+          </div>
+        </div>
+      ))}
+      {d.done.length > 0 && <details style={{ marginTop:10 }}>
+        <summary style={{ fontSize:12.5, color:C.muted, cursor:"pointer" }}>已確認 {d.done.length} 筆</summary>
+        {d.done.map(x => (
+          <div key={x.key} style={{ display:"flex", alignItems:"center", gap:8, padding:"6px 0", borderBottom:`1px solid ${C.border}`, fontSize:12.5 }}>
+            <span style={{ flex:1 }}>{md(x.date)} {x.name}・{x.type}：<b style={{ fontWeight:600 }}>{x.result}{x.type === "加班" && x.result === "核准" ? ` ${x.hours}h` : ""}</b><div style={{ fontSize:11, color:C.light }}>{x.by}</div></span>
+            <button onClick={() => undo(x)} style={{ border:"none", background:"none", color:C.muted, fontSize:12, cursor:"pointer" }}>撤銷</button>
+          </div>
+        ))}
+      </details>}
+    </div>
+  );
+}
+function RecView({ user, ym, apiGet, apiPost, C, s }) {
   const [d, setD] = useState(null);
   useEffect(() => { setD(null); apiGet({ action:"schReconcile", empId:user.id, ym }).then(setD); }, [ym]);
-  if (!d) return <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>對帳中…</div>;
+  if (!d) return <><PayPending {...{ user, ym, apiGet, apiPost, C, s }}/><div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>對帳中…</div></>;
   if (!d.success) return <div style={{ ...s.card, color:C.red, fontSize:13 }}>{d.error}</div>;
   const m = d.summary;
   return (
     <>
+      <PayPending {...{ user, ym, apiGet, apiPost, C, s }}/>
       <div style={s.card}>
-        <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>到昨天為止・薪資一律依實際打卡計算,此頁用來找出要補打卡或確認的班</div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>到昨天為止・下面是排班與打卡的差異(遲到、早退、未打卡),供參考</div>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8 }}>
           <Stat C={C} label="排班時數" value={m.planH} sub={`${m.shifts} 個班`}/>
           <Stat C={C} label="實際時數" value={m.realH} sub="依打卡"/>
@@ -651,7 +731,8 @@ function TemplateEditor({ b, user, apiPost, managed, onClose, onSaved, C, s }) {
   useEffect(() => setList((b.templates[loc] || []).map(x => ({ ...x }))), [loc]);
   const up = (i, k, v) => setList(list.map((x, j) => j === i ? { ...x, [k]:v } : x));
   return (
-    <Sheet C={C} title="班型設定" onClose={onClose}>
+    <Sheet C={C} title="各櫃位上班時間（班型）" onClose={onClose}>
+      <div style={{ fontSize:12, color:C.muted, marginBottom:10, lineHeight:1.6 }}>「平日」「假日」各設一個班型，排班時會自動帶入；分隊長可以改自己負責的櫃位。</div>
       <select value={loc} onChange={e => setLoc(e.target.value)} style={{ ...s.input, marginBottom:12 }}>{managed.map(l => <option key={l}>{l}</option>)}</select>
       {list.map((t, i) => (
         <div key={i} style={{ background:C.warm, borderRadius:12, padding:10, marginBottom:8 }}>

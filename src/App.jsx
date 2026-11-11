@@ -10,6 +10,8 @@ import TowerTab from "./TowerTab.jsx";
 import ShopStreetTab from "./ShopStreetTab.jsx";
 import OrdersTab from "./OrdersTab.jsx";
 import ScheduleManager, { MyShifts } from "./ScheduleTab.jsx";
+import MePet from "./MePet.jsx";
+import { MaterialsPage, OnboardCard, StaffManager, LocManager, AnnouncePage, PnlPage, PricePage, PartnerHome, AnnInbox } from "./OpsTab.jsx";
 
 // ─────────────────────────────────────────────
 // Google Sheets API 設定
@@ -500,6 +502,7 @@ export default function App(){
   const [locations, setLocations] = useState(() => cacheGet("loc") || {});
   const [workLoc, setWorkLoc] = useState("");
   const [loading, setLoading] = useState(false);
+  const [opsMe, setOpsMe] = useState(null);   // v1.20:帳號類型、負責櫃位、加盟店、待辦數
 
   // 登入後載入資料
   useEffect(() => {
@@ -518,6 +521,11 @@ export default function App(){
     if (res.success) setActiveSeg(res.active);
   };
 
+  // v1.20:公告改用 annFeed(依對象櫃位過濾＋已讀狀態);後端還沒更新時退回 getAnnouncements
+  const loadAnn = () => apiGet({ action:"annFeed", empId:user.id }).then(r => {
+    if (r && r.success) { setAnnouncements(r.data || []); cacheSet("ann", r.data || []); return; }
+    return apiGet({ action:"getAnnouncements" }).then(r2 => { if (r2 && r2.success) { const d = r2.data || []; setAnnouncements(d); cacheSet("ann", d); } });
+  });
   const loadAllData = async () => {
     setLoading(true);
     // 每個請求一回來就先更新畫面,不必等最慢的那一個
@@ -525,11 +533,12 @@ export default function App(){
     try {
       await Promise.all([
         run(apiGet({ action:"getStaffInfo", empId:user.id }), r => setStaffInfo(r.data)),
-        run(apiGet({ action:"getAnnouncements" }), r => { const d = r.data || []; setAnnouncements(d); cacheSet("ann", d); }),
+        loadAnn(),
         run(apiGet({ action:"getSchedule", empId:user.id, ym:ymStr() }), r => setSchedule(r.data || [])),
         run(apiGet({ action:"getSalary", empId:user.id }), r => setSalary(r.data || [])),
         run(apiGet({ action:"getQuota", empId:user.id, ym:ymStr() }), r => setQuota(r.data)),
         run(apiGet({ action:"getLocations" }), r => { const d = r.data || {}; setLocations(d); cacheSet("loc", d); }),
+        run(apiGet({ action:"opsMe", empId:user.id }), r => setOpsMe(r)),
       ]);
     } catch(e) { console.error(e); }
     setLoading(false);
@@ -539,19 +548,25 @@ export default function App(){
   const ord = useOrderAlerts(user);
   const game = useGameMe(user);
   const [gameTab, setGameTab] = useState("home");
-  const openGame = (t2) => { setGameTab(t2 || "home"); setTab("game"); };
+  const [petFirst, setPetFirst] = useState(false);
+  const openGame = (t2) => { if (t2 === "pet") { setPetFirst(true); setTab("avatar"); return; } setGameTab(t2 || "home"); setTab("game"); };
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
-  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street"];
-  const navItems = [
+  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price"];
+  const partner = opsMe && opsMe.type === "合作夥伴";
+  const navItems = partner ? [
+    { id:"home",  icon:"home",  label:"首頁" },
+    { id:"mat",   icon:"order", label:"叫貨" },
+    { id:"info",  icon:"user",  label:"我的" },
+  ] : [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"punch", icon:"clock", label:"打卡" },
     { id:"info",  icon:"user",  label:"我的" },
     { id:"more",  icon:"grid",  label:"更多" },
   ];
-  const navActive = SUB.includes(tab) ? "more" : tab;
+  const navActive = partner ? tab : SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我的小人造型", orders:"訂單", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -578,7 +593,7 @@ export default function App(){
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           {loading && <div style={{ fontSize:11, color:C.muted }}>同步中…</div>}
-          {game.me && <button onClick={()=>openGame("home")} aria-label="赤心幣" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
+          {game.me && !partner && <button onClick={()=>openGame("home")} aria-label="赤心幣" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
           <div style={{ width:38, height:38, borderRadius:19, background:C.accentBg, color:C.accent,
                         border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center",
                         fontSize:15, fontWeight:600 }}>{user.avatar}</div>
@@ -590,19 +605,26 @@ export default function App(){
 
       {/* CONTENT */}
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
-        {SUB.includes(tab) && <SubHeader title={subTitle} onBack={goMore} />}
-        {tab==="home"  && (loading && !staffInfo
+        {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goMore} />}
+        {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} />}
+        {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
+        {tab==="mat" && <MaterialsPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} me={opsMe} todayStr={todayStr} />}
+        {!partner && tab==="home"  && (loading && !staffInfo
                           ? <HomeSkeleton/>
                           : <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule}
-                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")} />)}
-        {tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
+                                   onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")}
+                                   onboard={<>
+                                     <AnnInbox user={user} list={announcements} apiPost={apiPost} C={C} s={s} onChanged={loadAnn} />
+                                     {user.role>=2 && <OnboardCard user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compact />}
+                                   </>} />)}
+        {!partner && tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
                                    onWorkChange={()=>setSegRefreshKey(k=>k+1)}
                                    onLeaveChange={()=>{ setSegRefreshKey(k=>k+1); setWorkLoc(""); }} />}
-        {tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
+        {!partner && tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData}
                                    onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
         {tab==="more"  && (
@@ -611,7 +633,9 @@ export default function App(){
             <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
             <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
             <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
-            <ListItem icon="user" title="我的小人造型" desc="換髮型、衣服、帽子，或變身小暴龍" onClick={()=>setTab("avatar")}/>
+            <ListItem icon="user" title="我和寵物" desc="換小人造型、照顧寵物（同一頁，左邊是你、右邊是寵物）" onClick={()=>{ setPetFirst(false); setTab("avatar"); }}/>
+            <ListItem icon="order" title="物料需求" desc="叫麵糊、麵粉、糖、紅茶粉、機器鍍膜…" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
+            {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
             <ListItem icon="sword" title="對戰" desc="裝備武器卡片，和夥伴切磋或即時對戰" onClick={()=>setTab("arena")}/>
             <ListItem icon="tower" title="百貨櫃位塔防戰" desc="投入赤心幣升級你櫃位的塔，每週一結算" onClick={()=>setTab("tower")}/>
             <ListItem icon="home" title="夥伴商店街" desc="逛夥伴開的小店，或開一家自己的店" onClick={()=>setTab("street")}/>
@@ -622,6 +646,12 @@ export default function App(){
               <div style={{ ...s.sectionTitle, marginTop:16 }}>管理</div>
               <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
               <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
+              {user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
+              {user.role>=3 && <>
+                <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
+                <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位" onClick={()=>setTab("locs")}/>
+                <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、加盟店應收（權利金＋物料）" onClick={()=>setTab("price")}/>
+              </>}
             </>}
           </div>
         )}
@@ -631,22 +661,27 @@ export default function App(){
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
-            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>setTab("avatar")} />
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>{ setPetFirst(false); setTab("avatar"); }} />
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
-        {tab==="avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={()=>openGame("shop")} />}
+        {tab==="avatar" && <MePet key={petFirst ? "p" : "a"} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} initial={petFirst ? "pet" : "avatar"} onOpenShop={()=>openGame("shop")} onChanged={game.refresh} />}
+        {tab==="pnl" && <PnlPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
+        {tab==="locs" && user.role>=3 && <LocManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="staff" && user.role>=3 && <StaffManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} />}
+        {tab==="ann" && <AnnouncePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="price" && user.role>=3 && <PricePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="arena" && <ArenaTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="tower" && <TowerTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="street" && <ShopStreetTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="game" && <GameTab key={gameTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initialTab={gameTab} onEditAvatar={()=>setTab("avatar")} onChanged={game.refresh} />}
+        {tab==="game" && <GameTab key={gameTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initialTab={gameTab} onEditAvatar={()=>{ setPetFirst(false); setTab("avatar"); }} onChanged={game.refresh} />}
         {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
       </div>
 
       {/* BOTTOM NAV */}
       <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)",
                     width:"100%", maxWidth:480, background:"rgba(255,253,250,.94)", backdropFilter:"blur(10px)",
-                    borderTop:`1px solid ${C.border}`, display:"grid", gridTemplateColumns:"repeat(4,1fr)",
+                    borderTop:`1px solid ${C.border}`, display:"grid", gridTemplateColumns:`repeat(${navItems.length},1fr)`,
                     padding:"6px 8px calc(10px + env(safe-area-inset-bottom))", zIndex:100, boxSizing:"border-box" }}>
         {navItems.map(n => (
           <button key={n.id} onClick={()=>setTab(n.id)} aria-current={navActive===n.id?"page":undefined} style={{
@@ -771,7 +806,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame, onOpenInfo }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame, onOpenInfo, onboard }) {
   const time = useTime();
   // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
   const [bdays, setBdays] = useState([]);
@@ -846,6 +881,8 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
           </div>
         );
       })()}
+
+      {onboard}
 
       {/* Todos */}
       {todos.length > 0 && (
@@ -1668,6 +1705,21 @@ function SalaryToDateCard({ user }) {
           {d.items.length > 0 && d.notes.map((n, i) => <div key={i} style={{ fontSize:11, color:C.light, marginTop:8, lineHeight:1.6 }}>※ {n}</div>)}
         </div>
       )}
+    </div>
+  );
+}
+
+// 合作夥伴的「我的」:基本資料＋修改密碼
+function PartnerInfo({ user, onPwChanged }) {
+  return (
+    <div>
+      <div style={{ ...s.card, display:"flex", gap:16, alignItems:"center" }}>
+        <div style={{ width:56, height:56, borderRadius:28, background:C.accentBg, color:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:600 }}>{user.avatar}</div>
+        <div><div style={{ fontSize:18, fontWeight:600 }}>{user.name}</div><div style={{ fontSize:12.5, color:C.muted, marginTop:2 }}>合作夥伴 · {user.id}</div></div>
+      </div>
+      {user.weakPw && <div style={{ ...s.card, background:C.goldBg, borderLeft:`4px solid ${C.gold}`, fontSize:13 }}>🔒 你的密碼還是生日，建議改一組自己的。</div>}
+      <ChangePasswordCard user={user} onChanged={onPwChanged} />
+      <button onClick={() => location.reload()} style={{ ...s.btn("ghost") }}>登出</button>
     </div>
   );
 }

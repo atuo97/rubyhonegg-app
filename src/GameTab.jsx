@@ -23,8 +23,8 @@ function Card({ children, style }) { const { s } = useContext(GCtx); return <div
 function Title({ children, right }) { const { s } = useContext(GCtx); return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div style={{ ...s.sectionTitle, marginBottom: 0 }}>{children}</div>{right}</div>; }
 function Btn({ children, onClick, disabled, kind = "primary", style }) { const { s, busy } = useContext(GCtx); return <button onClick={onClick} disabled={disabled || busy} style={{ ...s.btn(kind), padding: "9px 14px", fontSize: 13, opacity: disabled || busy ? .5 : 1, ...style }}>{children}</button>; }
 
-export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged }) {
-  const [tab, setTab] = useState(initialTab || "home");
+export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged, onlyTab }) {
+  const [tab, setTab] = useState(onlyTab || initialTab || "home");
   const [me, setMe] = useState(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -389,9 +389,9 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
 
   return (
     <GCtx.Provider value={{ s, C, busy }}><div>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
+      {!onlyTab && <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
         {TABS.map(([k, label]) => <button key={k} onClick={() => { setTab(k); setGres(null); }} style={{ flex: "0 0 auto", ...chip(tab === k), fontWeight: tab === k ? 600 : 400 }}>{label}</button>)}
-      </div>
+      </div>}
       {me.frozen && <Card style={{ background: C.goldBg, color: C.gold, fontSize: 13 }}>帳號已停用，赤心幣已凍結。</Card>}
       {tab === "home" && Home()}
       {tab === "shop" && Shop()}

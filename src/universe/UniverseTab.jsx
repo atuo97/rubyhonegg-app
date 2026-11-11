@@ -64,6 +64,15 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
+  // v1.20:分頁只顯示營運中的門市(依〈櫃位設定〉狀態);辦公室、工廠、商店街一直都在
+  const [openScenes, setOpenScenes] = useState(null);
+  useEffect(() => {
+    apiGet({ action: "getLocations" }, 1).then(r => {
+      if (!r || !r.success) return;
+      const set = {}; Object.keys(r.data || {}).forEach(n => { const st = r.data[n].status; if (!st || st === "營運中") set[sceneOf(n)] = 1; });
+      setOpenScenes(set);
+    });
+  }, []);
   const [onDuty, setOnDuty] = useState([]);
   const [demo, setDemo] = useState(false);
   const [progress, setProgress] = useState("");
@@ -228,7 +237,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 6 }}>
-          {SCENE_KEYS.map(k => (
+          {SCENE_KEYS.filter(k => !SCENES[k].store || !openScenes || openScenes[k] || count(k) || view === k).map(k => (
             <button key={k} onClick={() => setView(k)} style={{
               flex: "0 0 auto", border: "none", borderRadius: 10, padding: "7px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer",
               background: view === k ? C.accent : C.warm, color: view === k ? "#fff" : C.text,
