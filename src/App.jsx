@@ -2,7 +2,9 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor from "./AvatarEditor.jsx";
-import GameTab, { Coin } from "./GameTab.jsx";
+import GameTab from "./GameTab.jsx";
+import { Coin } from "./Coin.jsx";
+import { PetSprite } from "./pets/petSprites.jsx";
 import ArenaTab from "./ArenaTab.jsx";
 import TowerTab from "./TowerTab.jsx";
 import ShopStreetTab from "./ShopStreetTab.jsx";
@@ -159,7 +161,7 @@ const ICONS = {
   chart:'<path d="M5 19V9M12 19V5M19 19v-7"/>',
   cube:'<path d="M12 3.5l7.5 4v9L12 20.5l-7.5-4v-9z"/><path d="M12 12l7.5-4.5M12 12L4.5 7.5M12 12v8.5"/>',
   chev:'<path d="M9 6l6 6-6 6"/>',
-  coin:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9M9.5 9.5h3.5a1.5 1.5 0 010 3h-2a1.5 1.5 0 000 3h3.5"/>',
+  coin:'<path d="M12 20s-7-4.3-8.9-8.6C1.7 8.1 3.6 4.8 6.9 4.8c1.9 0 3.3 1.1 4.1 2.4.8-1.3 2.2-2.4 4.1-2.4 3.3 0 5.2 3.3 3.8 6.6C17 15.7 12 20 12 20z"/>',
   sword:'<path d="M14.5 4.5h5v5L9 20l-5-5z"/><path d="M7 13l4 4M4 20l2-2"/>',
   tower:'<path d="M6 20V9h12v11"/><path d="M6 9V5h2v2h2V5h4v2h2V5h2v4M10 20v-4h4v4"/>',
   order:'<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5h6v3H9zM8.5 12h7M8.5 16h5"/>',
@@ -369,8 +371,32 @@ function useGameMe(user) {
   return { me, refresh };
 }
 
+// v1.19 寵物上下班打招呼:打卡成功時跳出(上班/下班/隔 3 天以上回來)
+function PetGreeting({ user, game }) {
+  const [g, setG] = useState(null);
+  useEffect(() => {
+    const on = e => {
+      const pet = game.me && game.me.pet; if (!pet) return;
+      const nm = user.nick || user.name, last = game.me.lastWork, today = todayStr();
+      const away = last ? Math.round((new Date(today) - new Date(last)) / 86400000) : 0;
+      const txt = e.detail.kind === "out" ? "辛苦了，明天見" : away >= 3 ? `${nm}你回來了！好想你` : `${nm}早安！今天一起加油`;
+      setG({ pet, txt }); clearTimeout(on.t); on.t = setTimeout(() => setG(null), 4200);
+      game.refresh();
+    };
+    window.addEventListener("rh-pet-greet", on); return () => window.removeEventListener("rh-pet-greet", on);
+  }, [game.me, user]);
+  if (!g) return null;
+  return (
+    <div onClick={() => setG(null)} style={{ position:"fixed", left:"50%", bottom:"calc(96px + env(safe-area-inset-bottom))", transform:"translateX(-50%)", zIndex:450, display:"flex", alignItems:"center", gap:10, background:"#fffaf2", border:`1px solid ${C.border}`, borderRadius:18, padding:"8px 14px 8px 8px", boxShadow:"0 8px 24px rgba(0,0,0,.15)", maxWidth:"90%" }}>
+      <style>{`@keyframes rhWob{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}`}</style>
+      <div style={{ animation:"rhWob .6s 3" }}><PetSprite type={g.pet.type} stage={g.pet.stage} flavor={g.pet.flavor} size={56} /></div>
+      <div><div style={{ fontSize:11.5, color:C.muted }}>{g.pet.name}</div><div style={{ fontSize:14.5, fontWeight:600, color:C.text }}>{g.txt}</div></div>
+    </div>
+  );
+}
+
 // 首頁:每日一題、生日祝福、收到的互動
-const INTER_ICON = { cheer:"💪", like:"👍", nod:"🙇", smile:"😊" };
+const INTER_ICON = { cheer:"💪", like:"👍", nod:"🙇", smile:"😊", pat:"🐾" };
 function GameHomeCards({ user, game, onOpenGame }) {
   const me = game.me;
   const [ans, setAns] = useState(null);
@@ -411,7 +437,7 @@ function GameHomeCards({ user, game, onOpenGame }) {
         <div style={s.card}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
             <div style={{ ...s.sectionTitle, marginBottom:0 }}>每日一題・{shownQ.cat}</div>
-            {!done && <span style={{ fontSize:11.5, color:C.gold }}>答對 +1 🪙</span>}
+            {!done && <span style={{ fontSize:11.5, color:C.gold }}>答對 <Coin n={1} plus size={11}/></span>}
           </div>
           <div style={{ fontSize:14.5, fontWeight:500, lineHeight:1.5, marginBottom:10 }}>{shownQ.text}</div>
           <div style={{ display:"grid", gap:6 }}>
@@ -534,6 +560,7 @@ export default function App(){
   return (
     <div style={s.app}>
       <GlobalStyle/>
+      <PetGreeting user={user} game={game} />
       {!online && <OfflineBar/>}
       {/* TOP BAR(＋訂單提醒列,一起固定在頂端) */}
       <div style={{ position:"sticky", top:0, zIndex:50 }}>
@@ -1000,6 +1027,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
       if (isActivity) { cacheSet("venue_" + user.id, { date: todayStr(), loc: workLoc, venue: venue.trim() }); setVenue(""); }
+      window.dispatchEvent(new CustomEvent("rh-pet-greet", { detail:{ kind:"in" } }));
       setMsg(`✅ 上班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}　請繼續完成下方盤點資料`);
       setGroomFile(null); setGroomPreview("");
       onSegmentChange && onSegmentChange();
@@ -1265,6 +1293,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
         type:"下班", cashHandover });
 
+      window.dispatchEvent(new CustomEvent("rh-pet-greet", { detail:{ kind:"out" } }));
       setMsg(`✅ 下班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)} 辛苦了！`);
       setChecklistDone && setChecklistDone({ open:false, close:false });
       onSegmentChange && onSegmentChange();

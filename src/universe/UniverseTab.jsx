@@ -5,6 +5,7 @@
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
+import { PetSprite, petLine } from "../pets/petSprites.jsx";
 
 const CSS = `
 .uo-wrap{position:relative;border-radius:16px;overflow:hidden;background:#1d1b2e}
@@ -13,6 +14,11 @@ const CSS = `
 .uo-boss{background:#ffe08a}.uo-boss:after{border-top-color:#ffe08a}
 .uo-guest{background:#d6f5e3}.uo-guest:after{border-top-color:#d6f5e3}
 .uo-tag{position:absolute;transform:translate(-50%,0);font-size:10px;font-weight:700;color:#fff;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:6px;white-space:nowrap}
+.uo-tagw{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:2px;pointer-events:none}
+.uo-tagw .uo-tag{position:static;transform:none}
+.uo-say{font-size:10px;line-height:1.3;color:#2b1d14;background:rgba(255,250,242,.93);padding:1px 7px;border-radius:7px;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.uo-rest{background:rgba(90,90,110,.6)}
+.uo-petsay{background:#fff3c4;font-size:10.5px;padding:3px 7px}.uo-petsay:after{border-top-color:#fff3c4}
 .uo-frame_wood{background:#8e5b3a;border:1.5px solid #d4a373}
 .uo-frame_glow{background:#c0392b;border:1.5px solid #ffe066;box-shadow:0 0 8px #ffe066}
 `;
@@ -78,7 +84,17 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
-  useEffect(() => { engine.current && engine.current.setCrew(demo ? DEMO : onDuty); }, [onDuty, demo]);
+  // v1.19:場景名單＝在班的人＋隊長(連大隊長帳號,常駐辦公室)＋沒上班的自己(在休息區)
+  const sceneList = (() => {
+    if (demo) return DEMO;
+    const list = onDuty.slice(), has = id => list.some(p => String(p.id) === String(id));
+    const boss = game && game.boss;
+    if (boss && !has(boss.id)) list.push({ id: boss.id, name: boss.name, location: "辦公室", isBoss: true });
+    if (!has(user.id)) list.push({ id: user.id, name: user.nick || user.name, location: "辦公室", resting: true });
+    return list;
+  })();
+  const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss]));
+  useEffect(() => { engine.current && engine.current.setCrew(sceneList); }, [sceneSig]);
   useEffect(() => {
     const map = {};
     short.forEach(x => (map[x.scene] = map[x.scene] || []).push(x.item));
@@ -120,9 +136,11 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const r = await apiGet({ action: "gmScene" }, 0);
     if (!(r && r.success) || !engine.current) return;
     const d = r.data || {}, today = todayStr();
-    setGame(d); setFeed(d.feed || []);
+    setGame(d);
+    // v1.19:互動動態＋寵物動態(孵化、交換、收進圖鑑)合併,依時間排序
+    setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
-    engine.current.setGame({ pets: d.pets || {}, worn: d.worn || {}, birthdays: d.birthdays || [], champion: d.champion || "",
+    engine.current.setGame({ pets: d.pets || {}, worn: d.worn || {}, boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
     // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
     const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);
@@ -149,6 +167,17 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       engine.current && engine.current.emote(user.id, p.id, type, user.name, p.name);
       setImsg(`已對 ${p.name} ${INTERACTIONS.find(i => i[0] === type)[2]}！`);
       setTimeout(() => setTarget(null), 900); loadGame();
+    } else setImsg((r && r.error) || "送出失敗");
+  };
+
+  const pat = async (p) => {
+    setImsg("");
+    const r = await apiPost({ action: "gmPetPat", empId: user.id, to: p.id }, 0);
+    if (r && r.success) {
+      setSent(x => ({ ...x, [p.id + "|pat"]: 1 }));
+      const pt = r.data || {}, line = petLine(pt) || (pt.stage <= 1 ? "（蛋搖了搖）" : "（開心地蹭蹭你）");
+      engine.current && engine.current.petSay(p.id, line);
+      setImsg(`${pt.name || "牠"}：「${line}」`); loadGame();
     } else setImsg((r && r.error) || "送出失敗");
   };
 
@@ -228,7 +257,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           <div style={s.sectionTitle}>宇宙動態</div>
           {feed.slice(0, 6).map((f, i) => (
             <div key={i} style={{ fontSize: 13, padding: "5px 0", borderBottom: i < Math.min(5, feed.length - 1) ? `1px solid ${C.border}` : "none" }}>
-              {(INTERACTIONS.find(x => x[0] === f.type) || [])[1]} <b>{f.fromName}</b> 對 <b>{f.toName}</b> {f.label}
+              {f.pet ? <>{{ hatch: "🐣", trade: "🔄", retire: "📖" }[f.kind] || "🐾"} {f.text}</> : <>{f.type === "pat" ? "🐾" : (INTERACTIONS.find(x => x[0] === f.type) || [])[1]} <b>{f.fromName}</b> {f.type === "pat" ? "摸了" : "對"} <b>{f.toName}</b> {f.type === "pat" ? "的寵物" : f.label}</>}
               <span style={{ fontSize: 11, color: C.light, marginLeft: 6 }}>{String(f.time).slice(11, 16)}</span>
             </div>
           ))}
@@ -291,6 +320,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
                 </button>;
               })}
             </div>
+            {game && game.pets && game.pets[target.id] && (() => { const pt = game.pets[target.id], done = sent[target.id + "|pat"]; return (
+              <button disabled={done} onClick={() => pat(target)} style={{ width: "100%", marginTop: 10, display: "flex", alignItems: "center", gap: 10, border: `1px solid ${C.border}`, borderRadius: 14, padding: "8px 12px", background: done ? C.warm : "#fff6e8", cursor: done ? "default" : "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <PetSprite type={pt.type} stage={pt.stage} flavor={pt.flavor} size={44} />
+                <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>🐾 摸摸{pt.name}的頭</div>
+                  <div style={{ fontSize: 11, color: C.muted }}>{done ? "今天摸過了" : "每天一次，算進互動之星"}</div></div>
+              </button>); })()}
             {imsg && <div style={{ fontSize: 13, textAlign: "center", marginTop: 12, color: C.accent }}>{imsg}</div>}
             <div style={{ fontSize: 11, color: C.light, textAlign: "center", marginTop: 10 }}>同一個人、同一種互動一天一次 · 每月結算「互動之星」</div>
           </div>

@@ -4,6 +4,7 @@
 // ─────────────────────────────────────────────
 import * as THREE from "three";
 import { toSceneOpts } from "./avatarCatalog.js";
+import { petLine } from "../pets/petSprites.jsx";
 
 export const SCENES = {
   office:  { x: 0,   name: "辦公室",       short: "辦公室", icon: "💼", aisle: 2.6 },
@@ -63,6 +64,7 @@ export function avatarFor(p) {
 const SHOP_LINES = ["歡迎光臨～現烤雞蛋糕！", "剛出爐的喔！", "原味一盒，好的～", "小暴龍可以拍照喔 📸", "紅玉跟抹茶都很推！", "謝謝光臨，慢走～"];
 const FACTORY_LINES = ["麵糊備好了！", "這批烤色漂亮 👍", "今天要烤幾百顆呢～", "翻模！翻模！", "預拌粉補好了"];
 const OFFICE_LINES = ["排班表更新好了 📋", "這個月業績不錯喔！", "來開個小會吧～", "報表整理中…"];
+const REST_LINES = ["今天休假～", "休息一下 ☕", "大家加油！", "明天見 👋"];
 const PENGUIN_LINES = ["企鵝不怕熱 🐧", "翻模！翻模！", "這批烤色漂亮 👍", "麵糊備好了！"];
 const GUEST_LINES = ["我要一盒原味！", "紅玉跟抹茶各一盒～", "小暴龍好可愛，先拍照 📸", "現烤的好香喔！", "可以刷卡嗎？", "買回去給小孩吃 😊", "逛街逛到餓了～"];
 const pick = a => a[(Math.random() * a.length) | 0];
@@ -194,6 +196,11 @@ export function createOffice(container) {
       { x: -3, z: -2.6, rotY: Math.PI, sit: true, anim: "type", fx: d4, via },
       { x: 3.3, z: -3.5, rotY: 0, sit: true, anim: "sit" },
       { x: 5.7, z: -3.5, rotY: 0, sit: true, anim: "sit" },
+      // v1.19:休息區(沒上班的自己)與隊長固定位置
+      { x: 3.4, z: -0.4, rotY: Math.PI * 0.8, anim: "stand" },
+      { x: 5.6, z: -0.4, rotY: -Math.PI * 0.8, anim: "stand" },
+      { x: 4.5, z: 0.7, rotY: Math.PI, anim: "stand" },
+      { x: 0.6, z: 4.6, rotY: -Math.PI / 4, anim: "stand" },
     ];
   }
 
@@ -506,11 +513,15 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   boss.g.position.set(0.6, 0, 4.6); boss.g.rotation.y = -Math.PI / 4; boss.bubble.classList.add("uo-boss");
   nameTag(boss, "隊長");
 
+  // v1.19:名牌上方常駐顯示「頭頂的一句話」;沒上班的人名字前加 💤
   function nameTag(c, name, opt) {
-    const t = document.createElement("div"); opt = opt || {};
-    t.className = "uo-tag" + (opt.frame ? " uo-" + opt.frame : "");
-    t.textContent = name + (opt.icons && opt.icons.length ? " " + opt.icons.join("") : "");
-    overlay.appendChild(t); c.tagEl = t;
+    opt = opt || {};
+    const w = document.createElement("div"); w.className = "uo-tagw";
+    if (opt.saying) { const sy = document.createElement("div"); sy.className = "uo-say"; sy.textContent = opt.saying; w.appendChild(sy); }
+    const t = document.createElement("div");
+    t.className = "uo-tag" + (opt.frame ? " uo-" + opt.frame : "") + (opt.rest ? " uo-rest" : "");
+    t.textContent = (opt.rest ? "💤 " : "") + name + (opt.icons && opt.icons.length ? " " + opt.icons.join("") : "");
+    w.appendChild(t); overlay.appendChild(w); c.tagEl = w; c.hasSay = !!opt.saying;
   }
   const timers = new WeakMap();
   function say(c, txt, ms) {
@@ -522,9 +533,12 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   const crew = new Map(); // id → { p, c, scene, slot, leaving }
   const occupied = {}; SCENE_KEYS.forEach(k => (occupied[k] = new Set()));
 
-  function freeSlot(k) {
+  const REST_SLOTS = [4, 5, 6, 7, 8], BOSS_SLOT = 9, RESERVED = new Set([6, 7, 8, 9]);
+  function freeSlot(k, p) {
     const list = SLOTS[k];
-    for (let i = 0; i < list.length; i++) if (!occupied[k].has(i)) return i;
+    if (p && p.isBoss && k === "office" && !occupied.office.has(BOSS_SLOT)) return BOSS_SLOT;
+    if (p && p.resting && k === "office") { for (const i of REST_SLOTS) if (!occupied.office.has(i)) return i; }
+    for (let i = 0; i < list.length; i++) if (!occupied[k].has(i) && !(k === "office" && RESERVED.has(i))) return i;
     let i = list.length; while (occupied[k].has(i)) i++; return i;
   }
   function slotPos(k, i) {
@@ -570,7 +584,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   let lastList = [];
   // ── 遊戲化資料(setGame 傳入)──
   let GAME = { pets: {}, worn: {}, birthdays: [], champion: "", fireworks: false, unlocks: [], holiday: "", weather: {} };
-  const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [] });
+  const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [], saying: av.saying || "", rest: !!p.resting });
   function avatarOf(p) {
     const av = Object.assign({}, avatarFor(p));
     if (GAME.birthdays.some(b => String(b.id) === String(p.id)) && (!av.hat || av.hat === "none")) av.hat = "party";
@@ -592,27 +606,28 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       m.leaving = true; occupied[m.scene].delete(m.slot);
       say(m.c, "下班囉，掰掰～ 👋", 2500);
       const k = m.scene; m.slot = m.slot; // 保留以便走出
-      route(m, null, 0, () => { scene.remove(m.c.g); m.c.bubble.remove(); m.c.tagEl.remove(); if (m.pet) { scene.remove(m.pet.g); m.pet = null; } crew.delete(id); });
+      route(m, null, 0, () => { scene.remove(m.c.g); m.c.bubble.remove(); m.c.tagEl.remove(); removePet(m); crew.delete(id); });
       m.scene = k;
     }
     list.forEach(p => {
       const id = String(p.id), k = sceneOf(p.location);
       let m = crew.get(id);
       if (m && m.leaving) return;
-      if (m) { m.p = p; const av = avatarOf(p), sig = JSON.stringify(av); if (sig !== m.sig) { rebuildChar(m, av); m.sig = sig; } }
+      const wasRest = m ? !!m.p.resting : false;
+      if (m) { const av = avatarOf(p), sig = JSON.stringify(av) + (p.resting ? "R" : ""); if (sig !== m.sig) { m.p = p; rebuildChar(m, av); m.sig = sig; } }
       if (!m) {
         const av = avatarOf(p);
         const c = buildChar(av);
         nameTag(c, p.name, tagOpt(p, av));
-        m = { p, c, sig: JSON.stringify(av), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
+        m = { p, c, sig: JSON.stringify(av) + (p.resting ? "R" : ""), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
         crew.set(id, m);
-        const slot = freeSlot(k); occupied[k].add(slot);
+        const slot = freeSlot(k, p); occupied[k].add(slot);
         // 還沒有場景 → 從該場景入口走進來
-        route(m, k, slot, () => { settle(m); say(m.c, m.c.saying || "上班囉！💪", 3200); });
+        route(m, k, slot, () => { settle(m); if (!p.resting && !p.isBoss) say(m.c, "上班囉！💪", 3200); });
         m.scene = k; m.slot = slot;
-      } else if (m.scene !== k) {
+      } else if (m.scene !== k || wasRest !== !!p.resting) {
         occupied[m.scene].delete(m.slot);
-        const slot = freeSlot(k); occupied[k].add(slot);
+        const slot = freeSlot(k, p); occupied[k].add(slot);
         route(m, k, slot, () => settle(m));
         m.scene = k; m.slot = slot;
       }
@@ -649,13 +664,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
   const v = new THREE.Vector3();
   function place(c) {
-    const vis = c.g.visible && (v.set(c.g.position.x, c.g.position.y + 2.95, c.g.position.z).project(camera), Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.1);
+    const vis = c.g.visible && (v.set(c.g.position.x, c.g.position.y + (c.hasSay ? 3.45 : 2.95), c.g.position.z).project(camera), Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.1);
     c.bubble.style.visibility = vis ? "visible" : "hidden";
     if (c.tagEl) c.tagEl.style.visibility = vis ? "visible" : "hidden";
     if (!vis) return;
     const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
     c.bubble.style.left = ((v.x + 1) / 2 * w) + "px"; c.bubble.style.top = ((1 - v.y) / 2 * h) + "px";
-    if (c.tagEl) { v.set(c.g.position.x, c.g.position.y + 2.5, c.g.position.z).project(camera); c.tagEl.style.left = ((v.x + 1) / 2 * w) + "px"; c.tagEl.style.top = ((1 - v.y) / 2 * h - 14) + "px"; }
+    if (c.tagEl) { v.set(c.g.position.x, c.g.position.y + 2.5, c.g.position.z).project(camera); c.tagEl.style.left = ((v.x + 1) / 2 * w) + "px"; c.tagEl.style.top = ((1 - v.y) / 2 * h + 4) + "px"; }
   }
 
   // 拖曳旋轉
@@ -666,47 +681,136 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   renderer.domElement.addEventListener("pointerdown", onDown);
   window.addEventListener("pointerup", onUp); window.addEventListener("pointermove", onMove);
 
-  // ════════ 遊戲化圖層:寵物、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
-  const PET_COLORS = { "原味": 0xf3c66b, "可可": 0x7b4a2e, "紅玉": 0xd9534f, "抹茶": 0x8bbf6a };
+  // ════════ 遊戲化圖層:寵物(v1.19:5 型態 × 5 階段、會說話、會互相玩)、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
+  const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4] };
+  const EYE = 0x1e1e1e, WHITE = 0xffffff, CREAM = 0xf6e7c8;
+  // 完全體模型(朝 +z 方向),高約 0.7~0.9;回傳頭頂高度
+  function petModel(type, P, b, d, l) {
+    const eyes = (x, y, z) => { box(0.05, 0.05, 0.02, EYE, -x, y, z, P); box(0.05, 0.05, 0.02, EYE, x, y, z, P); };
+    if (type === "chicken") {
+      box(0.05, 0.18, 0.05, 0xe67e22, -0.08, 0.09, 0, P); box(0.05, 0.18, 0.05, 0xe67e22, 0.08, 0.09, 0, P);
+      box(0.4, 0.34, 0.46, b, 0, 0.35, 0, P); box(0.04, 0.18, 0.26, d, -0.22, 0.38, 0, P); box(0.04, 0.18, 0.26, d, 0.22, 0.38, 0, P);
+      box(0.16, 0.24, 0.08, d, 0, 0.52, -0.26, P);
+      box(0.26, 0.26, 0.26, b, 0, 0.64, 0.14, P); box(0.06, 0.1, 0.16, 0xc0392b, 0, 0.82, 0.14, P);
+      box(0.08, 0.06, 0.1, 0xf2c14e, 0, 0.62, 0.31, P); box(0.04, 0.08, 0.03, 0xc0392b, 0, 0.55, 0.28, P); eyes(0.08, 0.68, 0.275); return 0.87;
+    }
+    if (type === "trex") {
+      const tail = box(0.12, 0.12, 0.42, b, 0, 0.3, -0.34, P); tail.rotation.x = -0.35;
+      box(0.12, 0.24, 0.14, d, -0.1, 0.12, 0, P); box(0.12, 0.24, 0.14, d, 0.1, 0.12, 0, P);
+      box(0.34, 0.4, 0.34, b, 0, 0.44, 0, P); box(0.22, 0.28, 0.02, l, 0, 0.42, 0.175, P);
+      box(0.05, 0.05, 0.12, b, -0.12, 0.5, 0.22, P); box(0.05, 0.05, 0.12, b, 0.12, 0.5, 0.22, P);
+      box(0.32, 0.2, 0.38, b, 0, 0.8, 0.14, P); box(0.3, 0.07, 0.3, 0x7a2e1e, 0, 0.67, 0.2, P); box(0.3, 0.08, 0.32, b, 0, 0.6, 0.19, P);
+      [-0.09, 0, 0.09].forEach(x => { box(0.03, 0.04, 0.02, WHITE, x, 0.68, 0.34, P); });
+      box(0.09, 0.09, 0.02, WHITE, -0.12, 0.86, 0.33, P); box(0.09, 0.09, 0.02, WHITE, 0.12, 0.86, 0.33, P); eyes(0.12, 0.86, 0.34); return 0.92;
+    }
+    if (type === "digger") {
+      box(0.44, 0.16, 0.56, d, 0, 0.08, 0, P); [-0.18, 0, 0.18].forEach(z => { box(0.46, 0.06, 0.06, l, 0, 0.08, z, P); });
+      box(0.38, 0.08, 0.42, b, 0, 0.2, 0, P); box(0.34, 0.18, 0.12, d, 0, 0.33, -0.2, P);
+      box(0.3, 0.32, 0.3, b, 0, 0.4, -0.02, P); box(0.22, 0.14, 0.02, l, 0, 0.46, 0.135, P); box(0.02, 0.12, 0.14, l, 0.16, 0.46, 0, P); box(0.02, 0.12, 0.14, l, -0.16, 0.46, 0, P);
+      eyes(0.06, 0.46, 0.15);
+      const boom = box(0.08, 0.08, 0.36, b, 0.08, 0.66, 0.2, P); boom.rotation.x = -0.6;
+      box(0.07, 0.34, 0.07, b, 0.08, 0.6, 0.38, P);
+      box(0.18, 0.12, 0.14, b, 0.08, 0.36, 0.44, P); box(0.06, 0.06, 0.02, 0xc0392b, 0.08, 0.36, 0.515, P); return 0.82;
+    }
+    if (type === "train") {
+      box(0.34, 0.06, 0.68, d, 0, 0.14, 0, P);
+      [[-0.22, 0.13], [0.02, 0.17], [0.24, 0.13]].forEach(([z, r]) => [-0.19, 0.19].forEach(x => { box(0.06, r * 2, r * 2, d, x, r, z, P); box(0.07, r * 0.8, r * 0.8, l, x, r, z, P); }));
+      box(0.3, 0.08, 0.08, d, 0, 0.08, 0.38, P);
+      box(0.28, 0.26, 0.4, b, 0, 0.32, 0.1, P); box(0.3, 0.3, 0.04, b, 0, 0.32, 0.31, P);
+      eyes(0.07, 0.36, 0.335); box(0.12, 0.03, 0.02, 0x7a2e1e, 0, 0.27, 0.335, P);
+      box(0.1, 0.18, 0.1, d, 0, 0.54, 0.22, P); box(0.14, 0.04, 0.14, d, 0, 0.64, 0.22, P);
+      box(0.12, 0.08, 0.12, b, 0, 0.49, 0.06, P); box(0.12, 0.06, 0.12, b, 0, 0.48, -0.05, P);
+      box(0.34, 0.4, 0.24, b, 0, 0.4, -0.2, P); box(0.38, 0.04, 0.3, d, 0, 0.62, -0.2, P);
+      box(0.02, 0.12, 0.12, l, 0.175, 0.46, -0.2, P); box(0.02, 0.12, 0.12, l, -0.175, 0.46, -0.2, P); return 0.68;
+    }
+    // trice
+    box(0.1, 0.1, 0.26, b, 0, 0.26, -0.38, P);
+    [[-0.14, 0.18], [0.14, 0.18], [-0.14, -0.18], [0.14, -0.18]].forEach(([x, z]) => box(0.1, 0.2, 0.1, d, x, 0.1, z, P));
+    box(0.38, 0.28, 0.56, b, 0, 0.32, 0, P); box(0.26, 0.04, 0.4, l, 0, 0.17, 0, P);
+    [[0, 0.47, -0.15], [0, 0.47, 0.05], [0.1, 0.45, -0.05], [-0.1, 0.45, -0.05], [0, 0.46, -0.22]].forEach(([x, y, z]) => box(0.07, 0.04, 0.07, d, x, y, z, P));
+    box(0.44, 0.38, 0.06, d, 0, 0.52, 0.26, P); [[-0.18, 0.68], [0, 0.72], [0.18, 0.68], [-0.22, 0.5], [0.22, 0.5]].forEach(([x, y]) => box(0.05, 0.05, 0.02, l, x, y, 0.235, P));
+    box(0.26, 0.22, 0.24, b, 0, 0.38, 0.38, P); box(0.14, 0.1, 0.1, b, 0, 0.32, 0.53, P);
+    const h1 = box(0.04, 0.04, 0.18, l, -0.08, 0.5, 0.5, P), h2 = box(0.04, 0.04, 0.18, l, 0.08, 0.5, 0.5, P); h1.rotation.x = h2.rotation.x = 0.4;
+    box(0.04, 0.08, 0.04, l, 0, 0.42, 0.58, P); eyes(0.13, 0.42, 0.45); return 0.72;
+  }
   function makePet(pt) {
     const g = new THREE.Group(); scene.add(g);
-    const col = PET_COLORS[pt.flavor] || PET_COLORS["原味"], st = Math.max(1, Math.min(5, pt.stage || 1)), s = [0, 0.7, 0.85, 0.95, 1.05, 1.15][st];
-    const body = new THREE.Group(); g.add(body); body.scale.set(s, s, s);
-    if (st === 1) { box(0.36, 0.42, 0.36, col, 0, 0.22, 0, body); box(0.06, 0.06, 0.02, 0x222222, -0.08, 0.28, 0.19, body); box(0.06, 0.06, 0.02, 0x222222, 0.08, 0.28, 0.19, body); }
-    else {
-      box(0.42, 0.36, 0.42, col, 0, 0.3, 0, body); box(0.44, 0.06, 0.44, 0xf5deb3, 0, 0.46, 0, body);
-      box(0.07, 0.07, 0.02, 0x222222, -0.1, 0.34, 0.22, body); box(0.07, 0.07, 0.02, 0x222222, 0.1, 0.34, 0.22, body); box(0.08, 0.04, 0.02, 0xff9aa2, 0, 0.26, 0.22, body);
-      box(0.08, 0.12, 0.1, 0xe67e22, -0.1, 0.06, 0.04, body); box(0.08, 0.12, 0.1, 0xe67e22, 0.1, 0.06, 0.04, body);
-      if (st >= 4) { box(0.26, 0.08, 0.26, 0xffffff, 0, 0.52, 0, body); box(0.3, 0.16, 0.3, 0xffffff, 0, 0.64, 0, body); }
+    const pal = PET_COL[pt.flavor] || PET_COL["原味"], [b, d, l] = pal, st = Math.max(1, Math.min(5, pt.stage || 1));
+    const body = new THREE.Group(); g.add(body);
+    let top = 0.5;
+    if (st === 1 || !pt.type) {       // 蛋
+      box(0.3, 0.42, 0.3, CREAM, 0, 0.23, 0, body); box(0.36, 0.3, 0.36, CREAM, 0, 0.2, 0, body); box(0.2, 0.06, 0.2, CREAM, 0, 0.46, 0, body);
+      [[0.1, 0.3, 0.18], [-0.12, 0.2, 0.18], [0.18, 0.15, -0.05]].forEach(([x, y, z]) => box(0.05, 0.05, 0.02, 0xc0392b, x, y, z, body));
+      top = 0.5;
+    } else if (st === 2) {            // 雛形期:蛋殼裡探出小小的型態
+      const inner = new THREE.Group(); body.add(inner); inner.scale.setScalar(0.5); inner.position.y = 0.12; petModel(pt.type, inner, b, d, l);
+      box(0.42, 0.2, 0.42, CREAM, 0, 0.1, 0, body); [-0.14, 0, 0.14].forEach(x => box(0.08, 0.08, 0.02, CREAM, x, 0.23, 0.2, body));
+      top = 0.6;
+    } else {                          // 3 嬰兒(含奶嘴) 4 兒童(縮小版) 5 完全體
+      const sc = [0, 0, 0, 0.6, 0.78, 1][st], inner = new THREE.Group(); body.add(inner); inner.scale.setScalar(sc);
+      top = petModel(pt.type, inner, b, d, l) * sc;
+      if (st === 3) { const fz = pt.type === "train" ? 0.36 : pt.type === "trice" ? 0.58 : pt.type === "digger" ? 0.16 : 0.34;
+        const fy = pt.type === "trex" ? 0.66 : pt.type === "chicken" ? 0.56 : pt.type === "trice" ? 0.32 : pt.type === "digger" ? 0.4 : 0.3;
+        box(0.12, 0.07, 0.03, 0xf48fb1, 0, fy * sc, fz * sc, body); box(0.05, 0.05, 0.03, 0x5dade2, 0, fy * sc - 0.02, fz * sc + 0.02, body); }
     }
-    if (pt.acc === "pet_bow") { box(0.12, 0.08, 0.03, 0xc0392b, -0.06, 0.2, 0.22, body); box(0.12, 0.08, 0.03, 0xc0392b, 0.06, 0.2, 0.22, body); }
-    if (pt.acc === "pet_wings") [-1, 1].forEach(k => { const w = box(0.04, 0.24, 0.2, 0xffffff, k * 0.24, 0.36, -0.08, body); w.rotation.z = k * 0.6; });
-    if (pt.acc === "pet_crown") box(0.22, 0.1, 0.22, 0xf1c40f, 0, st >= 4 ? 0.77 : 0.53, 0, body);
+    if (pt.acc === "pet_bow") { box(0.12, 0.08, 0.03, 0xc0392b, -0.06, top * 0.55, 0.2, body); box(0.12, 0.08, 0.03, 0xc0392b, 0.06, top * 0.55, 0.2, body); }
+    if (pt.acc === "pet_wings") [-1, 1].forEach(k => { const w = box(0.04, 0.24, 0.2, 0xffffff, k * 0.24, top * 0.6, -0.08, body); w.rotation.z = k * 0.6; });
+    if (pt.acc === "pet_crown") box(0.22, 0.1, 0.22, 0xf1c40f, 0, top + 0.05, 0, body);
     const sparks = [];
     if (st >= 5) for (let i = 0; i < 3; i++) { const sp = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), new THREE.MeshBasicMaterial({ color: 0xffe066 })); g.add(sp); sparks.push(sp); }
-    return { g, body, stage: st, sparks, t: Math.random() * 5, sig: JSON.stringify(pt) };
+    const PS = 1.7; g.scale.setScalar(PS);   // 寵物整體放大，辦公室裡才看得清楚
+    const bubble = bubbleEl("uo-bubble uo-petsay");
+    return { g, body, stage: st, type: pt.type, sparks, t: Math.random() * 5, sig: JSON.stringify(pt), top: top * PS, bubble, info: pt, talk: 6 + Math.random() * 10, n: 0 };
   }
+  function removePet(m) { if (m.pet) { scene.remove(m.pet.g); m.pet.bubble.remove(); m.pet = null; } }
   function syncPets() {
     for (const [id, m] of crew) {
       const pt = GAME.pets[id], sig = pt ? JSON.stringify(pt) : "";
-      if (m.pet && m.pet.sig !== sig) { scene.remove(m.pet.g); m.pet = null; }
+      if (m.pet && m.pet.sig !== sig) removePet(m);
       if (pt && !m.pet && !m.leaving) { m.pet = makePet(pt); m.pet.g.position.copy(m.c.g.position); }
     }
+  }
+  function petSay(pt, txt, ms = 2600) { if (!pt || !txt) return; pt.bubble.textContent = txt; pt.bubble.style.opacity = 1; clearTimeout(pt.sayT); pt.sayT = setTimeout(() => (pt.bubble.style.opacity = 0), ms); }
+  const pv = new THREE.Vector3();
+  function placePet(pt) {
+    const vis = pt.g.visible && (pv.set(pt.g.position.x, pt.top + 0.55, pt.g.position.z).project(camera), Math.abs(pv.x) < 1.05 && Math.abs(pv.y) < 1.1);
+    pt.bubble.style.visibility = vis ? "visible" : "hidden"; if (!vis) return;
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    pt.bubble.style.left = ((pv.x + 1) / 2 * w) + "px"; pt.bubble.style.top = ((1 - pv.y) / 2 * h) + "px";
   }
   function tickPet(m, dt) {
     const pt = m.pet; if (!pt) return; pt.t += dt;
     const o = m.c.g.position, ry = m.c.g.rotation.y;
-    const tx = o.x - Math.sin(ry) * 0.2 + Math.cos(ry) * 0.75, tz = o.z - Math.cos(ry) * 0.2 - Math.sin(ry) * 0.75;
+    let tx = o.x - Math.sin(ry) * 0.2 + Math.cos(ry) * 0.75, tz = o.z - Math.cos(ry) * 0.2 - Math.sin(ry) * 0.75;
+    if (pt.play && pt.play.until > pt.t && pt.play.with && pt.play.with.g.parent) {   // 和別隻寵物玩:跑到牠旁邊(暴龍會追)
+      const q = pt.play.with.g.position; tx = q.x + Math.sin(pt.t * 2) * 0.5; tz = q.z + Math.cos(pt.t * 2) * 0.5;
+    } else if (pt.play) pt.play = null;
     const p = pt.g.position, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
     if (d > 6) p.set(tx, 0, tz);
     else if (d > 0.05) { const s = Math.min(d, dt * 3.6); p.x += dx / d * s; p.z += dz / d * s; pt.g.rotation.y = Math.atan2(dx, dz); }
     else pt.g.rotation.y += (ry - pt.g.rotation.y) * Math.min(1, dt * 3);
-    const hop = pt.stage === 1 ? 0.04 : pt.stage === 2 ? 0.08 : 0.16;
+    const hop = pt.stage === 1 ? 0.04 : pt.stage === 2 ? 0.06 : pt.stage === 3 ? 0.08 : 0.14;
     pt.body.position.y = Math.abs(Math.sin(pt.t * (d > 0.1 ? 10 : 3))) * hop;
     if (pt.stage === 1) pt.body.rotation.z = Math.sin(pt.t * 2) * 0.15;
     if (pt.stage >= 3 && d <= 0.1) pt.body.rotation.y = Math.sin(pt.t * 1.3) * 0.8;
     pt.sparks.forEach((s, i) => { const a = pt.t * 2 + i * 2.1; s.position.set(Math.cos(a) * 0.4, 0.5 + Math.sin(pt.t * 3 + i) * 0.15, Math.sin(a) * 0.4); });
     pt.g.visible = m.c.g.visible;
+    if (pt.stage >= 3 && pt.type && m.arrived) { pt.talk -= dt; if (pt.talk <= 0) { pt.talk = 9 + Math.random() * 9; petSay(pt, petLine(pt.info, pt.n++)); } }
+    placePet(pt);
+  }
+  // 同一場景有兩隻以上寵物時,偶爾湊在一起玩
+  const PLAY_LINES = { "digger|train": ["一起蓋鐵路！", "嗯嗯～嗚嗚～"], "trex|trice": ["吼～追追追", "萌萌救命～"], "chicken|trex": ["咕咕！", "吼…是祖先？"],
+    "chicken|digger": ["挖到蟲了嗎？", "嗯嗯～"], "train|trex": ["嗚嗚～讓一讓！", "吼！"], "digger|trice": ["來挖寶！", "萌萌～"], "chicken|train": ["載我一程～", "鏗鏘！"] };
+  let playClock = 15;
+  function tickPlay(dt) {
+    playClock -= dt; if (playClock > 0) return; playClock = 18 + Math.random() * 14;
+    const by = {}; for (const m of crew.values()) if (m.pet && m.arrived && !m.leaving && m.pet.stage >= 2 && m.pet.type) (by[m.scene] = by[m.scene] || []).push(m.pet);
+    const ks = Object.keys(by).filter(k => by[k].length >= 2); if (!ks.length) return;
+    const list = by[pick(ks)], a = list.splice(Math.floor(Math.random() * list.length), 1)[0], b = pick(list);
+    a.play = { with: b, until: a.t + 5 };
+    const key = [a.type, b.type].sort().join("|"), L = PLAY_LINES[key] || ["一起玩～", "嘻嘻～"];
+    const first = key.split("|")[0], la = a.type === first ? L[0] : L[1], lb = a.type === first ? L[1] : L[0];
+    petSay(a, la, 3000); setTimeout(() => petSay(b, lb, 3000), 900);
   }
 
   // 生日派對:辦公室放蛋糕、氣球、布條,在辦公室的小人定時一起說生日快樂
@@ -848,6 +952,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
 
   function tickGame(dt) {
     for (const m of crew.values()) tickPet(m, dt);
+    tickPlay(dt);
     tickParty(dt); tickFireworks(dt); tickRain(dt);
   }
 
@@ -867,15 +972,14 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
         const s = slotPos(m.scene, m.slot); if (s.fx) s.fx.on = true;
         m.talk -= dt;
         if (m.talk <= 0) {
-          m.talk = c.saying ? 5 + Math.random() * 5 : 8 + Math.random() * 10;
+          m.talk = 10 + Math.random() * 12;
           m.sayN = (m.sayN || 0) + 1;
-          if (c.saying && m.sayN % 3 !== 0) { say(c, c.saying, 4200); } else {
-          const lines = c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "office" ? OFFICE_LINES : SHOP_LINES;
-          say(c, pick(lines), 2800); }
+          const lines = m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "office" ? OFFICE_LINES : SHOP_LINES;
+          say(c, pick(lines), 2800);
         }
       }
     }
-    boss.g.visible = camX < 34; animChar(boss, dt); place(boss);
+    boss.g.visible = camX < 34 && !GAME.boss; animChar(boss, dt); place(boss);
     tickGame(dt);
     const blinkFast = now / 90;
     FX.forEach(f => {
@@ -920,6 +1024,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (ch("shops")) syncShops(GAME.shops);
     },
     emote,
+    petSay(id, txt) { const m = crew.get(String(id)); if (m && m.pet) { petSay(m.pet, txt, 3000); m.pet.body.rotation.y += Math.PI * 2; } },
     dispose() {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", size);

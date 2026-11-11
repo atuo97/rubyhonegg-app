@@ -3,6 +3,8 @@
 // 後端:gmGames / gmGameStart(用掉寵物零食加的命)/ gmGameScore(破個人紀錄給幣,每天上限)
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
+import { Coin, Heart } from "./Coin.jsx";
+import { spriteCanvas } from "./pets/petSprites.jsx";
 
 const FL = [["原味", "#f3c66b"], ["可可", "#7b4a2e"], ["紅玉", "#d9534f"], ["抹茶", "#8bbf6a"]];
 const PETC = { "原味": "#f3c66b", "可可": "#7b4a2e", "紅玉": "#d9534f", "抹茶": "#8bbf6a" };
@@ -15,15 +17,11 @@ const DESC = {
   runner: "點畫面跳躍（可二段跳），躲過紙箱和烤爐，沿路收集赤心幣",
 };
 
+// v1.19:改用寵物像素圖(型態、階段、口味都跟寵物頁一樣)。x,y 是中心,s 是大小
 function drawPet(g, x, y, s, pet, t = 0) {
-  const c = PETC[pet && pet.flavor] || "#f3c66b", st = (pet && pet.stage) || 1;
-  if (st >= 5) { g.fillStyle = "rgba(255,224,102,.35)"; g.beginPath(); g.arc(x, y, s * 0.85, 0, 7); g.fill(); }
-  g.fillStyle = c; g.beginPath();
-  if (st === 1) g.ellipse(x, y, s * 0.42, s * 0.5, 0, 0, 7); else g.roundRect ? g.roundRect(x - s / 2, y - s / 2, s, s * 0.9, s * 0.2) : g.rect(x - s / 2, y - s / 2, s, s * 0.9);
-  g.fill();
-  if (st >= 2) { g.fillStyle = "#f5deb3"; g.fillRect(x - s / 2, y - s / 2, s, s * 0.14); }
-  g.fillStyle = "#222"; g.fillRect(x - s * 0.22, y - s * 0.08, s * 0.12, s * 0.12); g.fillRect(x + s * 0.1, y - s * 0.08, s * 0.12, s * 0.12);
-  if (st >= 4) { g.fillStyle = "#fff"; g.fillRect(x - s * 0.3, y - s * 0.85, s * 0.6, s * 0.35); g.fillRect(x - s * 0.22, y - s * 0.6, s * 0.44, s * 0.12); }
+  const sz = s * 1.5, smooth = g.imageSmoothingEnabled; g.imageSmoothingEnabled = false;
+  g.drawImage(spriteCanvas(pet && pet.type, (pet && pet.stage) || 1, (pet && pet.flavor) || "原味"), x - sz / 2, y - sz / 2, sz, sz);
+  g.imageSmoothingEnabled = smooth;
 }
 function useCanvas(draw, deps) {
   const ref = useRef(null);
@@ -244,7 +242,7 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
   };
   if (err) return <div style={{ ...s.card, textAlign: "center", color: C.muted }}>{err}</div>;
   if (!d) return <div className="rh-skel" style={{ height: 160, borderRadius: 18 }} />;
-  if (!d.pet) return <div style={{ ...s.card, textAlign: "center", color: C.muted, fontSize: 13.5, lineHeight: 1.7 }}>先到「寵物」領養一隻小雞蛋糕，就能解鎖小遊戲！<br />寵物越長越大，會依序解鎖 5 款遊戲。</div>;
+  if (!d.pet) return <div style={{ ...s.card, textAlign: "center", color: C.muted, fontSize: 13.5, lineHeight: 1.7 }}>先到「寵物」免費領養一顆寵物蛋，就能解鎖小遊戲！<br />寵物越長越大，會依序解鎖 5 款遊戲。</div>;
   if (play) {
     const G = GAMES[play.id], g = d.games.find(x => x.id === play.id);
     return <div style={s.card}>
@@ -259,7 +257,7 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
         <div style={{ fontSize: 13, color: C.muted }}>{d.games.find(x => x.id === result.id).name}</div>
         <div style={{ fontSize: 34, fontWeight: 600 }}>{result.score}</div>
         {result.error ? <div style={{ fontSize: 12.5, color: C.red }}>{result.error}</div> :
-          <div style={{ fontSize: 13, color: result.newRecord ? C.accent : C.muted }}>{result.newRecord ? `🎉 新紀錄！${result.reward ? `+${result.reward} 🪙` : "（今天的赤心幣已達上限）"}` : `個人最佳 ${result.best}`}</div>}
+          <div style={{ fontSize: 13, color: result.newRecord ? C.accent : C.muted }}>{result.newRecord ? <>🎉 新紀錄！{result.reward ? <Coin n={result.reward} plus size={12} /> : "（今天的赤心幣已達上限）"}</> : `個人最佳 ${result.best}`}</div>}
         <button onClick={() => start(result.id)} style={{ ...s.btn("primary"), marginTop: 10 }}>再玩一次</button>
       </div>}
       <div style={{ ...s.card, padding: "10px 14px", fontSize: 12.5, color: C.muted }}>
@@ -276,7 +274,7 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
             {g.unlocked && <button onClick={() => start(g.id)} style={{ ...s.btn("primary"), width: "auto", padding: "8px 14px", fontSize: 13 }}>開始</button>}
           </div>
           {g.unlocked && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>
-            個人最佳 {g.best}・破紀錄 +{g.reward} 🪙{g.top.length ? "・本週排行：" + g.top.map((x, i) => `${i + 1}.${x.name} ${x.score}`).join("　") : ""}
+            個人最佳 {g.best}・破紀錄 <Coin n={g.reward} plus size={11} />{g.top.length ? "・本週排行：" + g.top.map((x, i) => `${i + 1}.${x.name} ${x.score}`).join("　") : ""}
           </div>}
         </div>))}
     </div>

@@ -2,6 +2,7 @@
 // 夥伴小店(商店街)。累計工時達門檻可開店;收入店主 80%、系統 20%。後端:spList / spOpen / spUpdate / spBuy / spGiftRead
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import { Coin, Heart } from "./Coin.jsx";
 
 const TYPE_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸" };
 const CAT_LABEL = { gift: "禮物（送同事）", petsnack: "寵物零食", decor: "收藏", weapon: "武器", armor: "防具", card: "對戰卡片" };
@@ -44,7 +45,7 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
             {it.cat === "gift" && <select value={giftTo} onChange={e => setGiftTo(e.target.value)} style={{ ...s.input, width: 100, padding: "7px 8px", fontSize: 12.5 }}>
               <option value="">送給…</option>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
             <button disabled={busy || shop.owner === user.id || (it.cat === "gift" && !giftTo)} onClick={() => post({ action: "spBuy", owner: shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！")}
-              style={{ ...s.btn("primary"), width: "auto", padding: "7px 12px", fontSize: 12.5, opacity: busy || shop.owner === user.id || (it.cat === "gift" && !giftTo) ? .5 : 1 }}>🪙 {it.price}</button>
+              style={{ ...s.btn("primary"), width: "auto", padding: "7px 12px", fontSize: 12.5, opacity: busy || shop.owner === user.id || (it.cat === "gift" && !giftTo) ? .5 : 1 }}><Coin n={it.price} size={12} /></button>
           </div>))}
         {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400 }}>{toast}</div>}
       </div>

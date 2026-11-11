@@ -2,6 +2,8 @@
 // 對戰(PvP):裝備、自動切磋、即時對戰。後端:pvMe / pvEquip / pvDuel / pvLive*
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
+import { Coin, Heart } from "./Coin.jsx";
+import { PET_ATTR, PET_COUNTER, PET_TYPE_NAME } from "./pets/petSprites.jsx";
 
 const MOVE_NAME = { attack: "攻擊", defend: "防禦", skill: "必殺", card: "卡片" };
 const CARD_NAME = { heal: "補血", power: "增強攻擊", shield: "護盾" };
@@ -26,7 +28,7 @@ function evText(e, A, B) {
     const x = e[s], parts = [];
     if (x.card) parts.push(`使用「${x.card}」${x.heal ? `回復 ${x.heal}` : ""}`);
     if (x.move === "defend") parts.push(`防禦${x.heal ? `並回復 ${x.heal}` : ""}`);
-    if (x.dmg != null) parts.push(`${x.move === "skill" ? "必殺！" : ""}造成 ${x.dmg} 傷害${x.crit ? "（爆擊）" : ""}`);
+    if (x.dmg != null) parts.push(`${x.move === "skill" ? "必殺！" : ""}造成 ${x.dmg} 傷害${x.crit ? "（爆擊）" : ""}${x.counter ? "（屬性相剋！）" : ""}`);
     if (e[o].absorb) parts.push(`（被護盾擋下 ${e[o].absorb}）`);
     return (s === "A" ? A : B).name + " " + parts.join("，");
   };
@@ -50,7 +52,7 @@ function Replay({ data, C, s, onClose }) {
       </div>
       {end && <div style={{ textAlign: "center", marginTop: 12 }}>
         <div style={{ fontSize: 18, fontWeight: 600, color: data.winner === data.A.id ? C.green : C.red }}>{data.winner === data.A.id ? "🏆 你贏了！" : "這次輸了，再接再厲"}</div>
-        {data.reward ? <div style={{ fontSize: 12.5, color: C.gold, marginTop: 4 }}>+{data.reward} 🪙</div> : null}
+        {data.reward ? <div style={{ fontSize: 12.5, color: C.gold, marginTop: 4 }}><Coin n={data.reward} plus size={12} /></div> : null}
         <button onClick={onClose} style={{ ...s.btn("secondary"), marginTop: 10 }}>回到對戰</button>
       </div>}
       {!end && <button onClick={() => setI(data.log.length)} style={{ ...s.btn("ghost"), marginTop: 10, padding: 8, fontSize: 12 }}>跳過動畫</button>}
@@ -87,7 +89,7 @@ function Live({ id, user, apiGet, apiPost, C, s, onClose }) {
       {st.done ? (
         <div style={{ textAlign: "center", marginTop: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 600, color: st.winner === user.id ? C.green : C.red }}>{st.winner === user.id ? "🏆 你贏了！" : "這次輸了，再接再厲"}</div>
-          {st.winner === user.id && st.reward ? <div style={{ fontSize: 12.5, color: C.gold }}>+{st.reward} 🪙</div> : null}
+          {st.winner === user.id && st.reward ? <div style={{ fontSize: 12.5, color: C.gold }}><Coin n={st.reward} plus size={12} /></div> : null}
           <button onClick={onClose} style={{ ...s.btn("secondary"), marginTop: 10 }}>回到對戰</button>
         </div>
       ) : waitingMe ? (
@@ -145,7 +147,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", textAlign: "center", gap: 6 }}>
           {[["體力", me.stats.hp], ["攻擊", me.stats.atk], ["防禦", me.stats.def], ["速度", me.stats.spd]].map(x => <div key={x[0]} style={{ background: C.warm, borderRadius: 12, padding: "8px 0" }}><div style={{ fontSize: 18, fontWeight: 600 }}>{x[1]}</div><div style={{ fontSize: 11, color: C.muted }}>{x[0]}</div></div>)}
         </div>
-        {me.pet ? <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>寵物陪伴加成：體力 +{me.pet * 4}</div> : null}
+        {me.pet ? <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>寵物陪伴加成：體力 +{me.pet * 4}{me.petType ? `・${me.petTypeName}${PET_ATTR[me.petType] ? "（" + PET_ATTR[me.petType].split("・")[0] + "）" : ""}・剋${PET_COUNTER[me.petType].map(k => PET_TYPE_NAME[k]).join("、")}` : ""}</div> : null}
         {[["武器", "weapon"], ["防具", "armor"]].map(([label, k]) => (
           <div key={k} style={{ marginTop: 12 }}>
             <label style={s.label}>{label}</label>
@@ -176,7 +178,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
         {d.opponents.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有可以挑戰的夥伴</div>}
         {d.opponents.slice().sort((a, b) => b.power - a.power).map(o => (
           <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
-            <span style={{ flex: 1, fontSize: 13.5 }}>{o.name}<span style={{ fontSize: 11, color: C.light, marginLeft: 6 }}>戰力 {Math.round(o.power)}</span></span>
+            <span style={{ flex: 1, fontSize: 13.5 }}>{o.name}<span style={{ fontSize: 11, color: C.light, marginLeft: 6 }}>戰力 {Math.round(o.power)}{o.petTypeName ? `・${o.petTypeName}` : ""}</span>{me.petType && o.petType && PET_COUNTER[me.petType].includes(o.petType) ? <span style={{ fontSize: 11, color: C.green, marginLeft: 6 }}>你剋他</span> : null}{me.petType && o.petType && PET_COUNTER[o.petType].includes(me.petType) ? <span style={{ fontSize: 11, color: C.red, marginLeft: 6 }}>他剋你</span> : null}</span>
             <button disabled={busy || d.left <= 0} onClick={async () => { const r = await post({ action: "pvDuel", to: o.id }); if (r) setReplay(r); }} style={{ ...s.btn("secondary"), width: "auto", padding: "5px 10px", fontSize: 12, opacity: d.left <= 0 ? .4 : 1 }}>自動切磋</button>
             <button disabled={busy} onClick={async () => { const r = await post({ action: "pvLiveInvite", to: o.id }); if (r) { flash("已送出邀請，等對方接受"); setLive(r.id); } }} style={{ ...s.btn("primary"), width: "auto", padding: "5px 10px", fontSize: 12 }}>即時對戰</button>
           </div>))}

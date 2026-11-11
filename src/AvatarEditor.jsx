@@ -4,6 +4,7 @@
 // 存檔後,宇宙辦公室裡的小人就會換成這個造型。
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import { Coin, Heart } from "./Coin.jsx";
 import {
   SKINS, HAIR_STYLES, HAIR_COLORS, TOPS, PANTS, FACES, HATS, MASCOTS, ACCS, OUTFITS, FRAMES,
   defaultCfg, sanitize, hatUnlocked, hatLockText, SAYING_MAX,
@@ -131,7 +132,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
   }, []);
   // 商店／扭蛋物品:有在商品目錄裡、但還沒擁有 → 鎖住
   const lockedItem = id => !!prices[id] && !owned[id];
-  const lockText = id => { const c = prices[id]; return !c ? "" : c.where === "扭蛋" ? "扭蛋限定" : `🪙 ${c.price}`; };
+  const lockText = id => { const c = prices[id]; return !c ? "" : c.where === "扭蛋" ? "扭蛋限定" : `❤️ ${c.price}`; };
   const tryPick = (k, id, name) => lockedItem(id) ? setMsg(`「${name}」要先${prices[id].where === "扭蛋" ? "從扭蛋機抽到" : "到赤心幣商店購買"}才能穿`) : set(k, id);
 
   const set = (k, v) => { setCfg(c => ({ ...c, [k]: v })); if (state === "saved") setState("ready"); };
@@ -215,7 +216,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
             </div>
           </div>
         ))}
-        {onOpenShop && <button onClick={onOpenShop} style={{ ...s.btn("secondary"), marginTop: 14 }}>🪙 去赤心幣商店逛逛</button>}
+        {onOpenShop && <button onClick={onOpenShop} style={{ ...s.btn("secondary"), marginTop: 14 }}><Heart size={13} /> 去赤心幣商店逛逛</button>}
       </div>
 
       <button onClick={save} disabled={state === "saving" || state === "loading"} style={{ ...s.btn("primary"), opacity: state === "saving" ? .7 : 1 }}>

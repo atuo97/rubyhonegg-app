@@ -2,21 +2,26 @@
 // 赤心幣(紅玉滿宇宙遊戲化)
 // 分頁:總覽、商店、扭蛋、寵物、徽章、團隊。資料來源:後端 gmMe(一次拿齊),各動作 gmBuy/gmGacha/…
 // ─────────────────────────────────────────────
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { Coin, Heart } from "./Coin.jsx";
 import MiniGames from "./MiniGames.jsx";
+import { PetSprite, PET_TYPES, PET_TYPE_NAME, PET_FLAVORS, PET_STAGE_NAMES, PET_ATTR, PET_COUNTER, petLine } from "./pets/petSprites.jsx";
 
 const TABS = [["home", "總覽"], ["shop", "商店"], ["gacha", "扭蛋"], ["pet", "寵物"], ["play", "小遊戲"], ["badge", "徽章"], ["team", "團隊"]];
 const CAT_NAME = { haircolor: "髮色", acc: "配件", outfit: "服裝", frame: "名牌框", hat: "頭飾", petacc: "寵物配件", weapon: "對戰武器", armor: "對戰防具", card: "對戰卡片" };
 const TIER_COLOR = { "普通": "#8a7e72", "稀有": "#3d5a80", "傳說": "#b9381c" };
 const UNLOCK_NAME = { lounge: "咖啡機＋地毯", plants: "植物牆＋水族箱", arcade: "遊戲區（大型電玩＋桌球）", station: "新場景・宇宙太空站", spectrum: "七色光譜大廳" };
 const SOON = { station: 1, spectrum: 1 };
-const PET_FLAVORS = [["原味", "#f3c66b"], ["可可", "#7b4a2e"], ["紅玉", "#d9534f"], ["抹茶", "#8bbf6a"]];
 const ITEM_ICON = { haircolor: "💇", acc: "🎀", outfit: "👕", frame: "🏷️", hat: "🎩", petacc: "🐣", weapon: "⚔️", armor: "🛡️", card: "🃏" };
 
-export function Coin({ n, size = 14 }) {
-  return <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-    <span style={{ fontSize: size }}>🪙</span>{Number(n || 0).toLocaleString()}</span>;
-}
+export { Coin, Heart };
+
+// v1.19：這三個小元件原本寫在 GameTab 裡面，每次重畫都被當成新元件 → 裡面的輸入框一打字就失去焦點（一次只能打一個字）。
+// 改到外層定義，透過 context 拿樣式與忙碌狀態。
+const GCtx = createContext({});
+function Card({ children, style }) { const { s } = useContext(GCtx); return <div style={{ ...s.card, ...style }}>{children}</div>; }
+function Title({ children, right }) { const { s } = useContext(GCtx); return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div style={{ ...s.sectionTitle, marginBottom: 0 }}>{children}</div>{right}</div>; }
+function Btn({ children, onClick, disabled, kind = "primary", style }) { const { s, busy } = useContext(GCtx); return <button onClick={onClick} disabled={disabled || busy} style={{ ...s.btn(kind), padding: "9px 14px", fontSize: 13, opacity: disabled || busy ? .5 : 1, ...style }}>{children}</button>; }
 
 export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged }) {
   const [tab, setTab] = useState(initialTab || "home");
@@ -25,7 +30,14 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
   const [gres, setGres] = useState(null);
-  const [petForm, setPetForm] = useState({ flavor: "紅玉", name: "" });
+  const [petForm, setPetForm] = useState({ flavor: "原味", name: "" });
+  const [petView, setPetView] = useState("main");
+  const [hatch, setHatch] = useState(null);       // 孵化儀式：{pet, phase}
+  useEffect(() => {        // 寵物剛孵化（有型態、這支手機還沒看過）→ 播孵化動畫
+    const pt = me && me.pet; if (!pt || !pt.type || !pt.id) return;
+    let seen = ""; try { seen = localStorage.getItem("rh_hatch_" + pt.id) || ""; } catch (e) {}
+    if (!seen) { setHatch({ pet: pt, phase: 0 }); setTimeout(() => setHatch(h => h && { ...h, phase: 1 }), 1800); try { localStorage.setItem("rh_hatch_" + pt.id, "1"); } catch (e) {} }
+  }, [me && me.pet && me.pet.id, me && me.pet && me.pet.type]);
   const [donate, setDonate] = useState("");
   const [adm, setAdm] = useState({ target: "", amount: "", reason: "", badge: "" });
 
@@ -47,9 +59,6 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   if (!me) return <div className="rh-skel" style={{ height: 160, borderRadius: 18 }} />;
 
   const P = me.params || {}, started = me.today >= P["測試版開始日"], official = me.today >= P["正式版開始日"];
-  const Card = ({ children, style }) => <div style={{ ...s.card, ...style }}>{children}</div>;
-  const Title = ({ children, right }) => <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div style={{ ...s.sectionTitle, marginBottom: 0 }}>{children}</div>{right}</div>;
-  const Btn = ({ children, onClick, disabled, kind = "primary", style }) => <button onClick={onClick} disabled={disabled || busy} style={{ ...s.btn(kind), padding: "9px 14px", fontSize: 13, opacity: disabled || busy ? .5 : 1, ...style }}>{children}</button>;
 
   // ───── 總覽 ─────
   const Home = () => (
@@ -77,7 +86,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <div style={{ fontSize: 14, fontWeight: 600, color: l.amount > 0 ? C.green : C.red, whiteSpace: "nowrap" }}>{l.amount > 0 ? "+" : ""}{l.amount}</div>
           </div>))}
       </Card>
-      {me.isTop && <Admin />}
+      {me.isTop && Admin()}
     </>
   );
 
@@ -149,57 +158,151 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
     );
   };
 
-  // ───── 寵物 ─────
+  // ───── 寵物（v1.19 改版）─────
   const Pet = () => {
-    const pt = me.pet, stages = me.petStages || [];
+    const pt = me.pet;
+    const typeOf = id => PET_TYPE_NAME[id] || "";
     if (!pt) return (
       <Card>
-        <Title>領養寵物小雞蛋糕</Title>
-        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>會跟在你的小人身邊。你上班累積工時，牠就會長大，總共五個階段；不用餵食，也不會生病。</div>
+        <Title>{me.petEverOwned ? "孵一顆新的蛋" : "免費領養寵物蛋"}</Title>
+        <div style={{ textAlign: "center", margin: "6px 0 10px" }}><PetSprite stage={1} size={88} /></div>
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.7, marginBottom: 12 }}>
+          每個人的寵物都從一顆蛋開始。你上班累積工時，牠就會長大；滿 40 小時孵化，隨機開出<b>雞、暴龍、挖土機、火車、三角龍</b>其中一種。不用餵食，也不會生病。
+        </div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 6 }}>選一個口味顏色</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {PET_FLAVORS.map(([f, c]) => <button key={f} onClick={() => setPetForm(x => ({ ...x, flavor: f }))} style={{ flex: 1, border: `2px solid ${petForm.flavor === f ? C.text : C.border}`, borderRadius: 14, padding: "10px 0", background: C.card, cursor: "pointer", fontFamily: "inherit" }}>
-            <div style={{ width: 26, height: 26, margin: "0 auto", borderRadius: 8, background: c }} /><div style={{ fontSize: 12, marginTop: 4 }}>{f}</div></button>)}
+          {Object.keys(PET_FLAVORS).map(f => <button key={f} onClick={() => setPetForm(x => ({ ...x, flavor: f }))} style={{ flex: 1, border: `2px solid ${petForm.flavor === f ? C.text : C.border}`, borderRadius: 14, padding: "10px 0", background: C.card, cursor: "pointer", fontFamily: "inherit" }}>
+            <div style={{ width: 26, height: 26, margin: "0 auto", borderRadius: 8, background: PET_FLAVORS[f][0] }} /><div style={{ fontSize: 12, marginTop: 4 }}>{f}</div></button>)}
         </div>
         <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder="幫牠取名字（8 字內）" style={s.input} />
-        <Btn style={{ marginTop: 12 }} disabled={me.balance < P["寵物價格"] || me.frozen} onClick={() => act({ action: "gmPetBuy", flavor: petForm.flavor, name: petForm.name }, "領養成功！到宇宙辦公室看看牠吧")}>
-          領養（<Coin n={P["寵物價格"]} size={12} />）</Btn>
+        <Btn style={{ marginTop: 12 }} disabled={me.frozen} onClick={async () => { const ok = await act({ action: "gmPetBuy", flavor: petForm.flavor, name: petForm.name }, "領養成功！到宇宙辦公室看看牠吧"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>免費領養</Btn>
       </Card>);
-    const next = pt.nextAt, pct = next ? Math.min(100, Math.round(pt.hours / next * 100)) : 100;
+    const next = pt.nextAt, prevAt = [0, 40, 120, 300, 600][pt.stage - 1] || 0;
+    const pct = next ? Math.min(100, Math.round((pt.hours - prevAt) / (next - prevAt) * 100)) : 100;
     const accs = me.catalog.filter(c => c.cat === "petacc");
+    const SUB = [["main", "我的寵物"], ["album", "相簿"], ["diary", "日記"], ["dex", "圖鑑"], ["trade", "交換"]];
+    const incoming = (me.petTrades || []).filter(t => !t.mine), outgoing = (me.petTrades || []).filter(t => t.mine);
     return (
       <>
-        <Card style={{ textAlign: "center", padding: "20px 16px" }}>
-          <div style={{ width: 60 + pt.stage * 8, height: 54 + pt.stage * 8, margin: "0 auto", borderRadius: pt.stage === 1 ? "50%" : 16, background: (PET_FLAVORS.find(f => f[0] === pt.flavor) || [])[1], position: "relative", boxShadow: pt.stage >= 5 ? "0 0 22px #ffe066" : "none" }}>
-            <span style={{ position: "absolute", top: "40%", left: "30%", width: 6, height: 6, background: "#222", borderRadius: 2 }} /><span style={{ position: "absolute", top: "40%", right: "30%", width: 6, height: 6, background: "#222", borderRadius: 2 }} />
-            {pt.stage >= 4 && <span style={{ position: "absolute", top: -18, left: "50%", transform: "translateX(-50%)", fontSize: 22 }}>👨‍🍳</span>}
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, overflowX: "auto" }}>
+          {SUB.map(([k, l]) => <button key={k} onClick={() => setPetView(k)} style={{ ...chip(petView === k), flex: "0 0 auto" }}>{l}{k === "trade" && incoming.length ? ` ・${incoming.length}` : ""}</button>)}
+        </div>
+
+        {petView === "main" && <>
+          <Card style={{ textAlign: "center", padding: "20px 16px" }}>
+            <PetSprite type={pt.type} stage={pt.stage} flavor={pt.flavor} size={128} />
+            {pt.stage >= 3 && petLine(pt, 0) && <div style={{ display: "inline-block", marginTop: 6, background: C.warm, borderRadius: 12, padding: "4px 12px", fontSize: 13 }}>「{petLine(pt)}」</div>}
+            <div style={{ fontSize: 17, fontWeight: 600, marginTop: 10 }}>{pt.name}</div>
+            <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{pt.flavor}{pt.type ? "・" + typeOf(pt.type) : ""}・第 {pt.stage} 階段「{pt.stageName}」</div>
+            {!pt.type && <div style={{ fontSize: 12.5, color: C.accent, marginTop: 4 }}>上班滿 40 小時就會孵化，到時才知道是什麼喔！</div>}
+            <div style={{ marginTop: 14, textAlign: "left" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.muted }}><span>陪你上班 {pt.hours} 小時</span><span>{next ? `${next} 小時長大` : "已是完全體"}</span></div>
+              <div style={{ height: 6, background: C.border, borderRadius: 4, overflow: "hidden", marginTop: 4 }}><div style={{ width: pct + "%", height: "100%", background: C.accent }} /></div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+              {PET_STAGE_NAMES.map((n, i) => <div key={i} style={{ fontSize: 10.5, color: i < pt.stage ? C.accent : C.light, textAlign: "center", width: "20%" }}>
+                <PetSprite type={pt.type} stage={i + 1} flavor={pt.flavor} size={30} silhouette={i >= pt.stage} /><br />{n}</div>)}
+            </div>
+          </Card>
+          {pt.type && <Card>
+            <Title>對戰屬性</Title>
+            <div style={{ fontSize: 13, lineHeight: 1.8 }}>{PET_ATTR[pt.type]}（第 2～5 階段發揮 25%～100%）<br />
+              剋制：{PET_COUNTER[pt.type].map(typeOf).join("、")}（傷害 ×1.2）<br />
+              被剋：{Object.keys(PET_COUNTER).filter(k => PET_COUNTER[k].includes(pt.type)).map(typeOf).join("、")}</div>
+          </Card>}
+          {pt.stage >= 5 && <Card style={{ background: "#fff6e8" }}>
+            <Title>收進圖鑑，再孵一顆蛋</Title>
+            <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6, marginBottom: 10 }}>{pt.name}已經是完全體了！可以把牠收進圖鑑永久保存，再免費孵一顆新的蛋（型態一樣隨機）。五種都養到完全體可得「寵物圖鑑大師」徽章。</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <select value={petForm.flavor} onChange={e => setPetForm(x => ({ ...x, flavor: e.target.value }))} style={{ ...s.input, width: 90 }}>{Object.keys(PET_FLAVORS).map(f => <option key={f}>{f}</option>)}</select>
+              <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder="新寵物名字" style={{ ...s.input, flex: 1 }} />
+            </div>
+            <Btn style={{ marginTop: 10 }} onClick={async () => { if (!window.confirm(`把${pt.name}收進圖鑑，再孵一顆新的蛋？`)) return; const ok = await act({ action: "gmPetBuy", flavor: petForm.flavor, name: petForm.name }, "新的蛋來了！"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>收進圖鑑・孵新蛋</Btn>
+          </Card>}
+          <Card>
+            <Title>改名字</Title>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder={pt.name} style={{ ...s.input, flex: 1 }} />
+              <Btn style={{ width: "auto" }} disabled={!petForm.name.trim()} onClick={async () => { const ok = await act({ action: "gmPetUpdate", name: petForm.name }, "改好名字了"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>改名</Btn>
+            </div>
+            <Btn kind="secondary" style={{ marginTop: 10 }} onClick={() => setTab("play")}>🎮 和{pt.name}玩小遊戲</Btn>
+          </Card>
+          <Card>
+            <Title>寵物配件</Title>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button onClick={() => act({ action: "gmPetUpdate", acc: "" }, "已拿下配件")} style={chip(!pt.acc)}>不戴</button>
+              {accs.map(a => a.owned
+                ? <button key={a.id} onClick={() => act({ action: "gmPetUpdate", acc: a.id }, "幫牠戴上了")} style={chip(pt.acc === a.id)}>{a.name}</button>
+                : <button key={a.id} onClick={() => setTab("shop")} style={{ ...chip(false), color: C.light }}>🔒 {a.name}・{a.price}</button>)}
+            </div>
+          </Card>
+        </>}
+
+        {petView === "album" && <Card>
+          <Title>{pt.name}的成長相簿</Title>
+          {(me.petAlbum || []).map(a => (
+            <div key={a.stage} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+              <PetSprite type={pt.type} stage={a.stage} flavor={pt.flavor} size={56} style={{ background: C.warm, borderRadius: 12 }} />
+              <div><div style={{ fontSize: 14, fontWeight: 600 }}>{a.stage === 1 ? "領養了一顆蛋" : a.stage === 2 && pt.type ? `孵出了${typeOf(pt.type)}！` : `長成「${a.stageName}」`}</div>
+                <div style={{ fontSize: 12, color: C.muted }}>{a.date.slice(5).replace("-", "/")}・陪你上班 {a.hours} 小時</div></div>
+            </div>))}
+          {pt.stage < 5 && <div style={{ fontSize: 12.5, color: C.light, padding: "10px 0 2px" }}>下一張：上班滿 {pt.nextAt} 小時（還差 {Math.max(0, pt.nextAt - pt.hours)} 小時）</div>}
+        </Card>}
+
+        {petView === "diary" && <Card>
+          <Title>{pt.name}的日記</Title>
+          {!(me.petDiary || []).length && <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.6 }}>每週一早上，{pt.name}會寫一篇上週陪你上班的日記。</div>}
+          {(me.petDiary || []).map(d => (
+            <div key={d.week} style={{ padding: "10px 0", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: 11.5, color: C.light }}>{d.week.slice(5).replace("-", "/")} 那一週</div>
+              <div style={{ fontSize: 13.5, lineHeight: 1.7, marginTop: 2 }}>{d.text}</div>
+            </div>))}
+        </Card>}
+
+        {petView === "dex" && <Card>
+          <Title right={<span style={{ fontSize: 12, color: C.muted }}>{new Set((me.petDex || []).map(d => d.type)).size}/5</span>}>寵物圖鑑</Title>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 6, textAlign: "center" }}>
+            {PET_TYPES.map(([k, n]) => { const got = (me.petDex || []).find(d => d.type === k); return (
+              <div key={k}><PetSprite type={k} stage={5} flavor={got ? got.flavor : "原味"} silhouette={!got} size={56} style={{ background: C.warm, borderRadius: 10 }} />
+                <div style={{ fontSize: 11.5, color: got ? C.text : C.light }}>{got ? n : "？？？"}</div></div>); })}
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, marginTop: 12 }}>{pt.name}</div>
-          <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{pt.flavor}・第 {pt.stage} 階段「{pt.stageName}」</div>
-          <div style={{ marginTop: 14, textAlign: "left" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: C.muted }}><span>陪你上班 {pt.hours} 小時</span><span>{next ? `${next} 小時長大` : "已是最終型態"}</span></div>
-            <div style={{ height: 6, background: C.border, borderRadius: 4, overflow: "hidden", marginTop: 4 }}><div style={{ width: pct + "%", height: "100%", background: C.accent }} /></div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-            {stages.map((st, i) => <div key={i} style={{ fontSize: 10.5, color: i < pt.stage ? C.accent : C.light, textAlign: "center" }}>{["🥚", "🐣", "✨", "👨‍🍳", "🌟"][i]}<br />{st[1]}</div>)}
-          </div>
-        </Card>
-        <Card>
-          <Title>改名字</Title>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder={pt.name} style={{ ...s.input, flex: 1 }} />
-            <Btn style={{ width: "auto" }} disabled={!petForm.name.trim()} onClick={async () => { const ok = await act({ action: "gmPetUpdate", name: petForm.name, acc: pt.acc }, "改好名字了"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>改名</Btn>
-          </div>
-          <Btn kind="secondary" style={{ marginTop: 10 }} onClick={() => setTab("play")}>🎮 和{pt.name}玩小遊戲</Btn>
-        </Card>
-        <Card>
-          <Title>寵物配件</Title>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={() => act({ action: "gmPetUpdate", acc: "" }, "已拿下配件")} style={chip(!pt.acc)}>不戴</button>
-            {accs.map(a => a.owned
-              ? <button key={a.id} onClick={() => act({ action: "gmPetUpdate", acc: a.id }, "幫牠戴上了")} style={chip(pt.acc === a.id)}>{a.name}</button>
-              : <button key={a.id} onClick={() => setTab("shop")} style={{ ...chip(false), color: C.light }}>🔒 {a.name}・{a.price}</button>)}
-          </div>
-        </Card>
+          {(me.petDex || []).length > 0 && <div style={{ marginTop: 12 }}>{me.petDex.map(d => <div key={d.id} style={{ fontSize: 12.5, color: C.muted, padding: "3px 0" }}>📖 {d.name}（{d.flavor}{typeOf(d.type)}）{d.current ? "・還在身邊" : ""}</div>)}</div>}
+          <div style={{ fontSize: 11.5, color: C.light, marginTop: 10 }}>親手養到完全體才會收進圖鑑；五種集滿得「寵物圖鑑大師」徽章（+100）。</div>
+        </Card>}
+
+        {petView === "trade" && <>
+          {incoming.map(t => <Card key={t.id} style={{ background: "#fff6e8" }}>
+            <Title>{t.otherName} 想跟你交換寵物</Title>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around", marginBottom: 10 }}>
+              <div style={{ textAlign: "center", fontSize: 12 }}><PetSprite type={pt.type} stage={pt.stage} flavor={pt.flavor} size={56} /><br />你的{pt.name}</div>
+              <div style={{ fontSize: 20 }}>⇄</div>
+              {t.otherPet && <div style={{ textAlign: "center", fontSize: 12 }}><PetSprite type={t.otherPet.type} stage={t.otherPet.stage} flavor={t.otherPet.flavor} size={56} /><br />{t.otherPet.name}（{t.otherPet.typeName}）</div>}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Btn kind="ghost" onClick={() => act({ action: "gmPetTradeReply", id: t.id, accept: false }, "已婉拒")}>婉拒</Btn>
+              <Btn onClick={() => { if (window.confirm("確定交換嗎？交換後配件會留在你身上，30 天內不能再換。")) act({ action: "gmPetTradeReply", id: t.id, accept: true }, "交換成功！"); }}>同意交換</Btn>
+            </div>
+          </Card>)}
+          {outgoing.map(t => <Card key={t.id}>
+            <div style={{ fontSize: 13.5 }}>已向 <b>{t.otherName}</b> 提出交換，等對方回覆中…</div>
+            <Btn kind="ghost" style={{ marginTop: 8 }} onClick={() => act({ action: "gmPetTradeReply", id: t.id, cancel: true }, "已取消")}>取消</Btn>
+          </Card>)}
+          <Card>
+            <Title>提出交換</Title>
+            <div style={{ fontSize: 12.5, color: C.muted, lineHeight: 1.7, marginBottom: 10 }}>
+              一隻換一隻、雙方都同意才成立，不能加赤心幣。只能換<b>相同階段</b>、還沒到完全體的寵物（第 2～4 階段）。交換後寵物照新主人的工時繼續長大；配件留在原主人身上；每人 30 天限換 1 次。
+              {me.petTradeNext && me.petTradeNext > me.today ? <><br /><span style={{ color: C.accent }}>你在 {me.petTradeNext} 之後才能再交換。</span></> : null}
+            </div>
+            {(pt.stage < 2 || pt.stage >= 5) && <div style={{ fontSize: 13, color: C.muted }}>{pt.stage < 2 ? "孵化之後才能交換喔。" : "完全體不能交換。"}</div>}
+            {pt.stage >= 2 && pt.stage < 5 && !(me.petPartners || []).length && <div style={{ fontSize: 13, color: C.muted }}>目前沒有同階段的夥伴可以交換。</div>}
+            {(me.petPartners || []).map(p => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
+                <PetSprite type={p.pet.type} stage={p.pet.stage} flavor={p.pet.flavor} size={44} />
+                <div style={{ flex: 1, fontSize: 13 }}><b>{p.name}</b> 的 {p.pet.name}<div style={{ fontSize: 11.5, color: C.muted }}>{p.pet.flavor}{p.pet.typeName}</div></div>
+                <Btn kind="secondary" style={{ width: "auto" }} disabled={!!outgoing.length || (me.petTradeNext && me.petTradeNext > me.today)} onClick={() => act({ action: "gmPetTrade", to: p.id }, "已送出交換邀請")}>提出交換</Btn>
+              </div>))}
+          </Card>
+        </>}
       </>
     );
   };
@@ -285,19 +388,28 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   );
 
   return (
-    <div>
+    <GCtx.Provider value={{ s, C, busy }}><div>
       <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12, paddingBottom: 2 }}>
         {TABS.map(([k, label]) => <button key={k} onClick={() => { setTab(k); setGres(null); }} style={{ flex: "0 0 auto", ...chip(tab === k), fontWeight: tab === k ? 600 : 400 }}>{label}</button>)}
       </div>
       {me.frozen && <Card style={{ background: C.goldBg, color: C.gold, fontSize: 13 }}>帳號已停用，赤心幣已凍結。</Card>}
-      {tab === "home" && <Home />}
-      {tab === "shop" && <Shop />}
-      {tab === "gacha" && <Gacha />}
-      {tab === "pet" && <Pet />}
+      {tab === "home" && Home()}
+      {tab === "shop" && Shop()}
+      {tab === "gacha" && Gacha()}
+      {tab === "pet" && Pet()}
       {tab === "play" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={() => { load(); onChanged && onChanged(); }} />}
-      {tab === "badge" && <Badge />}
-      {tab === "team" && <Team />}
+      {tab === "badge" && Badge()}
+      {tab === "team" && Team()}
+      {hatch && <div onClick={() => hatch.phase && setHatch(null)} style={{ position: "fixed", inset: 0, background: "rgba(20,12,6,.72)", zIndex: 500, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", color: "#fff", textAlign: "center" }}>
+        <style>{`@keyframes rhShake{0%,100%{transform:rotate(0)}20%{transform:rotate(-12deg)}40%{transform:rotate(10deg)}60%{transform:rotate(-8deg)}80%{transform:rotate(6deg)}}@keyframes rhPop{0%{transform:scale(.3);opacity:0}70%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}`}</style>
+        {hatch.phase === 0
+          ? <><div style={{ animation: "rhShake .45s infinite" }}><PetSprite stage={1} size={160} /></div><div style={{ marginTop: 16, fontSize: 16 }}>蛋在動了…！</div></>
+          : <><div style={{ animation: "rhPop .6s ease-out" }}><PetSprite type={hatch.pet.type} stage={Math.max(2, hatch.pet.stage)} flavor={hatch.pet.flavor} size={180} /></div>
+              <div style={{ marginTop: 14, fontSize: 20, fontWeight: 600 }}>{hatch.pet.name} 孵出了{PET_TYPE_NAME[hatch.pet.type]}！</div>
+              <div style={{ fontSize: 13, opacity: .85, marginTop: 6 }}>{PET_ATTR[hatch.pet.type]}</div>
+              <div style={{ fontSize: 12, opacity: .6, marginTop: 18 }}>點一下繼續</div></>}
+      </div>}
       {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400, maxWidth: "86%", textAlign: "center" }}>{toast}</div>}
-    </div>
+    </div></GCtx.Provider>
   );
 }
