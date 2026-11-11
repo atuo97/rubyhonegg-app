@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
-import AvatarEditor from "./AvatarEditor.jsx";
+import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
+import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
 import { Coin } from "./Coin.jsx";
 import { PetSprite } from "./pets/petSprites.jsx";
@@ -235,6 +236,49 @@ function HomeSkeleton() {
 }
 
 // 白色圓角列表項
+// 小人＋寵物（頂部與赤心幣樂園共用）
+function MeBuddy({ cfg, pet, scale = 1 }) {
+  const h = Math.round(26 * scale);
+  return (
+    <span style={{ display:"inline-flex", alignItems:"flex-end", gap:2, height:h, overflow:"hidden" }}>
+      {cfg ? <span style={{ display:"block", height:h, lineHeight:0 }}><Doll cfg={cfg} size={Math.round(h / 1.5)} /></span>
+           : <span style={{ color:C.accent, display:"flex" }}><Ic n="user" size={h * 0.8}/></span>}
+      {pet && pet.type ? <span style={{ display:"block", lineHeight:0 }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} size={Math.round(h * 0.9)} /></span> : null}
+    </span>
+  );
+}
+
+// 商店街街口的官方扭蛋機（點開才載入）
+function GachaBooth({ user, C, s, onChanged }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ ...s.card, padding:"12px 14px", marginBottom:12, background:C.accentBg }}>
+      <button onClick={()=>setOpen(o=>!o)} style={{ width:"100%", border:"none", background:"transparent", display:"flex", alignItems:"center", gap:12, cursor:"pointer", fontFamily:"inherit", color:C.text, padding:0, textAlign:"left" }}>
+        <span style={{ fontSize:30, lineHeight:1 }}>🎰</span>
+        <span style={{ flex:1 }}>
+          <span style={{ display:"block", fontSize:14.5, fontWeight:600 }}>紅玉滿官方扭蛋機</span>
+          <span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>用赤心幣轉扭蛋，抽造型與限定小物</span>
+        </span>
+        <span style={{ fontSize:12.5, color:C.accent, fontWeight:600 }}>{open ? "收起" : "去轉"}</span>
+      </button>
+      {open && <div style={{ marginTop:12 }}><GameTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab="gacha" onChanged={onChanged} /></div>}
+    </div>
+  );
+}
+
+function GameTile({ title, sub, icon, art, onClick }) {
+  return (
+    <button onClick={onClick} style={{ ...s.card, margin:0, display:"flex", flexDirection:"column", alignItems:"flex-start", gap:6,
+      cursor:"pointer", textAlign:"left", fontFamily:"inherit", padding:"12px 14px", color:C.text, minHeight:92 }}>
+      <span style={{ color:C.accent, display:"flex", alignItems:"flex-end", height:34 }}>{art || <Ic n={icon} size={28}/>}</span>
+      <span>
+        <span style={{ display:"block", fontSize:14, fontWeight:600 }}>{title}</span>
+        {sub && <span style={{ display:"block", fontSize:11.5, color:C.muted, marginTop:1 }}>{sub}</span>}
+      </span>
+    </button>
+  );
+}
+
 function ListItem({ icon, title, desc, onClick, badge, badgeRed }) {
   return (
     <button onClick={onClick} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:14,
@@ -548,8 +592,24 @@ export default function App(){
   const ord = useOrderAlerts(user);
   const game = useGameMe(user);
   const [gameTab, setGameTab] = useState("home");
-  const [petFirst, setPetFirst] = useState(false);
-  const openGame = (t2) => { if (t2 === "pet") { setPetFirst(true); setTab("avatar"); return; } setGameTab(t2 || "home"); setTab("game"); };
+  const [meView, setMeView] = useState("avatar");
+  const [meKey, setMeKey] = useState(0);
+  const openMe = (v) => { setMeView(v || "avatar"); setMeKey(k => k + 1); setTab("avatar"); };
+  const setPetFirst = (b) => setMeView(b ? "pet" : "avatar");
+  // v1.22：赤心幣拆開——商店/寵物/小遊戲/徽章→我和寵物；扭蛋→商店街；團隊→塔防；總覽＝我的錢包
+  const openGame = (t2) => {
+    if (["shop","pet","play","badge"].includes(t2)) return openMe(t2);
+    if (t2 === "gacha") { setTab("street"); return; }
+    if (t2 === "team") { setTab("tower"); return; }
+    setGameTab("home"); setTab("game");
+  };
+  const [avatarCfg, setAvatarCfg] = useState(null);
+  const inAvatar = tab === "avatar";
+  useEffect(() => {
+    if (!user || inAvatar) return;
+    apiGet({ action: "getMyAvatar", empId: user.id }, 1).then(r => { if (r && r.success) setAvatarCfg(sanitizeAvatar(r.data && r.data.cfg)); }).catch(() => {});
+  }, [user && user.id, inAvatar]);
+  const openMePet = () => openMe("avatar");
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
   const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price"];
@@ -566,7 +626,7 @@ export default function App(){
   ];
   const navActive = partner ? tab : SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", game:"赤心幣", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -593,7 +653,8 @@ export default function App(){
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           {loading && <div style={{ fontSize:11, color:C.muted }}>同步中…</div>}
-          {game.me && !partner && <button onClick={()=>openGame("home")} aria-label="赤心幣" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
+          {game.me && !partner && avatarCfg && <button onClick={openMePet} aria-label="我和寵物" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"0 8px", height:30, cursor:"pointer", display:"flex", alignItems:"center", overflow:"hidden" }}><MeBuddy cfg={avatarCfg} pet={game.me.pet} scale={1} /></button>}
+          {game.me && !partner && <button onClick={()=>openGame("home")} aria-label="我的錢包" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
           <div style={{ width:38, height:38, borderRadius:19, background:C.accentBg, color:C.accent,
                         border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center",
                         fontSize:15, fontWeight:600 }}>{user.avatar}</div>
@@ -629,25 +690,34 @@ export default function App(){
                                    onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
         {tab==="more"  && (
           <div>
-            <div style={s.sectionTitle}>功能</div>
-            <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
+            <div style={s.sectionTitle}>門市工作</div>
             <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
-            <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
-            <ListItem icon="user" title="我和寵物" desc="換小人造型、照顧寵物（同一頁，左邊是你、右邊是寵物）" onClick={()=>{ setPetFirst(false); setTab("avatar"); }}/>
             <ListItem icon="order" title="物料需求" desc="叫麵糊、麵粉、糖、紅茶粉、機器鍍膜…" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
             {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
-            <ListItem icon="sword" title="對戰" desc="裝備武器卡片，和夥伴切磋或即時對戰" onClick={()=>setTab("arena")}/>
-            <ListItem icon="tower" title="百貨櫃位塔防戰" desc="投入赤心幣升級你櫃位的塔，每週一結算" onClick={()=>setTab("tower")}/>
-            <ListItem icon="home" title="夥伴商店街" desc="逛夥伴開的小店，或開一家自己的店" onClick={()=>setTab("street")}/>
-            <ListItem icon="coin" title="赤心幣" desc={game.me ? `餘額 ${game.me.balance} 枚・商店、扭蛋、寵物、徽章、團隊` : "商店、扭蛋、寵物、徽章、團隊"} onClick={()=>openGame("home")}/>
-            <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>我的班表與薪資</div>
+            <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
             <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>團隊</div>
+            <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
+            <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>赤心樂園</div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
+              <GameTile title="我和寵物" sub="造型・寵物・商店・小遊戲・徽章" art={<MeBuddy cfg={avatarCfg} pet={game.me && game.me.pet} scale={1.25} />} onClick={openMePet}/>
+              <GameTile title="對戰" sub="和夥伴切磋" icon="sword" onClick={()=>setTab("arena")}/>
+              <GameTile title="櫃位塔防戰" sub="升級塔・營業額排行" icon="tower" onClick={()=>setTab("tower")}/>
+              <GameTile title="夥伴商店街" sub="逛店・開店・扭蛋機" icon="home" onClick={()=>setTab("street")}/>
+            </div>
+
             {user.role>=2 && <>
-              <div style={{ ...s.sectionTitle, marginTop:16 }}>管理</div>
+              <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・排班與營運</div>
               <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
               <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
               {user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
               {user.role>=3 && <>
+                <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・人員與設定</div>
                 <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
                 <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位" onClick={()=>setTab("locs")}/>
                 <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、加盟店應收（權利金＋物料）" onClick={()=>setTab("price")}/>
@@ -661,20 +731,27 @@ export default function App(){
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
-            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>{ setPetFirst(false); setTab("avatar"); }} />
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} />
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
-        {tab==="avatar" && <MePet key={petFirst ? "p" : "a"} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} initial={petFirst ? "pet" : "avatar"} onOpenShop={()=>openGame("shop")} onChanged={game.refresh} />}
+        {tab==="avatar" && <MePet key={meKey} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} initial={meView} onOpenShop={()=>openMe("shop")} onChanged={game.refresh} />}
         {tab==="pnl" && <PnlPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="locs" && user.role>=3 && <LocManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="staff" && user.role>=3 && <StaffManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} />}
         {tab==="ann" && <AnnouncePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="price" && user.role>=3 && <PricePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="arena" && <ArenaTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="tower" && <TowerTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="street" && <ShopStreetTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="game" && <GameTab key={gameTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initialTab={gameTab} onEditAvatar={()=>{ setPetFirst(false); setTab("avatar"); }} onChanged={game.refresh} />}
+        {tab==="tower" && <>
+          <TowerTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />
+          <div style={{ ...s.sectionTitle, marginTop:18 }}>本月櫃位營業額排行</div>
+          <GameTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab="team" onNav={openGame} onChanged={game.refresh} />
+        </>}
+        {tab==="street" && <>
+          <GachaBooth user={user} C={C} s={s} onChanged={game.refresh} />
+          <ShopStreetTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />
+        </>}
+        {tab==="game" && <GameTab key="wallet" user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab="home" onNav={openGame} onEditAvatar={()=>openMe("avatar")} onChanged={game.refresh} />}
         {tab==="vote"  && <VotesTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
       </div>
 

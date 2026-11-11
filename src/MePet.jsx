@@ -10,6 +10,7 @@ import { defaultCfg, sanitize } from "./universe/avatarCatalog.js";
 
 export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, onOpenShop, onChanged }) {
   const [view, setView] = useState(initial || "avatar");
+  const nav = (k) => { setView(k); setVer(v => v + 1); if (typeof window !== "undefined") window.scrollTo(0, 0); };
   const [cfg, setCfg] = useState(defaultCfg());
   const [pet, setPet] = useState(undefined);
   const [ver, setVer] = useState(0);
@@ -19,7 +20,7 @@ export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, 
   };
   useEffect(loadHead, [ver]);
   const seg = (k, label) => (
-    <button key={k} onClick={() => { setView(k); setVer(v => v + 1); }} style={{ flex: 1, border: "none", borderRadius: 10, padding: "9px 4px", fontSize: 14, fontFamily: "inherit", cursor: "pointer",
+    <button key={k} onClick={() => { setView(k); setVer(v => v + 1); }} style={{ flex: "1 0 auto", border: "none", borderRadius: 10, padding: "9px 8px", fontSize: 13.5, whiteSpace: "nowrap", fontFamily: "inherit", cursor: "pointer",
       background: view === k ? C.card : "transparent", color: view === k ? C.text : C.muted, fontWeight: view === k ? 600 : 500 }}>{label}</button>
   );
   return (
@@ -42,9 +43,9 @@ export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, 
           </>}
         </div>
       </div>
-      <div style={{ display: "flex", background: C.warm, borderRadius: 12, padding: 3, gap: 2, marginBottom: 12 }}>{seg("avatar", "👕 造型")}{seg("pet", "🐣 寵物")}</div>
-      {view === "avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={onOpenShop} />}
-      {view === "pet" && <GameTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab="pet" onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
+      <div style={{ display: "flex", background: C.warm, borderRadius: 12, padding: 3, gap: 2, marginBottom: 12, overflowX: "auto" }}>{seg("avatar", "👕 造型")}{seg("pet", "🐣 寵物")}{seg("shop", "🛍 商店")}{seg("play", "🎮 小遊戲")}{seg("badge", "🏅 徽章")}</div>
+      {view === "avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={() => nav("shop")} />}
+      {view !== "avatar" && <GameTab key={view} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab={view} onNav={nav} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
     </div>
   );
 }

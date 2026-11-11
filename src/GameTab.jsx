@@ -23,8 +23,9 @@ function Card({ children, style }) { const { s } = useContext(GCtx); return <div
 function Title({ children, right }) { const { s } = useContext(GCtx); return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div style={{ ...s.sectionTitle, marginBottom: 0 }}>{children}</div>{right}</div>; }
 function Btn({ children, onClick, disabled, kind = "primary", style }) { const { s, busy } = useContext(GCtx); return <button onClick={onClick} disabled={disabled || busy} style={{ ...s.btn(kind), padding: "9px 14px", fontSize: 13, opacity: disabled || busy ? .5 : 1, ...style }}>{children}</button>; }
 
-export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged, onlyTab }) {
+export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged, onlyTab, onNav }) {
   const [tab, setTab] = useState(onlyTab || initialTab || "home");
+  const go = (k) => { if (onlyTab && onNav) onNav(k); else setTab(k); };
   const [me, setMe] = useState(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -36,7 +37,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   useEffect(() => {        // 寵物剛孵化（有型態、這支手機還沒看過）→ 播孵化動畫
     const pt = me && me.pet; if (!pt || !pt.type || !pt.id) return;
     let seen = ""; try { seen = localStorage.getItem("rh_hatch_" + pt.id) || ""; } catch (e) {}
-    if (!seen) { setHatch({ pet: pt, phase: 0 }); setTimeout(() => setHatch(h => h && { ...h, phase: 1 }), 1800); try { localStorage.setItem("rh_hatch_" + pt.id, "1"); } catch (e) {} }
+    if (!seen && (!onlyTab || onlyTab === "pet")) { setHatch({ pet: pt, phase: 0 }); setTimeout(() => setHatch(h => h && { ...h, phase: 1 }), 1800); try { localStorage.setItem("rh_hatch_" + pt.id, "1"); } catch (e) {} }
   }, [me && me.pet && me.pet.id, me && me.pet && me.pet.type]);
   const [donate, setDonate] = useState("");
   const [adm, setAdm] = useState({ target: "", amount: "", reason: "", badge: "" });
@@ -225,7 +226,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
               <input value={petForm.name} maxLength={8} onChange={e => setPetForm(x => ({ ...x, name: e.target.value }))} placeholder={pt.name} style={{ ...s.input, flex: 1 }} />
               <Btn style={{ width: "auto" }} disabled={!petForm.name.trim()} onClick={async () => { const ok = await act({ action: "gmPetUpdate", name: petForm.name }, "改好名字了"); if (ok) setPetForm(x => ({ ...x, name: "" })); }}>改名</Btn>
             </div>
-            <Btn kind="secondary" style={{ marginTop: 10 }} onClick={() => setTab("play")}>🎮 和{pt.name}玩小遊戲</Btn>
+            <Btn kind="secondary" style={{ marginTop: 10 }} onClick={() => go("play")}>🎮 和{pt.name}玩小遊戲</Btn>
           </Card>
           <Card>
             <Title>寵物配件</Title>
@@ -233,7 +234,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
               <button onClick={() => act({ action: "gmPetUpdate", acc: "" }, "已拿下配件")} style={chip(!pt.acc)}>不戴</button>
               {accs.map(a => a.owned
                 ? <button key={a.id} onClick={() => act({ action: "gmPetUpdate", acc: a.id }, "幫牠戴上了")} style={chip(pt.acc === a.id)}>{a.name}</button>
-                : <button key={a.id} onClick={() => setTab("shop")} style={{ ...chip(false), color: C.light }}>🔒 {a.name}・{a.price}</button>)}
+                : <button key={a.id} onClick={() => go("shop")} style={{ ...chip(false), color: C.light }}>🔒 {a.name}・{a.price}</button>)}
             </div>
           </Card>
         </>}
