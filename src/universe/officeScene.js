@@ -304,14 +304,7 @@ export function createOffice(container, opts) {
     put(P, textPlane("紅玉滿赤心｜" + th.title, 4.4, 0.6, { bg: th.signBg || "#c0392b", color: "#fff", size: 50 }), -0.45, 3.3, -1.15);
     plant(P, 7.3, 5.0);
     // 缺貨看板（立牌）
-    const bg = new THREE.Group(); bg.position.set(6.6, 0, -1.4); bg.rotation.y = Math.PI / 4; P.add(bg);
-    box(0.08, 1.6, 0.08, 0x555555, -0.9, 0.8, 0, bg); box(0.08, 1.6, 0.08, 0x555555, 0.9, 0.8, 0, bg);
-    box(2.3, 1.7, 0.08, 0x6e4b2a, 0, 2.1, -0.05, bg);
-    const bc = document.createElement("canvas"); bc.width = 512; bc.height = 384;
-    const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
-    bm.position.set(0, 2.1, 0.0); bg.add(bm);
-    BOARDS[k] = { canvas: bc, mesh: bm };
-    drawBoard(k, []);
+    stockBoard(P, k, 6.6, -1.4);
     th.deco && th.deco(P);
     SLOTS[k] = [
       { x: -5, z: -2.2, rotY: 0, anim: "cook", fx: ov },
@@ -494,6 +487,83 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
     bm.position.set(0, 2.1, 0.0); bg.add(bm);
     BOARDS[k] = { canvas: bc, mesh: bm }; drawBoard(k, []);
+    opsProps(k, bg);
+  }
+  // ── v1.21 櫃位營運連動：麵糊桶（四口味）、待取貨紙箱、準備中／已打烊立牌 ──
+  const OPS = {}, OPS_STATE = {};
+  const BATTER = [["原味", 0xf2c46d], ["可可", 0x6b3f26], ["紅玉", 0xb83227], ["抹茶", 0x7aa95c]];
+  const BATTER_FULL = 10, BATTER_LOW = 2;
+  function canvasTex(cw, ch) { const c = document.createElement("canvas"); c.width = cw; c.height = ch; const t = new THREE.CanvasTexture(c); return { c, t }; }
+  function opsProps(k, bg) {
+    const o = { k };
+    // 麵糊桶：看板前方的木棧板上，四個半透明桶，桶內液面高度＝剩餘包數
+    const bat = new THREE.Group(); bg.add(bat); o.bat = bat;
+    box(2.1, 0.08, 0.62, 0x8a6a4a, 0, 0.04, 0.55, bat);
+    const shell = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.32 });
+    o.fills = BATTER.map(([, col], i) => {
+      const x = -0.72 + i * 0.48;
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.56, 14), shell); sh.position.set(x, 0.36, 0.55); bat.add(sh);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 6, 16), mat(0xdddddd)); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.64, 0.55); bat.add(rim);
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.165, 1, 14), mat(col)); f.position.set(x, 0.09, 0.55); f.scale.y = 0.001; bat.add(f);
+      return f;
+    });
+    const st = canvasTex(512, 64); o.strip = st;
+    const sm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 0.26), new THREE.MeshBasicMaterial({ map: st.t, transparent: true }));
+    sm.position.set(0, 1.12, 0.01); bat.add(sm);
+    bat.visible = false;
+    // 待取貨紙箱：看板左側小桌，最多疊 4 箱，上方標示筆數
+    const box2 = new THREE.Group(); box2.position.set(-1.65, 0, 0.35); bg.add(box2); o.boxes = box2;
+    box(0.7, 0.06, 0.55, 0x6e4b2a, 0, 0.62, 0, box2); [-0.3, 0.3].forEach(x => box(0.06, 0.6, 0.06, 0x555555, x, 0.3, 0, box2));
+    o.boxMeshes = [0, 1, 2, 3].map(i => { const g = new THREE.Group(); g.position.set((i % 2 ? 0.04 : -0.03), 0.8 + i * 0.27, 0); box(0.5, 0.26, 0.38, 0xc0392b, 0, 0, 0, g); box(0.52, 0.06, 0.4, 0xf6e7c8, 0, 0, 0, g); box2.add(g); return g; });
+    const bl = canvasTex(256, 96); o.boxLbl = bl;
+    o.boxLblMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.3), new THREE.MeshBasicMaterial({ map: bl.t, transparent: true })); box2.add(o.boxLblMesh);
+    box2.visible = false;
+    // 營業狀態立牌：準備中／今日已打烊
+    const sg = new THREE.Group(); sg.position.set(1.7, 0, 0.6); bg.add(sg); o.sign = sg;
+    box(0.06, 0.9, 0.06, 0x333333, 0, 0.45, 0, sg); box(0.5, 0.04, 0.4, 0x333333, 0, 0.02, 0, sg);
+    const sc = canvasTex(256, 160); o.signTex = sc;
+    const sp = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.56), new THREE.MeshBasicMaterial({ map: sc.t })); sp.position.set(0, 1.15, 0.04); sg.add(sp);
+    box(0.94, 0.6, 0.04, 0x222222, 0, 1.15, 0, sg);
+    sg.visible = false;
+    OPS[k] = o;
+  }
+  function drawOps(k, d) {
+    const o = OPS[k]; if (!o) return;
+    d = d || {};
+    OPS_STATE[k] = d.state || null;
+    // 麵糊
+    const rem = d.batter;
+    if (rem && BATTER.some(([f]) => rem[f] != null)) {
+      o.bat.visible = true;
+      BATTER.forEach(([f], i) => { const v = rem[f], h = v == null ? 0 : Math.max(0.02, Math.min(1, v / BATTER_FULL)) * 0.5; o.fills[i].scale.y = Math.max(0.001, h); o.fills[i].position.y = 0.09 + h / 2; });
+      const g = o.strip.c.getContext("2d"), W = 512, H = 64; g.clearRect(0, 0, W, H);
+      g.fillStyle = "rgba(255,250,242,.92)"; g.fillRect(0, 6, W, H - 12);
+      g.font = "bold 30px sans-serif"; g.textBaseline = "middle"; g.textAlign = "center";
+      BATTER.forEach(([f], i) => { const v = rem[f]; g.fillStyle = v == null ? "#999" : v <= BATTER_LOW ? "#c0392b" : "#2b1d14"; g.fillText(f + " " + (v == null ? "—" : v), W / 8 + i * W / 4, H / 2); });
+      o.strip.t.needsUpdate = true;
+    } else o.bat.visible = false;
+    // 待取貨
+    const n = d.pickup || 0;
+    o.boxes.visible = n > 0;
+    if (n > 0) {
+      o.boxMeshes.forEach((b, i) => (b.visible = i < Math.min(4, n)));
+      const g = o.boxLbl.c.getContext("2d"); g.clearRect(0, 0, 256, 96);
+      g.fillStyle = "#c0392b"; g.beginPath(); g.roundRect ? g.roundRect(4, 8, 248, 80, 18) : g.rect(4, 8, 248, 80); g.fill();
+      g.fillStyle = "#fff"; g.font = "bold 40px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("待取貨 " + n, 128, 50);
+      o.boxLbl.t.needsUpdate = true;
+      o.boxLblMesh.position.set(0, 0.8 + Math.min(4, n) * 0.27 + 0.12, 0);
+    }
+    // 營業狀態
+    const s = d.state;
+    o.sign.visible = s === "before" || s === "closed";
+    if (o.sign.visible) {
+      const g = o.signTex.c.getContext("2d");
+      g.fillStyle = s === "closed" ? "#2b2b3a" : "#fff6e0"; g.fillRect(0, 0, 256, 160);
+      g.fillStyle = s === "closed" ? "#ffd27a" : "#c0392b"; g.font = "bold 52px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(s === "closed" ? "今日已打烊" : "準備中", 128, 66);
+      g.font = "24px sans-serif"; g.fillStyle = s === "closed" ? "#c9c3e0" : "#8a6a4a"; g.fillText(s === "closed" ? "明天見 🌙" : "等夥伴開店 ☕", 128, 122);
+      o.signTex.t.needsUpdate = true;
+    }
   }
   function makeGuests(k, spots) {
     const cols = [[0xf5b7b1, 0x2e4053, 0x5d4037], [0x85c1e9, 0x34495e, 0x1c1c1c], [0xa9dfbf, 0x5d6d7e, 0x8d6e63], [0xf9e79f, 0x4a235a, 0x3e2723]];
@@ -609,13 +679,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     }
     put(P, textPlane("遠百信義 A13・4F", 5, 0.9, { color: "rgba(90,70,50,.35)", size: 56 }), -4.2, 0.03, 4.3, 0, -Math.PI / 2);
     // 缺貨看板（立牌）
-    const bg = new THREE.Group(); bg.position.set(6.6, 0, -0.6); bg.rotation.y = Math.PI / 4; P.add(bg);
-    box(0.08, 1.6, 0.08, 0x555555, -0.9, 0.8, 0, bg); box(0.08, 1.6, 0.08, 0x555555, 0.9, 0.8, 0, bg);
-    box(2.3, 1.7, 0.08, 0x6e4b2a, 0, 2.1, -0.05, bg);
-    const bc = document.createElement("canvas"); bc.width = 512; bc.height = 384;
-    const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
-    bm.position.set(0, 2.1, 0.0); bg.add(bm);
-    BOARDS[k] = { canvas: bc, mesh: bm }; drawBoard(k, []);
+    stockBoard(P, k, 6.6, -0.6);
     // 夥伴站位：攤車後方，面向客人
     SLOTS[k] = [
       { x: CX, z: CZ - 1.15, rotY: 0, anim: "cook", fx: ovens[1] },
@@ -1891,11 +1955,11 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
 
   // 天氣:下雨、夜晚
   const hemi = scene.children.find(o => o.isHemisphereLight);
+  let baseHemi = 0.75, baseSun = 0.75, lightK = 1;
   let rain = null;
   function syncWeather() {
     const w = GAME.weather || {}, night = !!w.night;
-    if (hemi) hemi.intensity = night ? 0.5 : 0.75;
-    sun.intensity = night ? 0.35 : 0.75;
+    baseHemi = night ? 0.5 : 0.75; baseSun = night ? 0.35 : 0.75;
     scene.background.setHex(night ? 0x0e0d1c : w.rain ? 0x2a2f3d : 0x1d1b2e);
     if (w.rain && !rain) {
       const n = 900, pos = new Float32Array(n * 3);
@@ -1970,6 +2034,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (Math.abs(camera.zoom - tzoom) > 0.002) { camera.zoom += (tzoom - camera.zoom) * kk; camera.updateProjectionMatrix(); }
     camera.position.set(camX + Math.sin(az) * 30, 24, camZ + Math.cos(az) * 30); camera.lookAt(camX, 0.5, camZ);
     sun.position.set(camX + 8, 18, 10); sun.target.position.set(camX, 0, 0);
+    // v1.21 櫃位燈光：已打烊最暗、準備中稍暗、營業中全亮
+    const os = OPS_STATE[view], lk = os === "closed" ? 0.42 : os === "before" ? 0.72 : 1;
+    lightK += (lk - lightK) * Math.min(1, dt * 3);
+    if (hemi) hemi.intensity = baseHemi * lightK; sun.intensity = baseSun * lightK;
     GROUPS.forEach(g => (g.visible = Math.abs(g.position.x - camX) < 34));
 
     FX.forEach(f => (f.on = false));
@@ -2033,6 +2101,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setCrew,
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setEventName(n) { drawEventSign(n || "今日活動"); },
+    // v1.21 櫃位營運連動：{ 場景: { state: "open"|"before"|"closed", batter: {原味,可可,紅玉,抹茶}, pickup: 筆數 } }
+    setOps(map) { Object.keys(OPS).forEach(k => drawOps(k, map && map[k])); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
     setView(k) { if (SCENES[k] && k !== view) { view = k; if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); } },
     // v1.21 放大
