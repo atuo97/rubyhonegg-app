@@ -54,7 +54,7 @@ function line_webhook_(p) {
     ev.forEach(function (e) {
       var src = e.source || {}, gid = src.groupId || src.roomId; if (!gid) return;
       var g = groups.filter(function (x) { return x.id === gid; })[0];
-      if (e.type === 'join') {
+      if (e.type === 'join' || (!g && e.type !== 'leave')) {   // 部署端 11/12：官方帳號在 Worker v2 前就已加入的群組，群組裡任何人說一句話就會登記（不存聊天內容）
         var name = '';
         try { if (src.groupId) name = line_fetch_('get', 'group/' + gid + '/summary').groupName || ''; } catch (er) {}
         if (g) sh.getRange(g.row, 2, 1, 5).setValues([[g.name || name, '使用中', g.use || '公告', g.joined || line_now_(), line_now_()]]);
