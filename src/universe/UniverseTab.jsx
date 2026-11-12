@@ -65,13 +65,14 @@ async function pool(items, n, fn, onProgress) {
   return out;
 }
 
-const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "麵糊-黑糖", "麵糊-芝麻", "預拌粉", "零錢"];
+// v1.26 快速選項改讀〈供貨價格〉勾「常用」的品項（後端 getShortages 帶 quick）；後端沒回傳時用這組
+const QUICK_DEFAULT = ["原味麵糊", "口味麵糊", "紙袋", "紙盒", "竹籤", "塑膠提袋", "機器鍍膜"];
 
 // v1.24：麵糊只分原味／其他口味（其他＝可可＋紅玉＋抹茶＋黑糖＋芝麻）
 const batter2 = rem => { if (!rem) return null; let o = 0, any = false; Object.keys(rem).forEach(k => { if (k !== "原味" && rem[k] != null) { o += +rem[k] || 0; any = true; } }); return { 原味: rem["原味"] == null ? null : rem["原味"], 其他口味: any ? Math.round(o * 100) / 100 : null }; };
 const fcLow = f => !!(f && f.days !== null && f.days !== undefined && f.days < 2);
 const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
-export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar }) {
+export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
@@ -100,6 +101,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const [short, setShort] = useState([]);          // [{id, scene, item, by, time}]
   const [backendOk, setBackendOk] = useState(true);
   const [custom, setCustom] = useState("");
+  const [quick, setQuick] = useState(QUICK_DEFAULT);
   const [game, setGame] = useState(null);          // gmScene
   const [feed, setFeed] = useState([]);
   const [target, setTarget] = useState(null);      // 互動對象
@@ -161,7 +163,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   // ── 缺貨看板（後端：getShortages / addShortage / resolveShortage）──
   const loadShort = async () => {
     const r = await apiGet({ action: "getShortages" });
-    if (r && r.success) { setBackendOk(true); setShort((r.data || []).map(x => ({ ...x, scene: sceneOf(x.location) }))); }
+    if (r && r.success) { setBackendOk(true); setShort((r.data || []).map(x => ({ ...x, scene: sceneOf(x.location) }))); if (Array.isArray(r.quick) && r.quick.length) setQuick(r.quick); }
     else setBackendOk(false);
   };
   const addShort = async (item) => {
@@ -173,6 +175,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       const r = await apiPost({ action: "addShortage", location: loc, item, empId: user.id, name: user.name });
       if (r && r.success) loadShort(); else setBackendOk(false);
     }
+  };
+  // v1.26 工廠出貨：已發貨（Lv.3）
+  const shipShort = async (x) => {
+    setShort(l => l.map(y => y.id === x.id ? { ...y, status: "已發貨", shipBy: user.name, shipAt: "剛剛" } : y));
+    const r = await apiPost({ action: "shipShortage", id: x.id, empId: user.id });
+    if (!(r && r.success)) { alert((r && r.error) || "沒有成功，請再試一次"); loadShort(); }
   };
   const resolveShort = async (x) => {
     setShort(l => l.filter(y => y.id !== x.id));
@@ -388,18 +396,23 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
               {curOps.pickup > 0 && <div style={{ marginTop: curOps.batter ? 3 : 0 }}>📦 今日待取貨 <b style={{ color: C.accent }}>{curOps.pickup}</b> 筆</div>}
             </div>
           )}
+          <div style={{ fontSize: 11.5, color: C.muted, background: C.warm, borderRadius: 8, padding: "6px 9px", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ flex: 1 }}>這裡只是看板，總部會看到；真的要叫貨請到物料需求</span>
+            {onOpenMaterials && <button onClick={onOpenMaterials} style={{ border: `1px solid ${C.accent}`, background: C.card, color: C.accent, borderRadius: 999, padding: "3px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>去叫貨</button>}
+          </div>
           {short.filter(x => x.scene === view).length === 0 && <div style={{ fontSize: 13, color: C.green, padding: "4px 0 8px" }}>✅ 目前不缺</div>}
           {short.filter(x => x.scene === view).map(x => (
             <div key={x.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.red }}>{x.item}</div>
                 <div style={{ fontSize: 10, color: C.light }}>{x.by || ""}{x.time ? " · " + new Date(x.time).toLocaleString("zh-TW", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : ""}</div>
+                {x.status === "已發貨" && <div style={{ fontSize: 11.5, color: C.blue, fontWeight: 600 }}>🚚 已發貨 {String(x.shipAt || "").slice(5).replace("-", "/")}{x.shipBy ? "（" + x.shipBy + "）" : ""}</div>}
               </div>
-              <button onClick={() => resolveShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.greenBg, color: C.green, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>✅ 補好了</button>
+              <button onClick={() => resolveShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.greenBg, color: C.green, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>{x.status === "已發貨" ? "✅ 收到了" : "✅ 補好了"}</button>
             </div>
           ))}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
-            {QUICK.map(q => (
+            {quick.map(q => (
               <button key={q} onClick={() => addShort(q)} style={{ border: `1px solid ${C.border}`, borderRadius: 999, padding: "5px 10px", background: C.warm, fontSize: 12, fontWeight: 700, cursor: "pointer", color: C.text }}>＋ {q}</button>
             ))}
           </div>
@@ -408,6 +421,27 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
             <button onClick={() => addShort(custom)} style={{ ...s.btn(), width: "auto", padding: "9px 14px", whiteSpace: "nowrap", flex: "0 0 auto" }}>登記</button>
           </div>
           {!backendOk && <div style={{ fontSize: 11, color: C.gold, marginTop: 8 }}>⚠️ 缺貨看板後端尚未部署，目前登記的內容不會保存。</div>}
+        </div>
+      )}
+
+      {view === "factory" && (
+        <div style={s.card}>
+          <div style={s.sectionTitle}>🏭 工廠出貨板</div>
+          <div style={{ fontSize: 11.5, color: C.muted, marginBottom: 8 }}>各櫃位在看板登記的補貨。總部出貨後按「已發貨」，櫃位收到後按「收到了」就會消失。</div>
+          {short.length === 0 && <div style={{ fontSize: 13, color: C.green, padding: "4px 0" }}>✅ 各櫃位目前都不缺</div>}
+          {Object.entries(short.reduce((m, x) => { (m[x.location] = m[x.location] || []).push(x); return m; }, {})).map(([loc, list]) => (
+            <div key={loc} style={{ border: `1px solid ${C.border}`, borderRadius: 12, padding: "8px 10px", marginBottom: 8 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, marginBottom: 4 }}>{shortLoc(loc)} <span style={{ fontSize: 11.5, color: C.muted, fontWeight: 400 }}>待處理 {list.filter(x => x.status !== "已發貨").length}・已發貨 {list.filter(x => x.status === "已發貨").length}</span></div>
+              {list.map(x => (
+                <div key={x.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderTop: `1px dashed ${C.border}` }}>
+                  <span style={{ flex: 1, fontSize: 13.5, color: x.status === "已發貨" ? C.blue : C.red, fontWeight: 600 }}>{x.item}
+                    <span style={{ display: "block", fontSize: 10.5, color: C.light, fontWeight: 400 }}>{x.by}{x.status === "已發貨" ? `・已發貨 ${String(x.shipAt || "").slice(5).replace("-", "/")}` : ""}</span></span>
+                  {x.status !== "已發貨" && user.role >= 3 && <button onClick={() => shipShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.blueBg, color: C.blue, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>🚚 已發貨</button>}
+                  <button onClick={() => resolveShort(x)} style={{ border: "none", borderRadius: 10, padding: "6px 10px", background: C.greenBg, color: C.green, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>✅ 已補齊</button>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 

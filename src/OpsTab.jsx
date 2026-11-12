@@ -64,7 +64,7 @@ const Row = ({ C, l, v, sub, color, bold }) => (
 
 // ═══════════ 物料需求 ═══════════
 // v1.24 叫貨品項分類
-const CAT_ICON = { "原物料":"🥣", "包材":"🛍", "製作器具":"🍳", "文具":"✏️", "機器保養":"🛠", "其他":"📦" };
+const CAT_ICON = { "原物料":"🥣", "包材":"🛍", "製作器具":"🍳", "清潔用品":"🧽", "文具":"✏️", "機器保養":"🛠", "其他":"📦" };
 const matCats = items => { const m = []; items.forEach(x => { const c = x.cat || "其他"; let g = m.find(y => y[0] === c); if (!g) { g = [c, []]; m.push(g); } g[1].push(x); }); return m; };
 
 export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, todayStr }) {
@@ -765,11 +765,12 @@ export function PricePage({ user, apiGet, apiPost, C, s, todayStr }) {
     <div>
       <div style={s.card}>
         <div style={s.sectionTitle}>供貨價格（給加盟店、合作櫃位的單價）</div>
-        <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>品項會出現在「叫貨」頁，依分類排列；備註寫「停用」就不會出現在叫貨頁</div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>品項會出現在「叫貨」頁，依分類排列；備註寫「停用」就不會出現在叫貨頁。勾 ⭐ 的是「常用」，會出現在宇宙辦公室缺貨看板的快速按鈕（口味麵糊會合併成一顆）</div>
         {(list || []).map((x, i) => (
           <div key={i}>
           {(i === 0 || (list[i - 1].cat || "其他") !== (x.cat || "其他")) && <div style={{ fontSize:13, fontWeight:600, margin:"12px 0 6px", color:C.accent }}>{x.cat || "其他"}</div>}
           <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:8 }}>
+            <button onClick={() => up(i, "fav", !x.fav)} aria-label="常用" title="常用" style={{ border:`1px solid ${x.fav ? C.gold : C.border}`, background: x.fav ? C.goldBg : C.card, borderRadius:8, width:34, height:34, flexShrink:0, cursor:"pointer", fontSize:15, padding:0, filter: x.fav ? "none" : "grayscale(1)", opacity: x.fav ? 1 : .45 }}>⭐</button>
             <input value={x.item} onChange={e => up(i, "item", e.target.value)} style={{ ...s.input, flex:1.4, padding:"8px" }}/>
             <input value={x.unit} onChange={e => up(i, "unit", e.target.value)} placeholder="單位" style={{ ...s.input, width:54, padding:"8px" }}/>
             <input type="number" value={x.price ?? ""} onChange={e => up(i, "price", e.target.value)} placeholder="單價" style={{ ...s.input, width:72, padding:"8px" }}/>

@@ -4,6 +4,7 @@ import VotesTab from "./VotesTab.jsx";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import BatterPage from "./BatterTab.jsx";
 import ReportPage from "./ReportTab.jsx";
+import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
 import { Coin } from "./Coin.jsx";
@@ -89,11 +90,11 @@ async function apiPost(data, retries = 2) {
 }
 
 // 照片壓縮(長邊800px JPEG)→ base64
-function compressPhoto(file) {
+function compressPhoto(file, maxSide) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const max = 800;
+      const max = maxSide || 800;
       const scale = Math.min(1, max / Math.max(img.width, img.height));
       const cv = document.createElement("canvas");
       cv.width = img.width * scale; cv.height = img.height * scale;
@@ -187,6 +188,9 @@ const ICONS = {
   order:'<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5h6v3H9zM8.5 12h7M8.5 16h5"/>',
   back:'<path d="M15 6l-6 6 6 6"/>',
   tool:'<path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.6 2.6-2.3-.6-.6-2.3z"/>',
+  park:'<circle cx="12" cy="9" r="5"/><path d="M12 14v6M9.5 20h5M12 4v-.5M9.7 6.5c.6-.6 1.4-1 2.3-1"/>',
+  shield:'<path d="M12 3.5l7 2.8v5.2c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V6.3z"/><path d="M9 12l2.2 2.2L15.5 10"/>',
+  mng:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
 };
 function Ic({ n, size=22, color="currentColor", sw=1.6, style }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw}
@@ -633,6 +637,7 @@ export default function App(){
   const online = useOnline();
   const ord = useOrderAlerts(user);
   const game = useGameMe(user);
+  const lastMain = useRef("home");   // v1.26 子頁返回到哪一個底部分頁
   const [gameTab, setGameTab] = useState("home");
   const [meView, setMeView] = useState("avatar");
   const [meKey, setMeKey] = useState(0);
@@ -658,22 +663,31 @@ export default function App(){
   const roleName = r => r>=5?"大隊長":r===4?"總經理":r===3?"管理者":r===2?"分隊長":"夥伴";
   const previewLabel = !preview ? "" : preview.mode === "role" ? `Lv.${preview.role} ${roleName(preview.role)}${preview.type && preview.type !== "員工" ? "（" + preview.type + "）" : ""}` : `${user.name}（Lv.${user.role} ${roleName(user.role)}）`;
 
-  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price","batter","rp"];
+  // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
+  const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
+    myshift:"info", guide:"info", vote:"info", health:"info",
+    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park",
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage" };
+  const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
+  const franchiseOwner = user.role < 3 && !!(opsMe && opsMe.franchiseLocs && opsMe.franchiseLocs.length);
   const navItems = partner ? [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"mat",   icon:"order", label:"叫貨" },
     { id:"rp",    icon:"tool",  label:"回報" },
     { id:"info",  icon:"user",  label:"我的" },
   ] : [
-    { id:"home",  icon:"home",  label:"首頁" },
-    { id:"punch", icon:"clock", label:"打卡" },
-    { id:"info",  icon:"user",  label:"我的" },
-    { id:"more",  icon:"grid",  label:"更多" },
+    { id:"home",   icon:"home",  label:"首頁" },
+    { id:"punch",  icon:"clock", label:"出勤", badge: ord.open.length, red: ord.late.length > 0 },
+    { id:"info",   icon:"user",  label:"我的" },
+    { id:"park",   icon:"park",  label:"樂園" },
+    ...(user.role >= 2 ? [{ id:"manage", icon:"mng", label:"管理", badge: (rpCnt?.pending || 0) + (user.role >= 3 ? (opsMe?.matPending || 0) : 0), red: rpCnt?.urgent > 0 }] : []),
   ];
-  const navActive = partner ? tab : SUB.includes(tab) ? "more" : tab;
-  const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  if (!SUB.includes(tab)) lastMain.current = tab;
+  if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
+  const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
+  const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -717,7 +731,7 @@ export default function App(){
 
       {/* CONTENT */}
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
-        {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goMore} />}
+        {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goBack} />}
         {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} onOpenReport={()=>setTab("rp")} />}
         {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} />}
         {tab==="rp" && <ReportPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} me={opsMe} locations={locations} todayStr={todayStr} uploadPhoto={uploadPhoto} onChanged={loadRp} />}
@@ -739,49 +753,59 @@ export default function App(){
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
                                    onWorkChange={()=>setSegRefreshKey(k=>k+1)}
                                    onLeaveChange={()=>{ setSegRefreshKey(k=>k+1); setWorkLoc(""); }} />}
+        {!partner && tab==="punch" && <div style={{ marginTop:18 }}>
+          <div style={s.sectionTitle}>門市工作</div>
+          <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
+          <ListItem icon="order" title="叫貨（物料需求）" desc="原物料、包材、製作器具、清潔用品…" onClick={()=>setTab("mat")}/>
+          <ListItem icon="tool" title="請總部處理" desc="機器報修、水電場地、人力支援、客訴、金流…" badge={(user.role>=2 ? null : rpCnt?.mineOpen) || null} onClick={()=>setTab("rp")}/>
+          <ListItem icon="book" title="SOP 教學" desc="開店、收店、攪拌麵糊、烤雞蛋糕" onClick={()=>setTab("sop")}/>
+          <ListItem icon="shield" title="稽查資料" desc="食品業者登錄字號、保險、在班夥伴體檢狀態" onClick={()=>setTab("audit")}/>
+        </div>}
         {!partner && tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData}
                                    onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} onLogout={logout}
-                                   viewAs={realUser.role>=5 && !preview ? <ViewAsCard onStart={startPreview} /> : null} />}
-        {tab==="more"  && (
+                                   viewAs={realUser.role>=5 && !preview ? <ViewAsCard onStart={startPreview} /> : null}
+                                   links={<>
+                                     <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
+                                     <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
+                                     <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
+                                     <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
+                                   </>} />}
+        {!partner && tab==="park" && (
           <div>
-            <div style={s.sectionTitle}>門市工作</div>
-            <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
-            <ListItem icon="tool" title="請總部處理" desc="機器報修、水電場地、人力支援、客訴、金流…" badge={(user.role>=2 ? rpCnt?.pending : rpCnt?.mineOpen) || null} badgeRed={user.role>=2 && rpCnt?.urgent > 0} onClick={()=>setTab("rp")}/>
-            <ListItem icon="order" title="物料需求（叫貨）" desc="原物料、包材、製作器具、文具…" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
-            {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
-
-            <div style={{ ...s.sectionTitle, marginTop:16 }}>我的班表與薪資</div>
-            <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
-            <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
-
-            <div style={{ ...s.sectionTitle, marginTop:16 }}>團隊</div>
-            <ListItem icon="cube" title="宇宙辦公室" desc="看看夥伴現在在哪個櫃位" onClick={()=>setTab("universe")}/>
-            <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
-
-            <div style={{ ...s.sectionTitle, marginTop:16 }}>赤心樂園</div>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
               <GameTile title="我和寵物" sub="造型・寵物・商店・小遊戲・徽章" art={<MeBuddy cfg={avatarCfg} pet={game.me && game.me.pet} scale={1.25} />} onClick={openMePet}/>
+              <GameTile title="宇宙辦公室" sub="看看夥伴在哪個櫃位" icon="cube" onClick={()=>setTab("universe")}/>
               <GameTile title="對戰" sub="和夥伴切磋" icon="sword" onClick={()=>setTab("arena")}/>
               <GameTile title="櫃位塔防戰" sub="升級塔・營業額排行" icon="tower" onClick={()=>setTab("tower")}/>
               <GameTile title="夥伴商店街" sub="逛店・開店・扭蛋機" icon="home" onClick={()=>setTab("street")}/>
+              <GameTile title="我的錢包" sub="赤心幣餘額與明細" icon="coin" onClick={()=>openGame("home")}/>
             </div>
-
-            {user.role>=2 && <>
-              <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・排班與營運</div>
-              <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
-              <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
-              <ListItem icon="order" title="麵糊用量" desc="平日／假日用量、還夠幾天、建議叫貨、活動預估" onClick={()=>setTab("batter")}/>
-              {user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
-              {user.role>=3 && <>
-                <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・人員與設定</div>
-                <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
-                <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位" onClick={()=>setTab("locs")}/>
-                <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、加盟店應收（權利金＋物料）" onClick={()=>setTab("price")}/>
-              </>}
+          </div>
+        )}
+        {!partner && tab==="manage" && user.role>=2 && (
+          <div>
+            <div style={s.sectionTitle}>排班與營運</div>
+            <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
+            <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
+            <ListItem icon="order" title="麵糊用量" desc="平日／假日用量、還夠幾天、建議叫貨、活動預估" onClick={()=>setTab("batter")}/>
+            <ListItem icon="tool" title="門市回報處理" desc="機器報修、水電場地、人力支援…" badge={rpCnt?.pending || null} badgeRed={rpCnt?.urgent > 0} onClick={()=>setTab("rp")}/>
+            <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
+            {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
+            <ListItem icon="shield" title="食安管理" desc={user.role>=3 ? "冰箱溫度紀錄、櫃位證照、體檢確認" : "冰箱溫度紀錄"} onClick={()=>setTab("foodsafe")}/>
+            {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
+            {user.role>=3 && <>
+              <div style={{ ...s.sectionTitle, marginTop:16 }}>人員與設定</div>
+              <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
+              <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位" onClick={()=>setTab("locs")}/>
+              <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、常用物料、加盟店應收" onClick={()=>setTab("price")}/>
             </>}
           </div>
         )}
+        {tab==="sop" && <SopPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} />}
+        {tab==="audit" && <AuditPage user={user} apiGet={apiGet} C={C} s={s} locations={locations} defaultLoc={effLoc} />}
+        {tab==="health" && <HealthPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}
+        {tab==="foodsafe" && user.role>=2 && <FoodSafetyAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} todayStr={todayStr} />}
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} onOpenBatter={()=>setTab("batter")} />}
         {tab==="batter" && user.role>=2 && <BatterPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
@@ -789,7 +813,7 @@ export default function App(){
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
-            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} />
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onOpenMaterials={()=>setTab("mat")} />
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
@@ -826,9 +850,9 @@ export default function App(){
           }}>
             <span style={{ position:"relative", display:"flex" }}>
               <Ic n={n.icon} size={23} sw={navActive===n.id?1.9:1.6}/>
-              {n.id==="more" && ord.open.length > 0 && <span style={{ position:"absolute", top:-4, right:-9, minWidth:17, height:17, padding:"0 4px", boxSizing:"border-box",
-                borderRadius:9, background: ord.late.length ? C.red : C.accent, color:"#fff", fontSize:10.5, fontWeight:600, lineHeight:"17px", textAlign:"center",
-                border:"1.5px solid #fffdfa" }}>{ord.open.length}</span>}
+              {n.badge > 0 && <span style={{ position:"absolute", top:-4, right:-9, minWidth:17, height:17, padding:"0 4px", boxSizing:"border-box",
+                borderRadius:9, background: n.red ? C.red : C.accent, color:"#fff", fontSize:10.5, fontWeight:600, lineHeight:"17px", textAlign:"center",
+                border:"1.5px solid #fffdfa" }}>{n.badge}</span>}
             </span>
             <span style={{ fontSize:11, fontWeight:500 }}>{n.label}</span>
           </button>
@@ -1148,6 +1172,12 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   const [cashReceived, setCashReceived] = useState("");
   const [openSubmitting, setOpenSubmitting] = useState(false);
   const [venue, setVenue] = useState("");   // 活動名稱／地點(僅活動櫃位需要)
+  // v1.26 食安：儀容勾選、冰箱溫度
+  const fsMeta = useFsMeta(apiGet);
+  const [groom, setGroom] = useState([]);
+  const [temps, setTemps] = useState({});
+  const groomOk = GROOM.every(([k]) => groom.includes(k));
+  const tempsOk = fridgesFilled(fsMeta, workLoc, temps);
 
   const flavors = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
   // v1.25 有排班就先幫你選好今天的櫃位（還是可以改）
@@ -1187,7 +1217,9 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   const doPunchIn = async () => {
     if (!workLoc) { setErr("請先選擇今日上班地點"); return; }
     if (isActivity && !venue.trim()) { setErr("這是活動場次，請填寫活動名稱或地點"); return; }
+    if (!groomOk) { setErr("請先確認儀容：帽子、口罩、品牌制服、沒有穿拖鞋"); return; }
     if (!groomFile) { setErr("請先拍攝儀容照(帽子、口罩、制服)再打卡"); return; }
+    if (!tempsOk) { setErr("請填寫每台冰箱的溫度"); return; }
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
@@ -1203,9 +1235,11 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
         note: isActivity ? "活動:" + venue.trim() : "",
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
+      const fs = await apiPost({ action:"fsLog", loc: workLoc, type:"上班", temps: fridgePayload(fsMeta, workLoc, temps), groom }, 1).catch(() => null);
+      setTemps({}); setGroom([]);
       if (isActivity) { cacheSet("venue_" + user.id, { date: todayStr(), loc: workLoc, venue: venue.trim() }); setVenue(""); }
       window.dispatchEvent(new CustomEvent("rh-pet-greet", { detail:{ kind:"in" } }));
-      setMsg(`✅ 上班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}　請繼續完成下方盤點資料`);
+      setMsg(`✅ 上班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}　請繼續完成下方盤點資料${fs && fs.abnormal ? "｜⚠️ 冰箱溫度異常，已通知總部" : ""}`);
       setGroomFile(null); setGroomPreview("");
       onSegmentChange && onSegmentChange();
     } catch(e) {
@@ -1284,8 +1318,9 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
           {workLoc && (
             <div style={{ ...s.card, marginBottom:12 }}>
               <div style={s.sectionTitle}>儀容照 <span style={{ color:C.accent }}>*上班必拍</span></div>
-              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>請確認帽子、口罩、制服穿戴整齊後自拍</div>
-              <div style={{ display:"flex", gap:10, alignItems:"center" }}>
+              <div style={{ fontSize:12, color:C.muted, marginBottom:10 }}>先確認下面 4 項都做到了，全部勾完才能拍照</div>
+              <GroomChecks checked={groom} setChecked={setGroom} C={C} />
+              <div style={{ display:"flex", gap:10, alignItems:"center", opacity: groomOk ? 1 : .45, pointerEvents: groomOk ? "auto" : "none" }}>
                 {groomPreview && <img src={groomPreview} alt="" style={{ width:72, height:72, objectFit:"cover", borderRadius:12, border:`2px solid ${C.green}` }}/>}
                 <input ref={groomRef} type="file" accept="image/*" capture="user" onChange={handleGroomPhoto} style={{ display:"none" }}/>
                 <button onClick={()=>groomRef.current.click()} style={{ ...s.btn("ghost"), flex:1, gap:8,
@@ -1296,8 +1331,10 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
             </div>
           )}
 
-          <button disabled={!workLoc || !groomFile || loading} onClick={doPunchIn}
-            style={{ ...s.btn("green"), opacity:(!workLoc||!groomFile||loading)?.5:1 }}>
+          {workLoc && <FridgeInputs meta={fsMeta} loc={workLoc} values={temps} setValues={setTemps} C={C} s={s} />}
+
+          <button disabled={!workLoc || !groomFile || !groomOk || !tempsOk || loading} onClick={doPunchIn}
+            style={{ ...s.btn("green"), opacity:(!workLoc||!groomFile||!groomOk||!tempsOk||loading)?.5:1 }}>
             {loading ? "處理中…" : "⬆ 上班打卡"}
           </button>
           <div style={{ fontSize:11, color:C.muted, textAlign:"center", marginTop:8 }}>
@@ -1381,6 +1418,9 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0",黑糖:"0",芝麻:"0" });
   const [itemRevenue, setItemRevenue] = useState({});
   const [cashHandover, setCashHandover] = useState("");
+  const fsMeta = useFsMeta(apiGet);
+  const [temps, setTemps] = useState({});
+  const tempsOk = fridgesFilled(fsMeta, activeSeg?.location, temps);
   const [handoverNote, setHandoverNote] = useState("");
   const [ovenPhotos, setOvenPhotos] = useState([]);
   const [envPhotos, setEnvPhotos] = useState([]);
@@ -1422,9 +1462,10 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   // 完整流程（最晚下班者）：全部欄位皆須填寫
   const fullAllFilled = flavors.every(f => closeAmounts[f] !== "") && revenueAllFilled &&
     cashHandover !== "" && ovenPhotos.length>0 && envPhotos.length>0;
-  const allFilled = isLast ? fullAllFilled : simpleAllFilled;
+  const allFilled = (isLast ? fullAllFilled : simpleAllFilled) && tempsOk;
 
   const doPunchOut = async () => {
+    if (!tempsOk) { setErr("請填寫每台冰箱的溫度"); return; }
     if (!allFilled) { setErr(isLast ? "請完整填寫剩餘量、營業額、零用金並上傳兩組照片" : "請填寫交接零用金"); return; }
     setLoading(true); setErr(""); setMsg("");
     try {
@@ -1469,6 +1510,8 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
       await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
         type:"下班", cashHandover });
+      await apiPost({ action:"fsLog", loc: activeSeg.location, type:"下班", temps: fridgePayload(fsMeta, activeSeg.location, temps) }, 1).catch(() => null);
+      setTemps({});
 
       window.dispatchEvent(new CustomEvent("rh-pet-greet", { detail:{ kind:"out" } }));
       setMsg(`✅ 下班打卡成功！${timeStr}　定位:${coords.lat.toFixed(5)},${coords.lng.toFixed(5)} 辛苦了！`);
@@ -1521,6 +1564,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
             <input type="number" placeholder="請輸入交接時零用金金額" value={cashHandover}
               onChange={e=>setCashHandover(e.target.value)} style={s.input}/>
           </div>
+          <FridgeInputs meta={fsMeta} loc={activeSeg.location} values={temps} setValues={setTemps} C={C} s={s} />
           <button disabled={!allFilled || loading} onClick={doPunchOut}
             style={{ ...s.btn("blue"), opacity:(!allFilled||loading)?.5:1 }}>
             {loading ? (msg || "處理中…") : "⬇ 下班打卡"}
@@ -1642,9 +1686,11 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
               placeholder="留給下一班/下一天的注意事項（選填）" style={{ ...s.input, minHeight:80, resize:"vertical" }}/>
           </div>
 
+          <FridgeInputs meta={fsMeta} loc={activeSeg.location} values={temps} setValues={setTemps} C={C} s={s} />
+
           {!allFilled && (
             <div style={{ fontSize:12, color:C.muted, textAlign:"center", marginBottom:10 }}>
-              ⚠️ 請完整填寫面糊剩餘、營業額、零用金並上傳兩組照片，全部完成才能打下班卡
+              ⚠️ 請完整填寫面糊剩餘、營業額、零用金、冰箱溫度並上傳兩組照片，全部完成才能打下班卡
             </div>
           )}
           <button disabled={!allFilled || loading} onClick={doPunchOut}
@@ -1660,7 +1706,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
 // ─────────────────────────────────────────────
 // OPS TAB
 // ─────────────────────────────────────────────
-function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged, onLogout, viewAs }) {
+function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged, onLogout, viewAs, links }) {
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const latestSalary = salary.sort((a,b)=>String(b["年月"]).localeCompare(String(a["年月"])))[0];
 
@@ -1689,6 +1735,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
       )}
 
       <SalaryToDateCard user={user} />
+      {links && <div style={{ marginBottom:12 }}>{links}</div>}
 
       {checkupDays <= 30 && checkupDays > 0 && (
         <div style={{ ...s.card, background:C.redBg, border:`1px solid ${C.red}44`,
