@@ -80,6 +80,10 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
   const [ym, setYm] = useState(ymOf(today));
   const [monthly, setMonthly] = useState(null);
   useEffect(() => { apiGet({ action:"opsMatItems", empId:user.id }, 1).then(r => r && r.success && setItems(r.items)); }, []);
+  const [bu, setBu] = useState(null);   // v1.22 麵糊建議叫貨（Lv.2 以上）
+  useEffect(() => { if (user.role >= 2) apiGet({ action:"buList", empId:user.id }, 1).then(r => r && r.success && setBu(r.data)); }, []);
+  const buLoc = bu && bu.find(b => b.name === loc || (b.code && String(loc).slice(0, 2) === b.code));
+  const buSug = buLoc ? ((buLoc.orig && buLoc.orig.suggest) || 0) + ((buLoc.other && buLoc.other.suggest) || 0) : 0;
   useEffect(() => { if (!loc && myLocs[0]) setLoc(myLocs[0]); }, [myLocs.join()]);
   const loadList = () => apiGet({ action:"opsMatList", empId:user.id, ym, open:1 }, 1).then(r => { if (r && r.success) { setList(r.data); setCanManage(r.canManage); } else setList([]); });
   const loadMonthly = () => { setMonthly(null); apiGet({ action:"opsMatMonthly", empId:user.id, ym }, 1).then(r => setMonthly(r && r.success ? r.data : [])); };
@@ -113,6 +117,13 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
             {!loc && <option value="">請選擇</option>}
             {myLocs.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
+          {buLoc && buSug > 0 && (
+            <div style={{ background: buLoc.low ? C.redBg : C.warm, borderRadius:12, padding:"10px 12px", marginBottom:12, fontSize:12.5, lineHeight:1.6 }}>
+              <b style={{ color: buLoc.low ? C.red : C.text }}>🥣 建議叫麵糊 {buSug} 包</b>（原味 {(buLoc.orig && buLoc.orig.suggest) || 0}・其他口味 {(buLoc.other && buLoc.other.suggest) || 0}）
+              <div style={{ color:C.muted }}>剩 原味 {buLoc.stock ? buLoc.stock.orig : "—"}・其他 {buLoc.stock ? buLoc.stock.other : "—"} 包，還夠 原味 {buLoc.orig && buLoc.orig.days !== null ? buLoc.orig.days + " 天" : "—"}・其他 {buLoc.other && buLoc.other.days !== null ? buLoc.other.days + " 天" : "—"}</div>
+              {items.some(x => x.item === "麵糊") && <button onClick={() => setQty(q => ({ ...q, "麵糊":String(buSug) }))} style={{ ...s.btn("secondary"), width:"auto", padding:"5px 12px", fontSize:12, marginTop:6 }}>帶入 {buSug} 包</button>}
+            </div>
+          )}
           <div style={s.sectionTitle}>需要什麼（填數量）</div>
           {items.map(x => (
             <div key={x.item} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>

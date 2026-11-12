@@ -65,8 +65,9 @@ async function pool(items, n, fn, onProgress) {
   return out;
 }
 
-const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "預拌粉", "零錢"];
+const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "麵糊-黑糖", "預拌粉", "零錢"];
 
+const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
 export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
@@ -272,10 +273,10 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
   const opsMap = (() => {
     const today = todayStr(), map = {};
-    SCENE_KEYS.filter(k => SCENES[k].store).forEach(k => (map[k] = { state: count(k) ? "open" : "before", batter: null, bDate: "", pickup: 0 }));
+    SCENE_KEYS.filter(k => SCENES[k].store).forEach(k => (map[k] = { state: count(k) ? "open" : "before", batter: null, bDate: "", fc: null, pickup: 0 }));
     batter.forEach(x => {
       const k = sceneOf(x.loc), m = map[k]; if (!m) return;
-      if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = x.rem; }
+      if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = x.rem; m.fc = x.fc && x.fc.setup ? x.fc : null; if (m.fc) m.batterLow = !!m.fc.low; }
       if (x.date === today && !count(k)) m.state = "closed";
     });
     orders.forEach(o => {
@@ -375,8 +376,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           <div style={s.sectionTitle}>📋 {SCENES[view].name} 缺貨看板</div>
           {curOps && (curOps.batter || curOps.pickup > 0) && (
             <div style={{ background: C.warm, borderRadius: 10, padding: "7px 10px", marginBottom: 8, fontSize: 12.5 }}>
-              {curOps.batter && <div>🥣 麵糊（包）：{["原味", "可可", "紅玉", "抹茶"].map(f => { const v = curOps.batter[f]; return <span key={f} style={{ marginRight: 8, fontWeight: 600, color: v != null && v <= 2 ? C.red : C.text }}>{f} {v == null ? "—" : v}</span>; })}
-                <span style={{ fontSize: 10.5, color: C.light }}>{curOps.bDate.slice(5).replace("-", "/")} 收店盤點</span></div>}
+              {curOps.batter && <div>🥣 麵糊（包）：{["原味", "可可", "紅玉", "抹茶", "黑糖"].map(f => { const v = curOps.batter[f]; if (f === "黑糖" && v == null) return null; return <span key={f} style={{ marginRight: 8, fontWeight: 600, color: v != null && (curOps.fc ? curOps.fc.low && v <= 4 : v <= 2) ? C.red : C.text }}>{f} {v == null ? "—" : v}</span>; })}
+                <span style={{ fontSize: 10.5, color: C.light }}>{curOps.bDate.slice(5).replace("-", "/")} 收店盤點</span>
+                {curOps.fc && <div style={{ marginTop: 2, color: curOps.fc.low ? C.red : C.muted, fontWeight: curOps.fc.low ? 600 : 400 }}>
+                  {curOps.fc.low ? "⚠️ " : ""}還夠：原味 {fcDays(curOps.fc.orig)}・其他 {fcDays(curOps.fc.other)}
+                  {((curOps.fc.orig && curOps.fc.orig.suggest) || (curOps.fc.other && curOps.fc.other.suggest)) ? `｜建議叫 ${[curOps.fc.orig && curOps.fc.orig.suggest ? "原味 " + curOps.fc.orig.suggest : "", curOps.fc.other && curOps.fc.other.suggest ? "其他 " + curOps.fc.other.suggest : ""].filter(Boolean).join("、")} 包` : ""}
+                </div>}</div>}
               {curOps.pickup > 0 && <div style={{ marginTop: curOps.batter ? 3 : 0 }}>📦 今日待取貨 <b style={{ color: C.accent }}>{curOps.pickup}</b> 筆</div>}
             </div>
           )}

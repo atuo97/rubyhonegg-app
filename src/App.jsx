@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
+import BatterPage from "./BatterTab.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
 import { Coin } from "./Coin.jsx";
@@ -626,7 +627,7 @@ export default function App(){
   ];
   const navActive = partner ? tab : SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -715,6 +716,7 @@ export default function App(){
               <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・排班與營運</div>
               <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
               <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
+              <ListItem icon="order" title="麵糊用量" desc="平日／假日用量、還夠幾天、建議叫貨、活動預估" onClick={()=>setTab("batter")}/>
               {user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
               {user.role>=3 && <>
                 <div style={{ ...s.sectionTitle, marginTop:16 }}>管理・人員與設定</div>
@@ -726,7 +728,8 @@ export default function App(){
           </div>
         )}
         {tab==="guide" && <GuideTab />}
-        {tab==="admin" && user.role>=2 && <AdminTab user={user} />}
+        {tab==="admin" && user.role>=2 && <AdminTab user={user} onOpenBatter={()=>setTab("batter")} />}
+        {tab==="batter" && user.role>=2 && <BatterPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="schedule_mgr" && user.role>=2 && <ScheduleManager user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
@@ -1086,12 +1089,12 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   const groomRef = useRef();
   const [firstInfo, setFirstInfo] = useState(null);
   const [handover, setHandover] = useState(null);
-  const [openAmounts, setOpenAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
+  const [openAmounts, setOpenAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"" });
   const [cashReceived, setCashReceived] = useState("");
   const [openSubmitting, setOpenSubmitting] = useState(false);
   const [venue, setVenue] = useState("");   // 活動名稱／地點(僅活動櫃位需要)
 
-  const flavors = ["原味","可可","紅玉","抹茶"];
+  const flavors = ["原味","可可","紅玉","抹茶","黑糖"];
   const inSegment = !!activeSeg; // 目前是否有進行中的上班段
   const isActivity = locations?.[workLoc]?.kind === "活動";
 
@@ -1165,7 +1168,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
           action:"openStore", date:todayStr(), scheduleId:todaySchedule?.id||"",
           empId:user.id, name:user.name, location:activeSeg.location,
           original:openAmounts["原味"], cocoa:openAmounts["可可"],
-          ruby:openAmounts["紅玉"], matcha:openAmounts["抹茶"], note:"",
+          ruby:openAmounts["紅玉"], matcha:openAmounts["抹茶"], brown:openAmounts["黑糖"], note:"",
         });
       }
       setChecklistDone && setChecklistDone(p=>({...p, open:true}));
@@ -1272,7 +1275,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
                 ✓ 麵糊已由 {firstInfo.openedBy} 完成開店盤點
               </div>
               <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>
-                原味{firstInfo.original} 可可{firstInfo.cocoa} 紅玉{firstInfo.ruby} 抹茶{firstInfo.matcha}(包)
+                原味{firstInfo.original} 可可{firstInfo.cocoa} 紅玉{firstInfo.ruby} 抹茶{firstInfo.matcha}{firstInfo.brown !== undefined && firstInfo.brown !== "" ? ` 黑糖${firstInfo.brown}` : ""}(包)
               </div>
             </div>
           )}
@@ -1314,8 +1317,8 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const [err, setErr] = useState("");
   const [isLast, setIsLast] = useState(null); // null=查詢中, true/false
 
-  const [closeAmounts, setCloseAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"" });
-  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0" });
+  const [closeAmounts, setCloseAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"" });
+  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0",黑糖:"0" });
   const [itemRevenue, setItemRevenue] = useState({});
   const [cashHandover, setCashHandover] = useState("");
   const [handoverNote, setHandoverNote] = useState("");
@@ -1323,7 +1326,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const [envPhotos, setEnvPhotos] = useState([]);
   const ovenRef = useRef(); const envRef = useRef();
 
-  const flavors = ["原味","可可","紅玉","抹茶"];
+  const flavors = ["原味","可可","紅玉","抹茶","黑糖"];
   const locInfo = activeSeg ? (locations||{})[activeSeg.location] || {} : {};
   const isCount = locInfo.type === "C份數";
   const revItems = locInfo.items && locInfo.items.length ? locInfo.items : ["雞蛋糕"];
@@ -1386,9 +1389,9 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
           action:"closeStore", date:todayStr(), scheduleId:"",
           empId:user.id, name:user.name, location:activeSeg.location,
           remOriginal:closeAmounts["原味"], remCocoa:closeAmounts["可可"],
-          remRuby:closeAmounts["紅玉"], remMatcha:closeAmounts["抹茶"],
+          remRuby:closeAmounts["紅玉"], remMatcha:closeAmounts["抹茶"], remBrown:closeAmounts["黑糖"],
           rsOriginal:restock["原味"], rsCocoa:restock["可可"],
-          rsRuby:restock["紅玉"], rsMatcha:restock["抹茶"],
+          rsRuby:restock["紅玉"], rsMatcha:restock["抹茶"], rsBrown:restock["黑糖"],
           itemRevenue: JSON.stringify(itemRevenue), cash:cashHandover,
           photoUrl: [...ovenUrls, ...envUrls].join(" , "),
           handoverNote,
@@ -1978,7 +1981,7 @@ function GuideTab() {
 // ─────────────────────────────────────────────
 // ADMIN TAB(分隊長/管理員)
 // ─────────────────────────────────────────────
-function AdminTab({ user }) {
+function AdminTab({ user, onOpenBatter }) {
   const [ym, setYm] = useState(ymStr());
   const [d, setD] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -2032,7 +2035,7 @@ function AdminTab({ user }) {
         </div>
       )}
 
-      <BatterStockPanel user={user} />
+      <BatterStockPanel user={user} onOpen={onOpenBatter} />
       <DailyReportPanel user={user} />
 
       {d && (
@@ -2174,10 +2177,11 @@ function SopCard({ type }) {
   );
 }
 
+const batterDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
 // ── 各店剩餘麵糊(取各櫃位最新一筆收店盤點)──
-const BATTER_FLAVORS = ["原味","可可","紅玉","抹茶"];
+const BATTER_FLAVORS = ["原味","可可","紅玉","抹茶","黑糖"];
 const BATTER_LOW = 2;   // 剩餘 ≤ 這個包數就標紅提醒
-function BatterStockPanel({ user }) {
+function BatterStockPanel({ user, onOpen }) {
   const [list, setList] = useState(null);
   const [err, setErr] = useState("");
   const load = async () => {
@@ -2188,19 +2192,20 @@ function BatterStockPanel({ user }) {
   useEffect(() => { load(); }, []);
   const today = todayStr();
   const ago = d => { const n = Math.round((new Date(today) - new Date(d)) / 86400000); return n <= 0 ? "今天" : n === 1 ? "昨天" : `${n} 天前`; };
-  const totalLow = (list || []).filter(x => BATTER_FLAVORS.some(f => x.rem[f] != null && x.rem[f] <= BATTER_LOW)).length;
+  const isLow = x => x.fc && x.fc.setup ? !!x.fc.low : BATTER_FLAVORS.some(f => x.rem[f] != null && x.rem[f] <= BATTER_LOW);
+  const totalLow = (list || []).filter(isLow).length;
   return (
     <div style={s.card}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
         <div style={s.sectionTitle}>各店剩餘麵糊(包)</div>
         {totalLow > 0 && <span style={{ fontSize:11.5, color:C.red, fontWeight:600 }}>{totalLow} 店需補貨</span>}
       </div>
-      <div style={{ fontSize:11.5, color:C.muted, marginBottom:10 }}>依各店最近一次收店盤點；剩 {BATTER_LOW} 包以下標紅</div>
+      <div style={{ fontSize:11.5, color:C.muted, marginBottom:10 }}>依各店最近一次收店盤點；「還夠」依各櫃位平日／假日用量推算</div>
       {list === null && <div className="rh-skel" style={{ height:70 }}/>}
       {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
       {list && !err && list.length === 0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無收店盤點資料</div>}
       {list && list.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(4, 44px)", columnGap:6, rowGap:0, alignItems:"center" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(5, 38px)", columnGap:4, rowGap:0, alignItems:"center" }}>
           <span/>{BATTER_FLAVORS.map(f => <span key={f} style={{ fontSize:11, color:C.muted, textAlign:"center", paddingBottom:6 }}>{f}</span>)}
           {list.map(x => {
             const stale = x.date < today && ago(x.date) !== "昨天";
@@ -2215,12 +2220,21 @@ function BatterStockPanel({ user }) {
                   <span style={{ minWidth:34, textAlign:"center", padding:"3px 0", borderRadius:8, fontSize:14, fontWeight:600,
                     fontVariantNumeric:"tabular-nums", background: low ? C.redBg : "transparent", color: v == null ? C.light : low ? C.red : C.text }}>{v == null ? "—" : v}</span>
                 </div>;
-              })
+              }),
+              <div key={x.loc+"fc"} style={{ gridColumn:"1 / -1", fontSize:11.5, paddingBottom:8, marginTop:-2, color: isLow(x) ? C.red : C.muted }}>
+                {!x.fc ? null : !x.fc.setup ? <span style={{ color:C.light }}>尚未設定用量</span> : <>
+                  還夠：原味 {batterDays(x.fc.orig)}・其他 {batterDays(x.fc.other)}
+                  {(x.fc.orig && x.fc.orig.suggest > 0) || (x.fc.other && x.fc.other.suggest > 0) ? <>｜建議叫 {[x.fc.orig && x.fc.orig.suggest > 0 ? `原味 ${x.fc.orig.suggest}` : "", x.fc.other && x.fc.other.suggest > 0 ? `其他 ${x.fc.other.suggest}` : ""].filter(Boolean).join("、")} 包</> : null}
+                </>}
+              </div>
             ];
           })}
         </div>
       )}
-      <button onClick={load} style={{ ...s.btn("ghost"), padding:"7px", fontSize:12, marginTop:10 }}>重新整理</button>
+      <div style={{ display:"flex", gap:8, marginTop:10 }}>
+        <button onClick={load} style={{ ...s.btn("ghost"), padding:"7px", fontSize:12, flex:1 }}>重新整理</button>
+        {onOpen && <button onClick={onOpen} style={{ ...s.btn("ghost"), padding:"7px", fontSize:12, flex:1 }}>麵糊用量設定 →</button>}
+      </div>
     </div>
   );
 }

@@ -491,7 +491,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
   // ── v1.21 櫃位營運連動：麵糊桶（四口味）、待取貨紙箱、準備中／已打烊立牌 ──
   const OPS = {}, OPS_STATE = {};
-  const BATTER = [["原味", 0xf2c46d], ["可可", 0x6b3f26], ["紅玉", 0xb83227], ["抹茶", 0x7aa95c]];
+  const BATTER = [["原味", 0xf2c46d], ["可可", 0x6b3f26], ["紅玉", 0xb83227], ["抹茶", 0x7aa95c], ["黑糖", 0x4a2a14]];
   const BATTER_FULL = 10, BATTER_LOW = 2;
   function canvasTex(cw, ch) { const c = document.createElement("canvas"); c.width = cw; c.height = ch; const t = new THREE.CanvasTexture(c); return { c, t }; }
   function opsProps(k, bg) {
@@ -501,10 +501,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     box(2.1, 0.08, 0.62, 0x8a6a4a, 0, 0.04, 0.55, bat);
     const shell = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.32 });
     o.fills = BATTER.map(([, col], i) => {
-      const x = -0.72 + i * 0.48;
-      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.56, 14), shell); sh.position.set(x, 0.36, 0.55); bat.add(sh);
-      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.025, 6, 16), mat(0xdddddd)); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.64, 0.55); bat.add(rim);
-      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.165, 1, 14), mat(col)); f.position.set(x, 0.09, 0.55); f.scale.y = 0.001; bat.add(f);
+      const x = -0.8 + i * 0.4;
+      const sh = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.15, 0.56, 14), shell); sh.position.set(x, 0.36, 0.55); bat.add(sh);
+      const rim = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.025, 6, 16), mat(0xdddddd)); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.64, 0.55); bat.add(rim);
+      const f = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.14, 1, 14), mat(col)); f.position.set(x, 0.09, 0.55); f.scale.y = 0.001; bat.add(f);
       return f;
     });
     const st = canvasTex(512, 64); o.strip = st;
@@ -537,9 +537,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       o.bat.visible = true;
       BATTER.forEach(([f], i) => { const v = rem[f], h = v == null ? 0 : Math.max(0.02, Math.min(1, v / BATTER_FULL)) * 0.5; o.fills[i].scale.y = Math.max(0.001, h); o.fills[i].position.y = 0.09 + h / 2; });
       const g = o.strip.c.getContext("2d"), W = 512, H = 64; g.clearRect(0, 0, W, H);
-      g.fillStyle = "rgba(255,250,242,.92)"; g.fillRect(0, 6, W, H - 12);
-      g.font = "bold 30px sans-serif"; g.textBaseline = "middle"; g.textAlign = "center";
-      BATTER.forEach(([f], i) => { const v = rem[f]; g.fillStyle = v == null ? "#999" : v <= BATTER_LOW ? "#c0392b" : "#2b1d14"; g.fillText(f + " " + (v == null ? "—" : v), W / 8 + i * W / 4, H / 2); });
+      g.fillStyle = d.batterLow ? "rgba(251,226,222,.95)" : "rgba(255,250,242,.92)"; g.fillRect(0, 6, W, H - 12);
+      g.font = "bold 24px sans-serif"; g.textBaseline = "middle"; g.textAlign = "center";
+      const lowOf = v => (d.batterLow !== undefined ? d.batterLow && v != null && v <= BATTER_LOW * 2 : v != null && v <= BATTER_LOW);
+      BATTER.forEach(([f], i) => { const v = rem[f]; g.fillStyle = v == null ? "#999" : lowOf(v) ? "#c0392b" : "#2b1d14"; g.fillText(f + " " + (v == null ? "—" : v), W / 10 + i * W / 5, H / 2); });
       o.strip.t.needsUpdate = true;
     } else o.bat.visible = false;
     // 待取貨
@@ -2101,7 +2102,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setCrew,
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setEventName(n) { drawEventSign(n || "今日活動"); },
-    // v1.21 櫃位營運連動：{ 場景: { state: "open"|"before"|"closed", batter: {原味,可可,紅玉,抹茶}, pickup: 筆數 } }
+    // v1.21 櫃位營運連動：{ 場景: { state: "open"|"before"|"closed", batter: {原味,可可,紅玉,抹茶,黑糖}, batterLow: 麵糊不夠（v1.22 依平假日用量推算）, pickup: 筆數 } }
     setOps(map) { Object.keys(OPS).forEach(k => drawOps(k, map && map[k])); },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
     setView(k) { if (SCENES[k] && k !== view) { view = k; if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); } },
