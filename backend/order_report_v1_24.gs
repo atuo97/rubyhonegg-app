@@ -139,7 +139,7 @@ function rp_create_(p) {
   if (!c[1].length && !desc) return { error: '請寫一下狀況' };
   if (/其他/.test(item) && !desc) return { error: '「其他」請寫一下狀況' };
   var urg = RP_URG.indexOf(String(p.urg)) >= 0 ? String(p.urg) : '一般';
-  var id = 'R' + Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyMMddHHmmss') + Math.floor(Math.random() * 90 + 10);
+  var id = typeof au_id_ === 'function' ? au_id_('R') : 'R' + Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyMMddHHmmss') + Math.floor(Math.random() * 90 + 10);
   var log = [{ s: '已送出', by: me.name, at: ops_now_() }];
   ops_sheet_('門市回報', RP_HEAD).appendRow([id, ops_now_(), me.id, me.name, loc, cat, item, desc, String(p.photo || '').slice(0, 500), urg, '已送出', '', '', '', '', JSON.stringify(log)]);
   try {
