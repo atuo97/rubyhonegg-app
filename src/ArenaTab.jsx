@@ -70,7 +70,7 @@ function Live({ id, user, apiGet, apiPost, C, s, onClose }) {
     const r = await apiGet({ action: "pvLiveState", empId: user.id, id }, 0);
     if (r && r.success) { setSt(r.data); if (r.data.now) skew.current = r.data.now - Date.now(); }
   };
-  useEffect(() => { poll(); const t = setInterval(() => { if (!document.hidden) poll(); }, 2000), c = setInterval(() => setNow(Date.now()), 500); return () => { clearInterval(t); clearInterval(c); }; }, []);   // 部署端調整:背景時暫停
+  useEffect(() => { poll(); const t = setInterval(() => { if (!document.hidden) poll(); }, 5000), c = setInterval(() => setNow(Date.now()), 500); return () => { clearInterval(t); clearInterval(c); }; }, []);   // 部署端調整:背景時暫停
   const move = async (m) => { const r = await apiPost({ action: "pvLiveMove", empId: user.id, id, move: m, card }, 0); if (r && r.success) setSt(r.data); setCard(""); };
   if (!st) return <div style={s.card}>連線中…</div>;
   if (st.status === "邀請中") return <div style={{ ...s.card, textAlign: "center" }}>等待對方接受挑戰…<br /><button onClick={onClose} style={{ ...s.btn("ghost"), marginTop: 10 }}>取消</button></div>;

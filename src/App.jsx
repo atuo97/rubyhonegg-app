@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
@@ -34,12 +34,26 @@ const getVenue = (userId, loc) => {
   return v && v.date === todayStr() && v.loc === loc ? v.venue : "";
 };
 
+// v1.25 登入通行證：每次呼叫自動帶 token；大隊長預覽時帶 viewAs（後端只讀）
+const AUTH = { token:"", viewAs:"", onRelogin:null };
+const AUTH_KEY = "rh_auth";
+const authLoad = () => { try { const v = JSON.parse(localStorage.getItem(AUTH_KEY) || "null"); return v && v.token && v.user ? v : null; } catch(e) { return null; } };
+const authSave = (user) => { try { if (user && user.token) localStorage.setItem(AUTH_KEY, JSON.stringify({ token:user.token, user })); } catch(e) {} };
+const authClear = () => { try { localStorage.removeItem(AUTH_KEY); } catch(e) {} AUTH.token = ""; AUTH.viewAs = ""; };
+const withAuth = (o) => {
+  const x = { ...o };
+  if (AUTH.token && !x.token) x.token = AUTH.token;
+  if (AUTH.viewAs && x.action !== "login") x.viewAs = AUTH.viewAs;
+  return x;
+};
+const checkRelogin = (r) => { if (r && r.relogin && AUTH.token && AUTH.onRelogin) AUTH.onRelogin(r.error); return r; };
+
 // 同一時間相同的 GET 只送一次(避免重複請求拖慢後端)
 const inflightGets = {};
 function apiGet(params, retries = 2) {
-  const qs = new URLSearchParams(params).toString();
+  const qs = new URLSearchParams(withAuth(params)).toString();
   if (inflightGets[qs]) return inflightGets[qs];
-  const p = apiGetRaw(qs, retries).finally(() => { delete inflightGets[qs]; });
+  const p = apiGetRaw(qs, retries).then(checkRelogin).finally(() => { delete inflightGets[qs]; });
   inflightGets[qs] = p;
   return p;
 }
@@ -57,6 +71,7 @@ async function apiGetRaw(qs, retries) {
 }
 
 async function apiPost(data, retries = 2) {
+  data = withAuth(data);
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(API_URL, {
@@ -65,7 +80,7 @@ async function apiPost(data, retries = 2) {
         body: JSON.stringify(data),
       });
       const text = await res.text();
-      return JSON.parse(text);
+      return checkRelogin(JSON.parse(text));
     } catch(e) {
       if (attempt < retries) { await sleep(800 * (attempt + 1)); continue; }
       return { error: "連線失敗:" + e.message };
@@ -356,7 +371,7 @@ function useOrderAlerts(user) {
     const vis = () => { if (!document.hidden) { refresh(); setNow(nowMinTW()); } };
     document.addEventListener("visibilitychange", vis);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); };
-  }, [user]);
+  }, [user && user.id]);
 
   const today = todayStr();
   const open = (ords || []).filter(o => o.date === today && ["新訂單","製作中","已完成"].includes(o.status))
@@ -416,7 +431,7 @@ function useGameMe(user) {
     const vis = () => { if (!document.hidden) refresh(); };
     document.addEventListener("visibilitychange", vis);
     return () => { clearInterval(t); document.removeEventListener("visibilitychange", vis); };
-  }, [user]);
+  }, [user && user.id]);
   return { me, refresh };
 }
 
@@ -536,7 +551,21 @@ function GameHomeCards({ user, game, onOpenGame }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function App(){
-  const [user, setUser]       = useState(null);
+  // v1.25 記住登入（30 天）＋大隊長預覽（以等級檢視／夥伴視角，只能看不能改）
+  const [realUser, setRealUser] = useState(() => { const a = authLoad(); if (a) AUTH.token = a.token; return a ? a.user : null; });
+  const [reloginMsg, setReloginMsg] = useState("");
+  const setUser = (u) => setRealUser(prev => { const n = typeof u === "function" ? u(prev) : u; if (n && n.token) { AUTH.token = n.token; authSave(n); } return n; });
+  const [preview, setPreview] = useState(null);   // { mode:"role", role, type } | { mode:"as", user }
+  const user = useMemo(() => !realUser ? null : !preview ? realUser
+    : preview.mode === "role" ? { ...realUser, role: preview.role, weakPw:false }
+    : { ...preview.user, token: realUser.token, weakPw:false }, [realUser, preview]);
+  const uKey = user ? user.id + "|" + (preview ? (preview.mode === "role" ? "r" + preview.role + (preview.type || "") : "as") : "") : "";
+  const logout = () => { authClear(); location.reload(); };
+  useEffect(() => {
+    AUTH.onRelogin = (msg) => { authClear(); setPreview(null); setRealUser(null); setReloginMsg(msg || "請重新登入"); };
+    const a = authLoad(); if (!a) return;
+    apiPost({ action:"auWho", token:a.token }, 1).then(r => { if (r && r.success && r.user) setUser(r.user); });   // 舊後端或沒網路：先用手機上的資料
+  }, []);
   const [tab, setTab]         = useState("home");
   const [activeSeg, setActiveSeg] = useState(null); // {location, inTime} 進行中的班,null=無
   const [segRefreshKey, setSegRefreshKey] = useState(0); // 用來觸發 WorkTab/LeaveTab 重新查詢
@@ -551,14 +580,21 @@ export default function App(){
   const [loading, setLoading] = useState(false);
   const [rpCnt, setRpCnt] = useState(null);   // v1.24 門市回報待處理數
   const loadRp = () => apiGet({ action:"rpCount", empId:user.id }, 0).then(r => r && r.success && setRpCnt(r)).catch(() => {});
-  const [opsMe, setOpsMe] = useState(null);   // v1.20:帳號類型、負責櫃位、加盟店、待辦數
+  const [opsMeRaw, setOpsMe] = useState(null);   // v1.20:帳號類型、負責櫃位、加盟店、待辦數
+  const opsMe = useMemo(() => preview && preview.mode === "role" && preview.type && opsMeRaw ? { ...opsMeRaw, type: preview.type } : opsMeRaw, [opsMeRaw, preview]);
+  const startPreview = (pv) => {
+    AUTH.viewAs = pv.mode === "as" ? pv.user.id : realUser.id;
+    setOpsMe(null); setStaffInfo(null); setSchedule([]); setSalary([]); setQuota(null); setActiveSeg(null); setRpCnt(null);
+    setPreview(pv); setTab("home"); window.scrollTo(0, 0);
+  };
+  const endPreview = () => { AUTH.viewAs = ""; setOpsMe(null); setPreview(null); setTab("info"); window.scrollTo(0, 0); };
 
   // 登入後載入資料
   useEffect(() => {
     if (!user) return;
     loadAllData();
     loadActiveSegment();
-  }, [user]);
+  }, [uKey]);
 
   useEffect(() => {
     if (!user || segRefreshKey === 0) return;   // 登入時已查過一次,這裡只處理之後的刷新
@@ -616,7 +652,11 @@ export default function App(){
     apiGet({ action: "getMyAvatar", empId: user.id }, 1).then(r => { if (r && r.success) setAvatarCfg(sanitizeAvatar(r.data && r.data.cfg)); }).catch(() => {});
   }, [user && user.id, inAvatar]);
   const openMePet = () => openMe("avatar");
-  if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
+  if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen notice={reloginMsg} onLogin={u => { setReloginMsg(""); setUser(u); }} /></>;
+  // v1.25 管理者（Lv.3 以上）密碼還是生日：先改密碼才能用
+  if (!preview && realUser.role >= 3 && realUser.weakPw) return <><GlobalStyle/><ForcePwScreen user={realUser} onDone={() => setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} /></>;
+  const roleName = r => r>=5?"大隊長":r===4?"總經理":r===3?"管理者":r===2?"分隊長":"夥伴";
+  const previewLabel = !preview ? "" : preview.mode === "role" ? `Lv.${preview.role} ${roleName(preview.role)}${preview.type && preview.type !== "員工" ? "（" + preview.type + "）" : ""}` : `${user.name}（Lv.${user.role} ${roleName(user.role)}）`;
 
   const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price","batter","rp"];
   const partner = opsMe && opsMe.type === "合作夥伴";
@@ -646,6 +686,10 @@ export default function App(){
       {!online && <OfflineBar/>}
       {/* TOP BAR(＋訂單提醒列,一起固定在頂端) */}
       <div style={{ position:"sticky", top:0, zIndex:50 }}>
+      {preview && <div role="status" style={{ background:C.red, color:"#fff", padding:"7px 12px 7px 16px", fontSize:12.5, display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ flex:1, lineHeight:1.4 }}>👀 預覽中：<b>{previewLabel}</b><span style={{ opacity:.85 }}>・只能看，不能修改</span></span>
+        <button onClick={endPreview} style={{ border:"1px solid rgba(255,255,255,.7)", background:"transparent", color:"#fff", borderRadius:999, padding:"4px 12px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap" }}>結束預覽</button>
+      </div>}
       <div style={{ background:"rgba(248,245,240,.94)", backdropFilter:"blur(8px)",
                     padding:"12px 18px", display:"flex", justifyContent:"space-between", alignItems:"center",
                     borderBottom:`1px solid ${C.border}` }}>
@@ -654,7 +698,7 @@ export default function App(){
           <div style={{ fontSize:16, fontWeight:600, marginTop:1 }}>
             {user.name}
             <span style={{ fontSize:11, fontWeight:400, color:C.muted, marginLeft:8 }}>
-              {user.role>=5?"大隊長":user.role===4?"總經理":user.role===3?"管理者":user.role===2?"分隊長":"夥伴"}
+              {roleName(user.role)}
             </span>
           </div>
         </div>
@@ -675,7 +719,7 @@ export default function App(){
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
         {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goMore} />}
         {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} onOpenReport={()=>setTab("rp")} />}
-        {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
+        {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} />}
         {tab==="rp" && <ReportPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} me={opsMe} locations={locations} todayStr={todayStr} uploadPhoto={uploadPhoto} onChanged={loadRp} />}
         {tab==="mat" && <MaterialsPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} me={opsMe} todayStr={todayStr} />}
         {!partner && tab==="home"  && (loading && !staffInfo
@@ -683,6 +727,7 @@ export default function App(){
                           : <HomeTab user={user} staffInfo={staffInfo} announcements={announcements}
                                    activeSeg={activeSeg} checklistDone={checklistDone}
                                    todaySchedule={todaySchedule} quota={quota} schedule={schedule}
+                                   showStats={!opsMe || (opsMe.type === "員工" && !(opsMe.franchiseLocs && opsMe.franchiseLocs.length) && user.role < 4)}
                                    onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")}
                                    onboard={<>
                                      <AnnInbox user={user} list={announcements} apiPost={apiPost} C={C} s={s} onChanged={loadAnn} />
@@ -696,7 +741,8 @@ export default function App(){
                                    onLeaveChange={()=>{ setSegRefreshKey(k=>k+1); setWorkLoc(""); }} />}
         {!partner && tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData}
-                                   onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
+                                   onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} onLogout={logout}
+                                   viewAs={realUser.role>=5 && !preview ? <ViewAsCard onStart={startPreview} /> : null} />}
         {tab==="more"  && (
           <div>
             <div style={s.sectionTitle}>門市工作</div>
@@ -832,10 +878,10 @@ function PunchTab(p) {
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
-function LoginScreen({ onLogin }) {
+function LoginScreen({ onLogin, notice }) {
   const [phone, setPhone]   = useState("");
   const [pw, setPw]         = useState("");
-  const [err, setErr]       = useState("");
+  const [err, setErr]       = useState(notice || "");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
@@ -895,7 +941,7 @@ function LoginScreen({ onLogin }) {
 // ─────────────────────────────────────────────
 // HOME TAB
 // ─────────────────────────────────────────────
-function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame, onOpenInfo, onboard }) {
+function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, todaySchedule, quota, schedule, showStats = true, onOpenVotes, onOpenUniverse, onOpenOrders, orderInfo, game, onOpenGame, onOpenInfo, onboard }) {
   const time = useTime();
   // 今日壽星(後端尚未部署 getTodayBirthdays 時會安靜略過,不影響首頁)
   const [bdays, setBdays] = useState([]);
@@ -912,7 +958,7 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
   const urgentAnn = announcements.filter(a => a.urgent);
 
   const todos = [
-    !activeSeg && !checklistDone.close && { icon:"⏱", label:"今日尚未上班打卡", color:C.accent },
+    todaySchedule && todaySchedule.start && !activeSeg && !checklistDone.close && { icon:"⏱", label:`今天 ${todaySchedule.start} 要上班，記得打卡`, color:C.accent },
     activeSeg && !checklistDone.open && { icon:"📋", label:"開店盤點尚未完成", color:C.gold },
     activeSeg && { icon:"🌙", label:`「${activeSeg.location}」尚未下班`, color:C.blue },
     checkupDays <= 30 && checkupDays > 0 && { icon:"🩺", label:`體檢將於 ${checkupDays} 天後到期`, color:C.red },
@@ -1046,7 +1092,7 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
       )}
 
       {/* 本月達標進度 */}
-      {quota && (
+      {showStats && quota && (
         <div style={{ ...s.card, marginBottom:12 }}>
           <div style={s.sectionTitle}>📊 本月達標進度({quota.identity})</div>
           <Bar label="工時" cur={quota.hours} max={quota.hourTarget} unit="hr" color={C.gold} />
@@ -1063,20 +1109,20 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
         </div>
       )}
 
-      {/* Quick stats */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+      {/* Quick stats（v1.25 縮成一列；加盟主、總經理以上不顯示） */}
+      {showStats && <div style={{ ...s.card, display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, padding:"10px 6px" }}>
         {[
-          { label:"累計工時", value: staffInfo ? `${staffInfo.accumulated} hr` : "—", color:C.gold },
-          { label:"特休剩餘", value: staffInfo ? `${staffInfo.leaveBalance ?? "—"} 天` : "—", color:C.green },
-          { label:"技能津貼", value: user.skillLevel !== undefined ? `$${user.skillLevel}/hr` : "—", color:C.blue },
-          { label:"貢獻津貼", value: user.contribLevel !== undefined ? `$${user.contribLevel}/hr` : "—", color:C.gold },
+          { label:"累計工時", value: staffInfo ? `${staffInfo.accumulated}h` : "—", color:C.gold },
+          { label:"特休剩餘", value: staffInfo ? `${staffInfo.leaveBalance ?? "—"}天` : "—", color:C.green },
+          { label:"技能津貼", value: user.skillLevel !== undefined ? `+$${user.skillLevel}` : "—", color:C.blue },
+          { label:"貢獻津貼", value: user.contribLevel !== undefined ? `+$${user.contribLevel}` : "—", color:C.gold },
         ].map(st => (
-          <div key={st.label} style={{ ...s.card, textAlign:"center", padding:"14px 8px" }}>
-            <div style={{ fontSize:11, color:C.muted, marginBottom:4 }}>{st.label}</div>
-            <div style={{ fontSize:18, fontWeight:600, color:st.color }}>{st.value}</div>
+          <div key={st.label} style={{ textAlign:"center", minWidth:0 }}>
+            <div style={{ fontSize:15, fontWeight:600, color:st.color, whiteSpace:"nowrap" }}>{st.value}</div>
+            <div style={{ fontSize:10.5, color:C.muted, marginTop:2 }}>{st.label}</div>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -1104,6 +1150,11 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   const [venue, setVenue] = useState("");   // 活動名稱／地點(僅活動櫃位需要)
 
   const flavors = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
+  // v1.25 有排班就先幫你選好今天的櫃位（還是可以改）
+  const schedLoc = todaySchedule && todaySchedule.start ? todaySchedule.location : "";
+  useEffect(() => {
+    if (!activeSeg && !workLoc && schedLoc && locations && locations[schedLoc]) setWorkLoc(schedLoc);
+  }, [schedLoc, locations, activeSeg]);
   const inSegment = !!activeSeg; // 目前是否有進行中的上班段
   const isActivity = locations?.[workLoc]?.kind === "活動";
 
@@ -1204,7 +1255,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
       {!inSegment && (
         <>
           <div style={{ ...s.card, marginBottom:12 }}>
-            <div style={s.sectionTitle}>今日上班地點</div>
+            <div style={s.sectionTitle}>今日上班地點{schedLoc && workLoc === schedLoc ? <span style={{ fontSize:11, color:C.green, fontWeight:400, marginLeft:6 }}>依班表</span> : null}</div>
             <select value={workLoc} onChange={e=>setWorkLoc(e.target.value)} style={s.input}>
               <option value="">請選擇地點</option>
               {Object.entries(locations||{}).map(([name,info]) => (
@@ -1609,7 +1660,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
 // ─────────────────────────────────────────────
 // OPS TAB
 // ─────────────────────────────────────────────
-function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged }) {
+function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged, onLogout, viewAs }) {
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const latestSalary = salary.sort((a,b)=>String(b["年月"]).localeCompare(String(a["年月"])))[0];
 
@@ -1628,6 +1679,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
       </div>
 
       <button onClick={onRefresh} style={{ ...s.btn("secondary"), marginBottom:12 }}>🔄 重新整理資料</button>
+      {viewAs}
 
       {user.weakPw && (
         <div style={{ ...s.card, background:C.goldBg, border:`1px solid ${C.gold}44`, borderLeft:`4px solid ${C.gold}` }}>
@@ -1722,6 +1774,8 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
           ))
         }
       </div>
+      {onLogout && <button onClick={() => { if (confirm("登出後，下次要重新輸入帳號密碼。確定登出？")) onLogout(); }} style={{ ...s.btn("ghost"), marginTop:4 }}>登出</button>}
+      <div style={{ fontSize:11, color:C.light, textAlign:"center", marginTop:10 }}>這支手機會記住登入 30 天；借別人手機登入，用完記得登出</div>
     </div>
   );
 }
@@ -1799,7 +1853,7 @@ function SalaryToDateCard({ user }) {
 }
 
 // 合作夥伴的「我的」:基本資料＋修改密碼
-function PartnerInfo({ user, onPwChanged }) {
+function PartnerInfo({ user, onPwChanged, onLogout }) {
   return (
     <div>
       <div style={{ ...s.card, display:"flex", gap:16, alignItems:"center" }}>
@@ -1808,7 +1862,89 @@ function PartnerInfo({ user, onPwChanged }) {
       </div>
       {user.weakPw && <div style={{ ...s.card, background:C.goldBg, borderLeft:`4px solid ${C.gold}`, fontSize:13 }}>🔒 你的密碼還是生日，建議改一組自己的。</div>}
       <ChangePasswordCard user={user} onChanged={onPwChanged} />
-      <button onClick={() => location.reload()} style={{ ...s.btn("ghost") }}>登出</button>
+      <button onClick={() => { if (confirm("確定登出？")) (onLogout ? onLogout() : location.reload()); }} style={{ ...s.btn("ghost") }}>登出</button>
+    </div>
+  );
+}
+
+// v1.25 管理者（Lv.3 以上）密碼還是生日：一定要先改
+function ForcePwScreen({ user, onDone, onLogout }) {
+  return (
+    <div style={{ ...s.app, padding:"36px 18px" }}>
+      <div style={{ textAlign:"center", marginBottom:18 }}>
+        <div style={{ fontSize:34 }}>🔒</div>
+        <div style={{ fontSize:18, fontWeight:600, marginTop:6 }}>{user.name}，請先改一組新密碼</div>
+        <div style={{ fontSize:12.5, color:C.muted, marginTop:8, lineHeight:1.7 }}>
+          你的帳號可以看到夥伴資料、薪資與營運數字，<br/>密碼還是生日很容易被猜到。改好就能繼續使用。
+        </div>
+      </div>
+      <ChangePasswordCard user={user} onChanged={onDone} force />
+      <button onClick={onLogout} style={{ ...s.btn("ghost"), marginTop:4 }}>先登出</button>
+    </div>
+  );
+}
+
+// v1.25 大隊長預覽：以等級檢視（看各等級的畫面）／夥伴視角（看某位夥伴實際看到的畫面）。都只能看，不能改。
+function ViewAsCard({ onStart }) {
+  const [open, setOpen] = useState(false);
+  const [role, setRole] = useState(1);
+  const [type, setType] = useState("員工");
+  const [people, setPeople] = useState(null);
+  const [q, setQ] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState("");
+  useEffect(() => {
+    if (!open || people) return;
+    apiGet({ action:"auPeople" }, 1).then(r => { if (r && r.success) setPeople(r.data || []); else { setPeople([]); setErr(r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.25 後才能用夥伴視角" : (r && r.error) || "讀不到夥伴清單"); } });
+  }, [open]);
+  const pick = async (p) => {
+    setBusy(p.id); setErr("");
+    const r = await apiPost({ action:"auViewAs", target:p.id }, 1);
+    setBusy("");
+    if (r && r.success && r.user) onStart({ mode:"as", user:r.user }); else setErr((r && r.error) || "讀取失敗");
+  };
+  const roles = [[1,"夥伴"],[2,"分隊長"],[3,"管理者"],[4,"總經理"]];
+  const types = ["員工","加盟店夥伴","合作夥伴"];
+  const chip = (on) => ({ border:`1px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, color: on ? C.accent : C.text, borderRadius:999, padding:"6px 12px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit" });
+  const list = (people || []).filter(p => !q || (p.name + p.id + p.pos + p.locs).includes(q.trim()));
+  return (
+    <div style={{ ...s.card, borderLeft:`4px solid ${C.accent}` }}>
+      <button onClick={() => setOpen(o => !o)} style={{ display:"flex", width:"100%", alignItems:"center", gap:10, border:"none", background:"none", padding:0, cursor:"pointer", fontFamily:"inherit", color:C.text, textAlign:"left" }}>
+        <span style={{ fontSize:22 }}>👀</span>
+        <span style={{ flex:1 }}><b style={{ fontSize:14 }}>以等級檢視／夥伴視角</b><span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>看看夥伴的畫面長什麼樣子（只能看，不能改）</span></span>
+        <span style={{ color:C.muted }}>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div style={{ marginTop:12 }}>
+        <div style={{ fontSize:13, fontWeight:600, marginBottom:6 }}>以等級檢視</div>
+        <div style={{ fontSize:11.5, color:C.muted, marginBottom:8 }}>用你自己的資料，換成該等級的選單與畫面</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:8 }}>
+          {roles.map(([r, n]) => <button key={r} onClick={() => setRole(r)} style={chip(role === r)}>Lv.{r} {n}</button>)}
+        </div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:10 }}>
+          {types.map(x => <button key={x} onClick={() => setType(x)} style={chip(type === x)}>{x}</button>)}
+        </div>
+        <button onClick={() => onStart({ mode:"role", role, type })} style={s.btn("primary")}>開始預覽 Lv.{role}{type !== "員工" ? "・" + type : ""}</button>
+
+        <div style={{ fontSize:13, fontWeight:600, margin:"18px 0 6px" }}>夥伴視角</div>
+        <div style={{ fontSize:11.5, color:C.muted, marginBottom:8 }}>選一位夥伴，看他實際看到的首頁、班表、薪資概況</div>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋姓名、職務或櫃位" style={{ ...s.input, marginBottom:8 }}/>
+        {err && <div style={{ fontSize:12.5, color:C.red, marginBottom:8 }}>{err}</div>}
+        {people === null && <div className="rh-skel" style={{ height:60 }}/>}
+        <div style={{ maxHeight:300, overflowY:"auto" }}>
+          {list.map(p => (
+            <button key={p.id} onClick={() => pick(p)} disabled={!!busy} style={{ display:"flex", width:"100%", alignItems:"center", gap:10, padding:"9px 2px", border:"none", borderTop:`1px solid ${C.border}`, background:"none", cursor:"pointer", fontFamily:"inherit", color:C.text, textAlign:"left" }}>
+              <span style={{ width:30, height:30, borderRadius:15, background:C.accentBg, color:C.accent, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:600, flexShrink:0 }}>{p.name.slice(0, 1)}</span>
+              <span style={{ flex:1, minWidth:0 }}>
+                <span style={{ fontSize:13.5 }}>{p.name}</span>
+                <span style={{ fontSize:11.5, color:C.muted, marginLeft:6 }}>Lv.{p.role}{p.pos ? "・" + p.pos : ""}{p.type && p.type !== "員工" ? "・" + p.type : ""}</span>
+                {p.locs && <span style={{ display:"block", fontSize:11, color:C.light, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.locs}</span>}
+              </span>
+              <span style={{ fontSize:12, color:C.accent }}>{busy === p.id ? "讀取中…" : "看他的畫面"}</span>
+            </button>
+          ))}
+          {people && people.length > 0 && list.length === 0 && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>找不到符合的夥伴</div>}
+        </div>
+      </div>}
     </div>
   );
 }
@@ -1816,8 +1952,8 @@ function PartnerInfo({ user, onPwChanged }) {
 // ─────────────────────────────────────────────
 // 修改密碼(夥伴自行修改;走 POST,密碼不會出現在網址列)
 // ─────────────────────────────────────────────
-function ChangePasswordCard({ user, onChanged }) {
-  const [open, setOpen] = useState(false);
+function ChangePasswordCard({ user, onChanged, force }) {
+  const [open, setOpen] = useState(!!force);
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [newPw2, setNewPw2] = useState("");
@@ -1837,7 +1973,7 @@ function ChangePasswordCard({ user, onChanged }) {
     setBusy(false);
     if (res && res.success) {
       setOk("密碼已更新，下次登入請使用新密碼");
-      setOldPw(""); setNewPw(""); setNewPw2(""); setOpen(false);
+      setOldPw(""); setNewPw(""); setNewPw2(""); setOpen(!!force);
       onChanged && onChanged();
     } else {
       setErr((res && res.error) || "修改失敗，請稍後再試");
@@ -1868,8 +2004,8 @@ function ChangePasswordCard({ user, onChanged }) {
           </label>
           {err && <div style={{ fontSize:13, color:C.red, marginBottom:10 }}>⚠️ {err}</div>}
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>{ setOpen(false); setErr(""); setOldPw(""); setNewPw(""); setNewPw2(""); }}
-              style={{ ...s.btn("ghost"), flex:1 }}>取消</button>
+            {!force && <button onClick={()=>{ setOpen(false); setErr(""); setOldPw(""); setNewPw(""); setNewPw2(""); }}
+              style={{ ...s.btn("ghost"), flex:1 }}>取消</button>}
             <button disabled={busy} onClick={submit} style={{ ...s.btn(), flex:1, opacity:busy?.6:1 }}>
               {busy ? "更新中…" : "確認修改"}
             </button>
@@ -2095,9 +2231,9 @@ function AdminTab({ user, onOpenBatter }) {
       <div style={{ marginTop:20 }}>
         <AbnormalShiftPanel user={user} />
       </div>
-      <div style={{ marginTop:12 }}>
+      {user.role >= 3 && <div style={{ marginTop:12 }}>
         <InsuranceGradePanel user={user} ym={ym} />
-      </div>
+      </div>}
     </div>
   );
 }
@@ -2195,7 +2331,7 @@ function BatterStockPanel({ user, onOpen }) {
   const [err, setErr] = useState("");
   const load = async () => {
     setErr("");
-    const r = await apiGet({ action:"getBatterStock", empId:user.id }, 1);
+    const r = await apiGet({ action:"getBatterStock", empId:user.id, mine:1 }, 1);
     if (r && r.success) setList(r.data || []); else { setList([]); setErr((r && r.error) || "剩餘麵糊功能尚未開通"); }
   };
   useEffect(() => { load(); }, []);
@@ -2324,7 +2460,8 @@ function InsuranceGradePanel({ user, ym }) {
   useEffect(()=>{ load(); }, [ym]);
 
   const apply = async (item) => {
-    await apiPost({ action:"applyInsuranceGrade", empId:item.empId, ym, estimatedSalary:item.estimatedSalary });
+    const r = await apiPost({ action:"applyInsuranceGrade", empId:item.empId, ym, estimatedSalary:item.estimatedSalary });
+    if (!r || !r.success) { alert((r && r.error) || "套用失敗"); return; }
     setApplied(p=>({...p, [item.empId]:true}));
   };
 

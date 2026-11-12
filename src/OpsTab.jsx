@@ -114,7 +114,7 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
 
   return (
     <div>
-      <Seg C={C} value={view} onChange={setView} items={[["new","叫貨"],["list","需求單", canManage && me?.matPending ? me.matPending : 0],["month","月結"]]}/>
+      <Seg C={C} value={view} onChange={setView} items={[["new","叫貨"],["list","需求單", canManage && me?.matPending ? me.matPending : 0], ...(user.role >= 2 || (me && me.type && me.type !== "員工") ? [["month","月結"]] : [])]}/>
       {view === "new" && (
         <div style={s.card}>
           <label style={s.label}>櫃位</label>

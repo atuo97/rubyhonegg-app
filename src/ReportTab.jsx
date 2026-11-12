@@ -59,7 +59,7 @@ function NewReport({ user, apiPost, C, s, me, locations, meta, uploadPhoto, onDo
     if ((!c?.items.length || /其他/.test(item)) && !desc.trim()) return setMsg("請寫一下狀況");
     setBusy(true);
     let photo = "";
-    try { if (file) photo = await uploadPhoto(file, { folder:"門市回報照片", date:new Date().toISOString().slice(0, 10), loc, name:user.name }); }
+    try { if (file) photo = await uploadPhoto(file, { folder:"門市回報照片", date:new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), loc, name:user.name }); }
     catch (e) { setBusy(false); return setMsg(e.message); }
     const r = await apiPost({ action:"rpCreate", empId:user.id, loc, cat, item, desc, urg, photo }, 0);
     setBusy(false);
