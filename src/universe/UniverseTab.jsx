@@ -65,8 +65,11 @@ async function pool(items, n, fn, onProgress) {
   return out;
 }
 
-const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "麵糊-黑糖", "預拌粉", "零錢"];
+const QUICK = ["竹籤", "紙袋", "塑膠袋", "包材", "麵糊-原味", "麵糊-可可", "麵糊-紅玉", "麵糊-抹茶", "麵糊-黑糖", "麵糊-芝麻", "預拌粉", "零錢"];
 
+// v1.24：麵糊只分原味／其他口味（其他＝可可＋紅玉＋抹茶＋黑糖＋芝麻）
+const batter2 = rem => { if (!rem) return null; let o = 0, any = false; Object.keys(rem).forEach(k => { if (k !== "原味" && rem[k] != null) { o += +rem[k] || 0; any = true; } }); return { 原味: rem["原味"] == null ? null : rem["原味"], 其他口味: any ? Math.round(o * 100) / 100 : null }; };
+const fcLow = f => !!(f && f.days !== null && f.days !== undefined && f.days < 2);
 const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
 export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar }) {
   const boxRef = useRef(null);
@@ -276,7 +279,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     SCENE_KEYS.filter(k => SCENES[k].store).forEach(k => (map[k] = { state: count(k) ? "open" : "before", batter: null, bDate: "", fc: null, pickup: 0 }));
     batter.forEach(x => {
       const k = sceneOf(x.loc), m = map[k]; if (!m) return;
-      if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = x.rem; m.fc = x.fc && x.fc.setup ? x.fc : null; if (m.fc) m.batterLow = !!m.fc.low; }
+      if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = batter2(x.rem); m.fc = x.fc && x.fc.setup ? x.fc : null; if (m.fc) { m.batterLow = !!m.fc.low; m.batterLowK = [fcLow(m.fc.orig), fcLow(m.fc.other)]; } }
       if (x.date === today && !count(k)) m.state = "closed";
     });
     orders.forEach(o => {
@@ -376,7 +379,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           <div style={s.sectionTitle}>📋 {SCENES[view].name} 缺貨看板</div>
           {curOps && (curOps.batter || curOps.pickup > 0) && (
             <div style={{ background: C.warm, borderRadius: 10, padding: "7px 10px", marginBottom: 8, fontSize: 12.5 }}>
-              {curOps.batter && <div>🥣 麵糊（包）：{["原味", "可可", "紅玉", "抹茶", "黑糖"].map(f => { const v = curOps.batter[f]; if (f === "黑糖" && v == null) return null; return <span key={f} style={{ marginRight: 8, fontWeight: 600, color: v != null && (curOps.fc ? curOps.fc.low && v <= 4 : v <= 2) ? C.red : C.text }}>{f} {v == null ? "—" : v}</span>; })}
+              {curOps.batter && <div>🥣 麵糊（包）：{["原味", "其他口味"].map(f => { const v = curOps.batter[f]; return <span key={f} style={{ marginRight: 8, fontWeight: 600, color: v != null && (curOps.fc ? fcLow(f === "原味" ? curOps.fc.orig : curOps.fc.other) : v <= 2) ? C.red : C.text }}>{f} {v == null ? "—" : v}</span>; })}
                 <span style={{ fontSize: 10.5, color: C.light }}>{curOps.bDate.slice(5).replace("-", "/")} 收店盤點</span>
                 {curOps.fc && <div style={{ marginTop: 2, color: curOps.fc.low ? C.red : C.muted, fontWeight: curOps.fc.low ? 600 : 400 }}>
                   {curOps.fc.low ? "⚠️ " : ""}還夠：原味 {fcDays(curOps.fc.orig)}・其他 {fcDays(curOps.fc.other)}

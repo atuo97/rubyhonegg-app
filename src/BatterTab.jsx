@@ -21,7 +21,7 @@ export default function BatterPage({ user, apiGet, apiPost, C, s, todayStr }) {
   return (
     <div>
       <div style={{ ...s.card, padding:"12px 14px", fontSize:12.5, color:C.muted, lineHeight:1.7 }}>
-        每個櫃位填「平日／假日」一天大約用幾包：<b style={{ color:C.text }}>原味</b>一格、<b style={{ color:C.text }}>其他口味</b>（可可、紅玉、抹茶、黑糖合計）一格。
+        每個櫃位填「平日／假日」一天大約用幾包：<b style={{ color:C.text }}>原味</b>一格、<b style={{ color:C.text }}>其他口味</b>（可可、紅玉、抹茶、黑糖、芝麻合計）一格。
         系統依最近一次收店盤點的剩餘，推算<b style={{ color:C.text }}>還夠幾天</b>，並建議叫貨量（未來 {p.cover} 天用量－剩餘）。
         {p.from} 起會自動算出實際平均，可一鍵套用。活動櫃位改成按日期填預估用量。
       </div>

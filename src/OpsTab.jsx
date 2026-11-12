@@ -63,6 +63,10 @@ const Row = ({ C, l, v, sub, color, bold }) => (
 );
 
 // ═══════════ 物料需求 ═══════════
+// v1.24 叫貨品項分類
+const CAT_ICON = { "原物料":"🥣", "包材":"🛍", "製作器具":"🍳", "文具":"✏️", "機器保養":"🛠", "其他":"📦" };
+const matCats = items => { const m = []; items.forEach(x => { const c = x.cat || "其他"; let g = m.find(y => y[0] === c); if (!g) { g = [c, []]; m.push(g); } g[1].push(x); }); return m; };
+
 export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, todayStr }) {
   const today = todayStr();
   const [view, setView] = useState("new");
@@ -79,6 +83,7 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
   const [canManage, setCanManage] = useState(false);
   const [ym, setYm] = useState(ymOf(today));
   const [monthly, setMonthly] = useState(null);
+  const [openCat, setOpenCat] = useState({});
   useEffect(() => { apiGet({ action:"opsMatItems", empId:user.id }, 1).then(r => r && r.success && setItems(r.items)); }, []);
   const [bu, setBu] = useState(null);   // v1.22 麵糊建議叫貨（Lv.2 以上）
   useEffect(() => { if (user.role >= 2) apiGet({ action:"buList", empId:user.id }, 1).then(r => r && r.success && setBu(r.data)); }, []);
@@ -121,18 +126,31 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
             <div style={{ background: buLoc.low ? C.redBg : C.warm, borderRadius:12, padding:"10px 12px", marginBottom:12, fontSize:12.5, lineHeight:1.6 }}>
               <b style={{ color: buLoc.low ? C.red : C.text }}>🥣 建議叫麵糊 {buSug} 包</b>（原味 {(buLoc.orig && buLoc.orig.suggest) || 0}・其他口味 {(buLoc.other && buLoc.other.suggest) || 0}）
               <div style={{ color:C.muted }}>剩 原味 {buLoc.stock ? buLoc.stock.orig : "—"}・其他 {buLoc.stock ? buLoc.stock.other : "—"} 包，還夠 原味 {buLoc.orig && buLoc.orig.days !== null ? buLoc.orig.days + " 天" : "—"}・其他 {buLoc.other && buLoc.other.days !== null ? buLoc.other.days + " 天" : "—"}</div>
-              {items.some(x => x.item === "麵糊") && <button onClick={() => setQty(q => ({ ...q, "麵糊":String(buSug) }))} style={{ ...s.btn("secondary"), width:"auto", padding:"5px 12px", fontSize:12, marginTop:6 }}>帶入 {buSug} 包</button>}
+              {items.some(x => x.item === "原味麵糊") && buLoc.orig && buLoc.orig.suggest > 0 && <button onClick={() => { setQty(q => ({ ...q, "原味麵糊":String(buLoc.orig.suggest) })); setOpenCat(o => ({ ...o, "原物料":true })); }} style={{ ...s.btn("secondary"), width:"auto", padding:"5px 12px", fontSize:12, marginTop:6 }}>原味麵糊帶入 {buLoc.orig.suggest} 包</button>}
+              {buLoc.other && buLoc.other.suggest > 0 && <div style={{ fontSize:11.5, color:C.muted, marginTop:4 }}>其他口味共 {buLoc.other.suggest} 包，請依各口味剩餘自行分配</div>}
             </div>
           )}
           <div style={s.sectionTitle}>需要什麼（填數量）</div>
-          {items.map(x => (
-            <div key={x.item} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>
-              <span style={{ flex:1, fontSize:14 }}>{x.item}</span>
-              {x.item === "其他" && <input value={other} onChange={e => setOther(e.target.value)} placeholder="品名" style={{ ...s.input, width:110, padding:"8px" }}/>}
-              <input type="number" inputMode="decimal" min="0" value={qty[x.item] || ""} onChange={e => setQty({ ...qty, [x.item]:e.target.value })} placeholder="0" style={{ ...s.input, width:74, padding:"8px", textAlign:"center" }}/>
-              <span style={{ width:24, fontSize:12.5, color:C.muted }}>{x.unit}</span>
-            </div>
-          ))}
+          {matCats(items).map(([cat, its]) => {
+            const n = its.filter(x => +qty[x.item] > 0).length, isOpen = openCat[cat] ?? (cat === "原物料" || n > 0);
+            return (
+              <div key={cat} style={{ border:`1px solid ${C.border}`, borderRadius:12, marginBottom:8, overflow:"hidden" }}>
+                <button onClick={() => setOpenCat(o => ({ ...o, [cat]: !isOpen }))} style={{ width:"100%", border:"none", background:C.warm, padding:"10px 12px", display:"flex", alignItems:"center", cursor:"pointer", fontFamily:"inherit", color:C.text }}>
+                  <span style={{ flex:1, textAlign:"left", fontWeight:600, fontSize:14 }}>{CAT_ICON[cat] || "📦"} {cat}</span>
+                  {n > 0 && <span style={{ fontSize:12, color:"#fff", background:C.accent, borderRadius:999, padding:"1px 8px", marginRight:8 }}>{n}</span>}
+                  <span style={{ fontSize:12, color:C.muted }}>{isOpen ? "▴" : `${its.length} 項 ▾`}</span>
+                </button>
+                {isOpen && <div style={{ padding:"2px 12px" }}>{its.map((x, k) => (
+                  <div key={x.item} style={{ display:"flex", alignItems:"center", gap:10, padding:"6px 0", borderTop: k ? `1px solid ${C.border}` : "none" }}>
+                    <span style={{ flex:1, fontSize:14 }}>{x.item}</span>
+                    {x.item === "其他" && <input value={other} onChange={e => setOther(e.target.value)} placeholder="品名" style={{ ...s.input, width:110, padding:"8px" }}/>}
+                    <input type="number" inputMode="decimal" min="0" value={qty[x.item] || ""} onChange={e => setQty({ ...qty, [x.item]:e.target.value })} placeholder="0" style={{ ...s.input, width:70, padding:"8px", textAlign:"center" }}/>
+                    <span style={{ width:24, fontSize:12.5, color:C.muted }}>{x.unit}</span>
+                  </div>
+                ))}</div>}
+              </div>
+            );
+          })}
           <label style={{ ...s.label, marginTop:12 }}>希望到貨日（選填）</label>
           <input type="date" value={want} min={today} onChange={e => setWant(e.target.value)} style={{ ...s.input, marginBottom:10 }}/>
           <label style={s.label}>備註（選填）</label>
@@ -597,7 +615,7 @@ function GroupRow({ g, C, s, locs, onSave }) {
     <div style={{ padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
       <input value={name} onChange={e => setName(e.target.value)} style={{ ...s.input, padding:"8px 10px", marginBottom:6 }}/>
       <div style={{ display:"flex", alignItems:"center", gap:14, fontSize:13 }}>
-        {["公告", "物料"].map(k => <label key={k} style={{ display:"flex", gap:5, alignItems:"center" }}><input type="checkbox" checked={use.includes(k)} onChange={() => tog(k)}/>{k === "物料" ? "物料需求" : k}</label>)}
+        {["公告", "物料", "報修"].map(k => <label key={k} style={{ display:"flex", gap:5, alignItems:"center" }}><input type="checkbox" checked={use.includes(k)} onChange={() => tog(k)}/>{k === "物料" ? "物料需求" : k === "報修" ? "門市回報" : k}</label>)}
       </div>
       <div style={{ fontSize:12, color:C.muted, margin:"6px 0 2px" }}>綁定櫃位（選填）</div>
       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
@@ -738,7 +756,8 @@ export function PricePage({ user, apiGet, apiPost, C, s, todayStr }) {
   const [rcv, setRcv] = useState(null);
   const [ym, setYm] = useState(addMonth(todayStr().slice(0, 7), -1));
   const tk = { empId:user.id, token:user.token || "" };
-  useEffect(() => { apiGet({ action:"opsPriceList", empId:user.id }, 1).then(r => setList(r && r.success ? r.data : [])); }, []);
+  const [cats, setCats] = useState([]);
+  useEffect(() => { apiGet({ action:"opsPriceList", empId:user.id }, 1).then(r => { setList(r && r.success ? r.data : []); setCats((r && r.cats) || []); }); }, []);
   useEffect(() => { setRcv(null); apiGet({ action:"opsReceivable", ...tk, ym }, 1).then(r => setRcv(r && r.success ? r.data : [])); }, [ym]);
   const up = (i, k, v) => setList(list.map((x, j) => j === i ? { ...x, [k]:v } : x));
   const save = async () => { const r = await apiPost({ action:"opsPriceSave", ...tk, list }, 0); setMsg(r && r.success ? { ok:true, text:"已儲存" } : { text:(r && r.error) || "儲存失敗" }); };
@@ -746,28 +765,37 @@ export function PricePage({ user, apiGet, apiPost, C, s, todayStr }) {
     <div>
       <div style={s.card}>
         <div style={s.sectionTitle}>供貨價格（給加盟店、合作櫃位的單價）</div>
+        <div style={{ fontSize:12, color:C.muted, marginBottom:8 }}>品項會出現在「叫貨」頁，依分類排列；備註寫「停用」就不會出現在叫貨頁</div>
         {(list || []).map((x, i) => (
-          <div key={i} style={{ display:"flex", gap:6, alignItems:"center", marginBottom:8 }}>
+          <div key={i}>
+          {(i === 0 || (list[i - 1].cat || "其他") !== (x.cat || "其他")) && <div style={{ fontSize:13, fontWeight:600, margin:"12px 0 6px", color:C.accent }}>{x.cat || "其他"}</div>}
+          <div style={{ display:"flex", gap:6, alignItems:"center", marginBottom:8 }}>
             <input value={x.item} onChange={e => up(i, "item", e.target.value)} style={{ ...s.input, flex:1.4, padding:"8px" }}/>
             <input value={x.unit} onChange={e => up(i, "unit", e.target.value)} placeholder="單位" style={{ ...s.input, width:54, padding:"8px" }}/>
-            <input type="number" value={x.price ?? ""} onChange={e => up(i, "price", e.target.value)} placeholder="單價" style={{ ...s.input, width:84, padding:"8px" }}/>
+            <input type="number" value={x.price ?? ""} onChange={e => up(i, "price", e.target.value)} placeholder="單價" style={{ ...s.input, width:72, padding:"8px" }}/>
+          </div>
+          {x.isNew && <div style={{ display:"flex", gap:6, marginBottom:8 }}>
+            <select value={x.cat || "其他"} onChange={e => up(i, "cat", e.target.value)} style={{ ...s.input, padding:"6px 8px", flex:1 }}>{(cats || []).map(c => <option key={c} value={c}>{c}</option>)}</select>
+            <input value={x.note || ""} onChange={e => up(i, "note", e.target.value)} placeholder="備註" style={{ ...s.input, padding:"6px 8px", flex:1 }}/>
+          </div>}
           </div>
         ))}
-        <button onClick={() => setList((list || []).concat([{ item:"", unit:"", price:"" }]))} style={{ ...s.btn("ghost"), marginBottom:8 }}>＋ 新增品項</button>
+        <button onClick={() => setList((list || []).concat([{ item:"", unit:"", price:"", cat:"其他", isNew:true }]))} style={{ ...s.btn("ghost"), marginBottom:8 }}>＋ 新增品項</button>
         <button onClick={save} style={s.btn("primary")}>儲存</button>
         <Msg C={C} m={msg}/>
       </div>
       <div style={s.card}>
-        <div style={s.sectionTitle}>應收加盟店（權利金＋麵糊＋物料）</div>
+        <div style={s.sectionTitle}>應收（加盟店、合作櫃位）</div>
         <MonthNav C={C} ym={ym} setYm={setYm}/>
         {rcv === null && <div style={{ color:C.muted, fontSize:13 }}>計算中…</div>}
         {(rcv || []).map(x => (
           <div key={x.loc} style={{ marginBottom:10 }}>
-            <div style={{ fontWeight:600, fontSize:14 }}>{short(x.loc)}</div>
-            <Row C={C} l="營業額" v={money(x.revenue)}/>
+            <div style={{ fontWeight:600, fontSize:14 }}>{short(x.loc)} <span style={{ fontSize:11, color:C.muted, fontWeight:400 }}>{x.kind === "合作" ? "合作櫃位" : "加盟店"}</span></div>
+            {x.kind !== "合作" && <><Row C={C} l="營業額" v={money(x.revenue)}/>
             <Row C={C} l="權利金" v={money(x.royalty)}/>
-            <Row C={C} l="麵糊" v={money(x.batter)}/>
-            <Row C={C} l="物料" v={money(x.materials)}/>
+            <Row C={C} l="麵糊（收店用量）" v={money(x.batter)}/></>}
+            <Row C={C} l={x.kind === "合作" ? "物料（含麵糊）" : "物料"} v={money(x.materials)}/>
+            {x.fee > 0 && <Row C={C} l="總部維修／服務" v={money(x.fee)}/>}
             <Row C={C} l="應收合計" v={money(x.total)} bold/>
             {x.missingPrice.length > 0 && <div style={{ fontSize:11.5, color:C.gold }}>待填單價：{x.missingPrice.join("、")}</div>}
           </div>
@@ -778,7 +806,7 @@ export function PricePage({ user, apiGet, apiPost, C, s, todayStr }) {
 }
 
 // ═══════════ 合作夥伴首頁 ═══════════
-export function PartnerHome({ user, me, announcements, C, s, onOpenMaterials, apiGet, apiPost, onAnnChanged }) {
+export function PartnerHome({ user, me, announcements, C, s, onOpenMaterials, onOpenReport, apiGet, apiPost, onAnnChanged }) {
   const [open, setOpen] = useState(null);
   useEffect(() => { apiGet({ action:"opsMatList", empId:user.id, open:1, ym:"x" }, 1).then(r => setOpen(r && r.success ? r.data.filter(x => !/已送達|已取消/.test(x.status)) : [])); }, []);
   return (
@@ -788,7 +816,8 @@ export function PartnerHome({ user, me, announcements, C, s, onOpenMaterials, ap
         <div style={{ fontSize:12.5, color:C.muted, marginTop:4 }}>{(me?.myLocs || []).map(short).join("、") || "合作櫃位"}・紅玉滿合作夥伴</div>
       </div>
       <AnnInbox user={user} list={announcements} apiPost={apiPost} C={C} s={s} onChanged={onAnnChanged}/>
-      <button onClick={onOpenMaterials} style={{ ...s.btn("primary"), marginBottom:12 }}>📦 叫貨（麵糊、麵粉、糖、紅茶粉、鍍膜…）</button>
+      <button onClick={onOpenMaterials} style={{ ...s.btn("primary"), marginBottom:8 }}>📦 叫貨（麵糊、粉料、包材、器具…）</button>
+      {onOpenReport && <button onClick={onOpenReport} style={{ ...s.btn("secondary"), marginBottom:12 }}>🔧 請總部處理（機器報修、狀況回報）</button>}
       <div style={s.card}>
         <div style={s.sectionTitle}>處理中的需求單</div>
         {open === null && <div style={{ fontSize:13, color:C.muted }}>載入中…</div>}

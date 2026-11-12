@@ -3,6 +3,7 @@ const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import BatterPage from "./BatterTab.jsx";
+import ReportPage from "./ReportTab.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
 import { Coin } from "./Coin.jsx";
@@ -170,6 +171,7 @@ const ICONS = {
   tower:'<path d="M6 20V9h12v11"/><path d="M6 9V5h2v2h2V5h4v2h2V5h2v4M10 20v-4h4v4"/>',
   order:'<rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5h6v3H9zM8.5 12h7M8.5 16h5"/>',
   back:'<path d="M15 6l-6 6 6 6"/>',
+  tool:'<path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.6 2.6-2.3-.6-.6-2.3z"/>',
 };
 function Ic({ n, size=22, color="currentColor", sw=1.6, style }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw}
@@ -547,6 +549,8 @@ export default function App(){
   const [locations, setLocations] = useState(() => cacheGet("loc") || {});
   const [workLoc, setWorkLoc] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rpCnt, setRpCnt] = useState(null);   // v1.24 門市回報待處理數
+  const loadRp = () => apiGet({ action:"rpCount", empId:user.id }, 0).then(r => r && r.success && setRpCnt(r)).catch(() => {});
   const [opsMe, setOpsMe] = useState(null);   // v1.20:帳號類型、負責櫃位、加盟店、待辦數
 
   // 登入後載入資料
@@ -584,6 +588,7 @@ export default function App(){
         run(apiGet({ action:"getQuota", empId:user.id, ym:ymStr() }), r => setQuota(r.data)),
         run(apiGet({ action:"getLocations" }), r => { const d = r.data || {}; setLocations(d); cacheSet("loc", d); }),
         run(apiGet({ action:"opsMe", empId:user.id }), r => setOpsMe(r)),
+        run(apiGet({ action:"rpCount", empId:user.id }), r => setRpCnt(r)),
       ]);
     } catch(e) { console.error(e); }
     setLoading(false);
@@ -613,11 +618,12 @@ export default function App(){
   const openMePet = () => openMe("avatar");
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen onLogin={u => { setUser(u); }} /></>;
 
-  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price"];
+  const SUB = ["vote","guide","schedule_mgr","myshift","admin","universe","avatar","orders","game","arena","tower","street","mat","pnl","locs","staff","ann","price","batter","rp"];
   const partner = opsMe && opsMe.type === "合作夥伴";
   const navItems = partner ? [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"mat",   icon:"order", label:"叫貨" },
+    { id:"rp",    icon:"tool",  label:"回報" },
     { id:"info",  icon:"user",  label:"我的" },
   ] : [
     { id:"home",  icon:"home",  label:"首頁" },
@@ -627,7 +633,7 @@ export default function App(){
   ];
   const navActive = partner ? tab : SUB.includes(tab) ? "more" : tab;
   const goMore = () => setTab("more");
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -668,8 +674,9 @@ export default function App(){
       {/* CONTENT */}
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
         {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goMore} />}
-        {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} />}
+        {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} onOpenReport={()=>setTab("rp")} />}
         {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} />}
+        {tab==="rp" && <ReportPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} me={opsMe} locations={locations} todayStr={todayStr} uploadPhoto={uploadPhoto} onChanged={loadRp} />}
         {tab==="mat" && <MaterialsPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} me={opsMe} todayStr={todayStr} />}
         {!partner && tab==="home"  && (loading && !staffInfo
                           ? <HomeSkeleton/>
@@ -679,6 +686,7 @@ export default function App(){
                                    onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")}
                                    onboard={<>
                                      <AnnInbox user={user} list={announcements} apiPost={apiPost} C={C} s={s} onChanged={loadAnn} />
+                                     {user.role>=2 && rpCnt?.pending > 0 && <button onClick={()=>setTab("rp")} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:10, cursor:"pointer", fontFamily:"inherit", textAlign:"left", color:C.text, border: rpCnt.urgent ? `1px solid ${C.red}` : s.card.border, background: rpCnt.urgent ? C.redBg : C.card }}><span style={{ fontSize:22 }}>{rpCnt.urgent ? "🚨" : "🔧"}</span><span style={{ flex:1 }}><b style={{ fontSize:14 }}>門市回報待處理 {rpCnt.pending} 件</b>{rpCnt.urgent ? <span style={{ display:"block", fontSize:12, color:C.red }}>其中 {rpCnt.urgent} 件緊急</span> : null}</span><Ic n="chev" size={18} color={C.light}/></button>}
                                      {user.role>=2 && <OnboardCard user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compact />}
                                    </>} />)}
         {!partner && tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
@@ -693,7 +701,8 @@ export default function App(){
           <div>
             <div style={s.sectionTitle}>門市工作</div>
             <ListItem icon="order" title="訂單" desc={ord.open.length ? `今日 ${ord.open.length} 筆待處理${ord.late.length ? `，${ord.late.length} 筆該開始做了` : ""}` : "自取／外送訂單：新增、查看、換狀態"} badge={ord.open.length || null} badgeRed={ord.late.length > 0} onClick={()=>setTab("orders")}/>
-            <ListItem icon="order" title="物料需求" desc="叫麵糊、麵粉、糖、紅茶粉、機器鍍膜…" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
+            <ListItem icon="tool" title="請總部處理" desc="機器報修、水電場地、人力支援、客訴、金流…" badge={(user.role>=2 ? rpCnt?.pending : rpCnt?.mineOpen) || null} badgeRed={user.role>=2 && rpCnt?.urgent > 0} onClick={()=>setTab("rp")}/>
+            <ListItem icon="order" title="物料需求（叫貨）" desc="原物料、包材、製作器具、文具…" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
             {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>我的班表與薪資</div>
@@ -1089,12 +1098,12 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   const groomRef = useRef();
   const [firstInfo, setFirstInfo] = useState(null);
   const [handover, setHandover] = useState(null);
-  const [openAmounts, setOpenAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"" });
+  const [openAmounts, setOpenAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"",芝麻:"" });
   const [cashReceived, setCashReceived] = useState("");
   const [openSubmitting, setOpenSubmitting] = useState(false);
   const [venue, setVenue] = useState("");   // 活動名稱／地點(僅活動櫃位需要)
 
-  const flavors = ["原味","可可","紅玉","抹茶","黑糖"];
+  const flavors = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
   const inSegment = !!activeSeg; // 目前是否有進行中的上班段
   const isActivity = locations?.[workLoc]?.kind === "活動";
 
@@ -1168,7 +1177,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
           action:"openStore", date:todayStr(), scheduleId:todaySchedule?.id||"",
           empId:user.id, name:user.name, location:activeSeg.location,
           original:openAmounts["原味"], cocoa:openAmounts["可可"],
-          ruby:openAmounts["紅玉"], matcha:openAmounts["抹茶"], brown:openAmounts["黑糖"], note:"",
+          ruby:openAmounts["紅玉"], matcha:openAmounts["抹茶"], brown:openAmounts["黑糖"], sesame:openAmounts["芝麻"], note:"",
         });
       }
       setChecklistDone && setChecklistDone(p=>({...p, open:true}));
@@ -1275,7 +1284,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
                 ✓ 麵糊已由 {firstInfo.openedBy} 完成開店盤點
               </div>
               <div style={{ fontSize:11, color:C.muted, marginTop:4 }}>
-                原味{firstInfo.original} 可可{firstInfo.cocoa} 紅玉{firstInfo.ruby} 抹茶{firstInfo.matcha}{firstInfo.brown !== undefined && firstInfo.brown !== "" ? ` 黑糖${firstInfo.brown}` : ""}(包)
+                原味{firstInfo.original} 可可{firstInfo.cocoa} 紅玉{firstInfo.ruby} 抹茶{firstInfo.matcha}{firstInfo.brown !== undefined && firstInfo.brown !== "" ? ` 黑糖${firstInfo.brown}` : ""}{firstInfo.sesame !== undefined && firstInfo.sesame !== "" ? ` 芝麻${firstInfo.sesame}` : ""}(包)
               </div>
             </div>
           )}
@@ -1317,8 +1326,8 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const [err, setErr] = useState("");
   const [isLast, setIsLast] = useState(null); // null=查詢中, true/false
 
-  const [closeAmounts, setCloseAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"" });
-  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0",黑糖:"0" });
+  const [closeAmounts, setCloseAmounts] = useState({ 原味:"",可可:"",紅玉:"",抹茶:"",黑糖:"",芝麻:"" });
+  const [restock, setRestock] = useState({ 原味:"0",可可:"0",紅玉:"0",抹茶:"0",黑糖:"0",芝麻:"0" });
   const [itemRevenue, setItemRevenue] = useState({});
   const [cashHandover, setCashHandover] = useState("");
   const [handoverNote, setHandoverNote] = useState("");
@@ -1326,7 +1335,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const [envPhotos, setEnvPhotos] = useState([]);
   const ovenRef = useRef(); const envRef = useRef();
 
-  const flavors = ["原味","可可","紅玉","抹茶","黑糖"];
+  const flavors = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
   const locInfo = activeSeg ? (locations||{})[activeSeg.location] || {} : {};
   const isCount = locInfo.type === "C份數";
   const revItems = locInfo.items && locInfo.items.length ? locInfo.items : ["雞蛋糕"];
@@ -1389,9 +1398,9 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
           action:"closeStore", date:todayStr(), scheduleId:"",
           empId:user.id, name:user.name, location:activeSeg.location,
           remOriginal:closeAmounts["原味"], remCocoa:closeAmounts["可可"],
-          remRuby:closeAmounts["紅玉"], remMatcha:closeAmounts["抹茶"], remBrown:closeAmounts["黑糖"],
+          remRuby:closeAmounts["紅玉"], remMatcha:closeAmounts["抹茶"], remBrown:closeAmounts["黑糖"], remSesame:closeAmounts["芝麻"],
           rsOriginal:restock["原味"], rsCocoa:restock["可可"],
-          rsRuby:restock["紅玉"], rsMatcha:restock["抹茶"], rsBrown:restock["黑糖"],
+          rsRuby:restock["紅玉"], rsMatcha:restock["抹茶"], rsBrown:restock["黑糖"], rsSesame:restock["芝麻"],
           itemRevenue: JSON.stringify(itemRevenue), cash:cashHandover,
           photoUrl: [...ovenUrls, ...envUrls].join(" , "),
           handoverNote,
@@ -2179,7 +2188,7 @@ function SopCard({ type }) {
 
 const batterDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
 // ── 各店剩餘麵糊(取各櫃位最新一筆收店盤點)──
-const BATTER_FLAVORS = ["原味","可可","紅玉","抹茶","黑糖"];
+const BATTER_FLAVORS = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
 const BATTER_LOW = 2;   // 剩餘 ≤ 這個包數就標紅提醒
 function BatterStockPanel({ user, onOpen }) {
   const [list, setList] = useState(null);
@@ -2205,7 +2214,7 @@ function BatterStockPanel({ user, onOpen }) {
       {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
       {list && !err && list.length === 0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無收店盤點資料</div>}
       {list && list.length > 0 && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(5, 38px)", columnGap:4, rowGap:0, alignItems:"center" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(6, 32px)", columnGap:3, rowGap:0, alignItems:"center" }}>
           <span/>{BATTER_FLAVORS.map(f => <span key={f} style={{ fontSize:11, color:C.muted, textAlign:"center", paddingBottom:6 }}>{f}</span>)}
           {list.map(x => {
             const stale = x.date < today && ago(x.date) !== "昨天";
