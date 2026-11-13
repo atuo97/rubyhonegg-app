@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>雞蛋糕疊疊樂（試玩）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{height:100%;overflow:hidden;background:#2b1a12;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;color:#3a2a1e;touch-action:none}
+  body{background:radial-gradient(ellipse at 50% 0%,#5a3424 0%,#2b1a12 70%)}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 8px calc(8px + env(safe-area-inset-bottom))}
+  .hud{display:flex;gap:6px;width:100%;max-width:440px;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .pill{background:rgba(255,250,242,.94);border-radius:12px;padding:6px 10px;font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.3);white-space:nowrap}
+  #game{display:flex;gap:8px;align-items:flex-start}
+  canvas{display:block}
+  #board{border-radius:10px;box-shadow:0 0 0 3px #e6b866,0 0 0 6px #8a4b2a,0 8px 24px rgba(0,0,0,.5)}
+  .side{display:flex;flex-direction:column;gap:8px;width:84px}
+  .box{background:rgba(255,250,242,.94);border-radius:12px;padding:6px;text-align:center;font-size:11px;font-weight:800;color:#8a6a4a;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .box b{display:block;font-size:18px;color:#b9381c}
+  #dino{position:relative;overflow:hidden;cursor:pointer;border:2px solid transparent}
+  #dino.ready{border-color:#2ecc71;animation:glow 1s infinite alternate}
+  #dino i{position:absolute;left:0;bottom:0;height:5px;background:#2ecc71;width:0;transition:width .2s}
+  @keyframes glow{from{box-shadow:0 0 4px #2ecc71}to{box-shadow:0 0 18px #2ecc71}}
+  #ctrl{display:flex;gap:8px;margin-top:10px;width:100%;max-width:440px;justify-content:center}
+  .b{flex:1;max-width:84px;height:58px;border-radius:16px;background:rgba(255,250,242,.14);border:2px solid rgba(255,243,214,.35);color:#fff3d6;font-size:24px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-direction:column;line-height:1}
+  .b small{font-size:10px;margin-top:3px;opacity:.85}
+  .b:active{background:rgba(255,250,242,.3)}
+  #flash{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:8}
+  #toast{position:fixed;left:50%;top:38%;transform:translateX(-50%);z-index:9;font-size:26px;font-weight:900;color:#fff;text-shadow:0 3px 0 #b9381c,0 0 14px rgba(255,180,60,.9);pointer-events:none;opacity:0;white-space:nowrap}
+  #toast.show{animation:pop 1s ease-out forwards}
+  @keyframes pop{0%{opacity:0;transform:translateX(-50%) scale(.5)}15%{opacity:1;transform:translateX(-50%) scale(1.2)}30%{transform:translateX(-50%) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-40px)}}
+  .panel{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(30,15,8,.65);padding:16px}
+  .card{background:#fffaf2;border-radius:22px;padding:20px 18px;max-width:380px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5);max-height:92vh;overflow-y:auto}
+  .card h1{font-size:26px;color:#b9381c;margin:4px 0}
+  .card p{font-size:13.5px;line-height:1.65;color:#5a4636;text-align:left;margin-top:8px}
+  .go{display:block;width:100%;margin-top:14px;padding:14px;border:0;border-radius:14px;background:#c0392b;color:#fff;font-size:18px;font-weight:900}
+  .ghost{background:transparent;color:#8a6a4a;border:1.5px solid #e5d6c4;font-size:14px;padding:10px;margin-top:8px}
+  .hide{display:none!important}
+  #mute{cursor:pointer}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="hud">
+    <div class="pill" id="lv">Lv 1</div>
+    <div class="pill" id="sc">⭐ 0</div>
+    <div class="pill" id="bx">📦 0 盒</div>
+    <div class="pill" id="mute">🔊</div>
+    <div class="pill" id="pauseB" style="cursor:pointer">⏸</div>
+  </div>
+  <div id="game">
+    <canvas id="board"></canvas>
+    <div class="side">
+      <div class="box">下一個<canvas id="next" width="72" height="150"></canvas></div>
+      <div class="box" id="holdBox">保留<canvas id="hold" width="72" height="50"></canvas></div>
+      <div class="box" id="dino">🦖 小暴龍<b id="dinoP">0%</b><span style="font-size:10px">集滿點我<br>吃掉最下面 2 排</span><i id="dinoBar"></i></div>
+      <div class="box">已出爐<b id="ln">0</b>排</div>
+    </div>
+  </div>
+  <div id="ctrl">
+    <div class="b" id="bL">◀</div>
+    <div class="b" id="bR">▶</div>
+    <div class="b" id="bRot">⟳<small>旋轉</small></div>
+    <div class="b" id="bDown">▼<small>加速</small></div>
+    <div class="b" id="bDrop">⤓<small>落下</small></div>
+  </div>
+</div>
+<div id="flash"></div>
+<div id="toast"></div>
+
+<div class="panel" id="start">
+  <div class="card">
+    <div style="font-size:42px">🧇🍰🦖</div>
+    <h1>雞蛋糕疊疊樂</h1>
+    <p>剛烤好的雞蛋糕從上面掉下來，把它們<b>排滿一整排</b>就會「出爐」裝盒！每 10 排升一級，掉得更快。</p>
+    <p>⚠️ 第 2 級開始，烤爐會不時從底下推上一排<b>燒焦塊</b>，要趕快消掉。<br>🦖 每出爐一排，小暴龍集氣 20%，集滿點一下，牠會<b>吃掉最下面 2 排</b>。<br>🔄 「保留」框點一下可以把現在這塊先收起來。</p>
+    <p style="color:#8a7e72;font-size:12px">手機：左右滑動移動、點一下旋轉、往下拉加速、快速往下甩直接落下；下方按鈕也可以用。<br>電腦：← → 移動、↑ 旋轉、↓ 加速、空白鍵落下、C 保留、D 小暴龍、P 或 Esc 暫停。</p>
+    <p id="bestTxt" style="text-align:center;font-weight:800;color:#b9381c"></p>
+    <button class="go" id="go">🧇 開始烤！</button>
+  </div>
+</div>
+<div class="panel hide" id="pause">
+  <div class="card">
+    <div style="font-size:44px">☕</div>
+    <h1>暫停中</h1>
+    <p style="text-align:center">去招呼客人吧，回來再繼續！</p>
+    <button class="go" id="resume">▶ 繼續</button>
+    <button class="go ghost" id="restart">🔄 重新開始</button>
+    <button class="go ghost" id="quit">🚪 離開（回首頁）</button>
+  </div>
+</div>
+<div class="panel hide" id="end">
+  <div class="card">
+    <div style="font-size:44px" id="endIcon">📦</div>
+    <h1 id="endTitle">烤爐塞滿了！</h1>
+    <p id="endDetail" style="text-align:center;font-size:15px"></p>
+    <button class="go" id="again">再烤一次</button>
+    <button class="go ghost" id="home">🏠 回首頁</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// 雞蛋糕疊疊樂（試玩版 2026-11-14 v1）
+// 掉落方塊消排遊戲，紅玉滿版本：雞蛋糕口味方塊、燒焦塊、小暴龍技能。
+// 單一 HTML、純 Canvas 2D，不連後端。
+// ─────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const COLS = 10, ROWS = 20;
+// 七種口味（對應光譜七色）
+const FLAVORS = [
+  { name: "紅玉", c: "#d9483b" }, { name: "原味", c: "#e8a33d" }, { name: "蜂蜜", c: "#f2cf4a" },
+  { name: "抹茶", c: "#7fb35a" }, { name: "藍莓", c: "#4f9fd6" }, { name: "巧克力", c: "#6b4a8a" }, { name: "芋頭", c: "#b07cc6" },
+];
+const SHAPES = [
+  [[0,1],[1,1],[2,1],[3,1]],        // I
+  [[0,0],[0,1],[1,1],[2,1]],        // J
+  [[2,0],[0,1],[1,1],[2,1]],        // L
+  [[1,0],[2,0],[1,1],[2,1]],        // O
+  [[1,0],[2,0],[0,1],[1,1]],        // S
+  [[1,0],[0,1],[1,1],[2,1]],        // T
+  [[0,0],[1,0],[1,1],[2,1]],        // Z
+];
+const BURNT = 8;
+let grid, cur, nextQ, holdP, canHold, score, lines, level, boxes, dropT, lockT, state = "ready", combo, dino, garbT, best = 0, clearing = null;
+try { best = +localStorage.getItem("stack_best") || 0; } catch (e) {}
+
+// ── 音效（Web Audio 即時合成）──
+let ac = null, master = null, muted = false;
+try { muted = localStorage.getItem("stack_mute") === "1"; } catch (e) {}
+function unlock() { if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; ac = new C(); master = ac.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(ac.destination); } if (ac.state === "suspended") ac.resume(); }
+function tone(f, dur, { type = "sine", vol = .3, to = null, delay = 0 } = {}) {
+  if (!ac || muted) return; const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+}
+let nb = null;
+function noise(dur, { vol = .3, f = 1200, to = null, type = "lowpass", delay = 0 } = {}) {
+  if (!ac || muted) return; if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const t = ac.currentTime + delay, s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = nb; fl.type = type; fl.frequency.setValueAtTime(f, t); if (to) fl.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.connect(fl); fl.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .02);
+}
+const N = s => 523.25 * Math.pow(2, s / 12);
+const sfx = {
+  move() { tone(420, .04, { type: "square", vol: .04 }); },
+  rot() { tone(660, .06, { type: "triangle", vol: .08, to: 880 }); },
+  land() { noise(.08, { vol: .18, f: 600, to: 200 }); tone(140, .08, { vol: .12, to: 90 }); },
+  drop() { noise(.12, { vol: .25, f: 1500, to: 200 }); tone(120, .15, { vol: .2, to: 60 }); },
+  hold() { tone(500, .08, { type: "triangle", vol: .1 }); tone(750, .1, { type: "triangle", vol: .1, delay: .06 }); },
+  clear(n, c) { const base = [0, 4, 7, 12, 16]; for (let i = 0; i < n + 1; i++) tone(N(base[i] + Math.min(c, 6) * 2), .16, { type: i % 2 ? "triangle" : "square", vol: .1, delay: i * .06 }); noise(.3, { vol: .08, f: 6000, type: "highpass" }); },
+  four() { [0, 4, 7, 12, 16, 19, 24].forEach((s, i) => tone(N(s), .18, { type: "square", vol: .09, delay: i * .06 })); },
+  level() { [0, 7, 12, 7, 12, 19].forEach((s, i) => tone(N(s), .14, { type: "triangle", vol: .12, delay: i * .08 })); },
+  garbage() { tone(160, .3, { type: "sawtooth", vol: .12, to: 80 }); noise(.3, { vol: .15, f: 400 }); },
+  warn() { tone(880, .1, { type: "square", vol: .06 }); tone(880, .1, { type: "square", vol: .06, delay: .15 }); },
+  dinoReady() { [0, 5, 9, 12].forEach((s, i) => tone(N(s), .12, { type: "triangle", vol: .12, delay: i * .07 })); },
+  chomp() { for (let i = 0; i < 4; i++) { noise(.08, { vol: .3, f: 900, delay: i * .11 }); tone(200 - i * 20, .08, { type: "square", vol: .1, delay: i * .11 }); } tone(N(12), .3, { type: "triangle", vol: .12, delay: .5 }); },
+  over() { [0, -1, -2, -3].forEach((s, i) => tone(N(s - 5), i === 3 ? .7 : .3, { type: "triangle", vol: .13, delay: i * .3 })); },
+  start() { [0, 4, 7, 12].forEach((s, i) => tone(N(s), .12, { type: "square", vol: .08, delay: i * .08 })); },
+};
+function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+// ── 畫面尺寸 ──
+const cv = $("board"), ctx = cv.getContext("2d");
+let S = 28, DPR = Math.min(2, window.devicePixelRatio || 1);
+function layout() {
+  const W = innerWidth - 16, H = innerHeight - 50 - 80 - 24;
+  S = Math.floor(Math.min((W - 92) / COLS, H / ROWS)); S = Math.max(16, Math.min(S, 38));
+  cv.width = COLS * S * DPR; cv.height = ROWS * S * DPR; cv.style.width = COLS * S + "px"; cv.style.height = ROWS * S + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", () => { layout(); draw(); });
+
+// ── 畫一顆雞蛋糕 ──
+function shade(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = n >> 8 & 255, b = n & 255; r = Math.max(0, Math.min(255, r + k)); g = Math.max(0, Math.min(255, g + k)); b = Math.max(0, Math.min(255, b + k)); return `rgb(${r},${g},${b})`; }
+function cake(c, x, y, s, t, alpha = 1, glow = 0) {
+  c.save(); c.globalAlpha = alpha;
+  const p = Math.max(1, s * .06), r = s * .28, X = x + p, Y = y + p, w = s - p * 2;
+  if (t === BURNT) {
+    const g = c.createLinearGradient(X, Y, X, Y + w); g.addColorStop(0, "#4a3528"); g.addColorStop(1, "#1e140e");
+    c.fillStyle = g; rr(c, X, Y, w, w, r); c.fill();
+    c.fillStyle = "rgba(255,120,40,.35)"; c.beginPath(); c.arc(X + w * .3, Y + w * .65, w * .1, 0, 7); c.arc(X + w * .7, Y + w * .35, w * .08, 0, 7); c.fill();
+    c.strokeStyle = "rgba(0,0,0,.5)"; c.lineWidth = 1; c.beginPath(); c.moveTo(X + w * .2, Y + w * .3); c.lineTo(X + w * .45, Y + w * .45); c.lineTo(X + w * .35, Y + w * .7); c.stroke();
+  } else {
+    const col = FLAVORS[t - 1].c, g = c.createLinearGradient(X, Y, X, Y + w);
+    g.addColorStop(0, shade(col, 45)); g.addColorStop(.55, col); g.addColorStop(1, shade(col, -45));
+    c.fillStyle = g; rr(c, X, Y, w, w, r); c.fill();
+    c.strokeStyle = shade(col, -70); c.lineWidth = Math.max(1, s * .05); c.stroke();
+    // 壓紋愛心
+    const hx = X + w / 2, hy = Y + w * .53, hs = w * .2;
+    c.fillStyle = shade(col, -30); heart(c, hx, hy + 1, hs); c.fill();
+    c.fillStyle = shade(col, 30); heart(c, hx, hy, hs); c.fill();
+    // 光澤
+    c.fillStyle = "rgba(255,255,255,.35)"; c.beginPath(); c.ellipse(X + w * .3, Y + w * .22, w * .18, w * .08, -.4, 0, 7); c.fill();
+  }
+  if (glow) { c.globalAlpha = glow; c.fillStyle = "#fff6c8"; rr(c, X, Y, w, w, r); c.fill(); }
+  c.restore();
+}
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function heart(c, x, y, s) { c.beginPath(); c.moveTo(x, y + s * .9); c.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s * 1.1, x, y - s * .35); c.bezierCurveTo(x + s * .6, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); c.closePath(); }
+
+// ── 方塊邏輯 ──
+let bag = [];
+function nextType() { if (!bag.length) { bag = [1, 2, 3, 4, 5, 6, 7]; for (let i = 6; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; } } return bag.pop(); }
+function cellsOf(t, rot) {
+  let c = SHAPES[t - 1].map(p => [...p]); if (t === 4) return c;   // O 不轉
+  const n = t === 1 ? 4 : 3;
+  for (let r = 0; r < rot; r++) c = c.map(([x, y]) => [n - 1 - y, x]);
+  return c;
+}
+function spawn() {
+  const t = nextQ.shift(); nextQ.push(nextType());
+  cur = { t, rot: 0, x: 3, y: t === 1 ? -1 : 0 };
+  canHold = true; lockT = 0;
+  if (!fits(cur.x, cur.y, cur.rot)) gameOver();
+}
+function fits(x, y, rot, t = cur.t) {
+  return cellsOf(t, rot).every(([cx, cy]) => { const X = x + cx, Y = y + cy; return X >= 0 && X < COLS && Y < ROWS && (Y < 0 || !grid[Y][X]); });
+}
+function move(dx) { if (state !== "play" || clearing) return; if (fits(cur.x + dx, cur.y, cur.rot)) { cur.x += dx; sfx.move(); if (onGround()) lockT = 0; } }
+function rotate() {
+  if (state !== "play" || clearing) return;
+  const nr = (cur.rot + 1) % 4;
+  for (const [kx, ky] of [[0, 0], [-1, 0], [1, 0], [-2, 0], [2, 0], [0, -1], [-1, -1], [1, -1]]) if (fits(cur.x + kx, cur.y + ky, nr)) { cur.x += kx; cur.y += ky; cur.rot = nr; sfx.rot(); if (onGround()) lockT = 0; return; }
+}
+function onGround() { return !fits(cur.x, cur.y + 1, cur.rot); }
+function softDrop() { if (state !== "play" || clearing) return; if (!onGround()) { cur.y++; score += 1; dropT = 0; } }
+function hardDrop() {
+  if (state !== "play" || clearing) return; let n = 0; while (!onGround()) { cur.y++; n++; }
+  score += n * 2; sfx.drop(); shake = 6; trail = { x: cur.x, y0: cur.y - n, y1: cur.y, t: cur.t, rot: cur.rot, a: .6 }; lock();
+}
+function hold() {
+  if (state !== "play" || clearing || !canHold) return;
+  const t = cur.t; if (holdP) { cur = { t: holdP, rot: 0, x: 3, y: holdP === 1 ? -1 : 0 }; holdP = t; } else { holdP = t; spawn(); }
+  canHold = false; sfx.hold(); drawSide();
+}
+function lock() {
+  let top = false;
+  cellsOf(cur.t, cur.rot).forEach(([cx, cy]) => { const X = cur.x + cx, Y = cur.y + cy; if (Y < 0) top = true; else grid[Y][X] = cur.t; });
+  if (top) return gameOver();
+  const full = []; for (let y = 0; y < ROWS; y++) if (grid[y].every(v => v)) full.push(y);
+  if (full.length) { clearing = { rows: full, t: 0 }; afterClear(full.length, full.some(y => grid[y].includes(BURNT))); }
+  else { combo = 0; sfx.land(); spawn(); }
+  drawSide();
+}
+function afterClear(n, hadBurnt) {
+  combo++; lines += n; boxes = Math.floor(lines * COLS / 10);
+  const pts = [0, 100, 300, 500, 800][n] * level + (combo > 1 ? 50 * (combo - 1) * level : 0) + (hadBurnt ? 100 * n : 0);
+  score += pts; floatPts = { v: pts, t: 0 };
+  dino = Math.min(100, dino + 20 * n); if (dino >= 100 && !dinoReadyShown) { dinoReadyShown = true; sfx.dinoReady(); }
+  if (n === 4) { sfx.four(); toast("🎉 四排一起出爐！", 1); flash("rgba(255,215,80,.55)"); buzz(120); shake = 10; }
+  else { sfx.clear(n, combo); toast(combo > 1 ? `🔥 連續出爐 ×${combo}` : n > 1 ? `✨ ${n} 排出爐！` : "出爐！", 0); flash(`rgba(255,230,140,${.15 + n * .08})`); }
+  if (hadBurnt) setTimeout(() => toast("🧹 燒焦塊清掉了！+" + 100 * n, 0), 450);
+  const nl = Math.floor(lines / 10) + 1;
+  if (nl > level) { level = nl; setTimeout(() => { sfx.level(); toast(`⬆️ 升到 Lv ${level}！火力加大`, 1); flash("rgba(255,120,60,.35)"); }, 500); if (level === 2) setTimeout(() => toast("⚠️ 小心！開始會冒出燒焦塊", 0), 1700); }
+}
+let dinoReadyShown = false, eating = null;
+function useDino() {
+  if (state !== "play" || clearing || dino < 100) return;
+  dino = 0; dinoReadyShown = false; sfx.chomp(); buzz([60, 40, 60, 40, 60]);
+  const rows = [ROWS - 1, ROWS - 2]; eating = { t: 0 };
+  clearing = { rows, t: 0, dino: true }; lines += 0; score += 200 * level; toast("🦖 啊嗚！吃掉 2 排", 1); flash("rgba(120,220,120,.35)");
+  drawSide();
+}
+function addGarbage() {
+  const gap = Math.floor(Math.random() * COLS);
+  if (grid[0].some(v => v)) return gameOver();
+  grid.shift(); grid.push(Array.from({ length: COLS }, (_, i) => (i === gap ? 0 : BURNT)));
+  if (!fits(cur.x, cur.y, cur.rot)) { if (fits(cur.x, cur.y - 1, cur.rot)) cur.y--; }
+  sfx.garbage(); shake = 5; flash("rgba(60,30,10,.35)"); buzz(60);
+}
+function gameOver() {
+  state = "over"; sfx.over(); buzz(300);
+  const nb = score > best; if (nb) { best = score; try { localStorage.setItem("stack_best", best); } catch (e) {} }
+  $("endIcon").textContent = nb ? "🏆" : "📦";
+  $("endTitle").textContent = nb ? "新紀錄！" : "烤爐塞滿了！";
+  $("endDetail").innerHTML = `分數 <b style="font-size:24px;color:#b9381c">${score}</b><br>出爐 <b>${lines}</b> 排・裝了 <b>${boxes}</b> 盒・Lv <b>${level}</b><br>最佳紀錄 ${best}<br><span style="font-size:12.5px;color:#8a7e72">${lines < 10 ? "小技巧：先把底部鋪平，留一條直縫給長條。" : "小技巧：小暴龍留到燒焦塊堆起來再用，最划算。"}</span>`;
+  if (EMBED) { try { parent.postMessage({ rh: "game", type: "end", score, meta: { level, lines } }, "*"); } catch (e) {} }
+  setTimeout(() => $("end").classList.remove("hide"), 700);
+}
+
+// ── 特效 ──
+let shake = 0, trail = null, floatPts = null, parts = [];
+function flash(color) { const f = $("flash"); f.style.transition = "none"; f.style.background = color; f.style.opacity = 1; void f.offsetWidth; f.style.transition = "opacity .5s"; f.style.opacity = 0; }
+let toastT;
+function toast(t, big) { const e = $("toast"); e.textContent = t; e.style.fontSize = big ? "30px" : "24px"; e.classList.remove("show"); void e.offsetWidth; e.classList.add("show"); }
+function burstRow(y, dinoEat) {
+  for (let x = 0; x < COLS; x++) for (let k = 0; k < 3; k++) parts.push({ x: (x + .5) * S, y: (y + .5) * S, vx: (Math.random() - .5) * 6 + (dinoEat ? 4 : 0), vy: -Math.random() * 7 - 2, life: 1, c: dinoEat ? "#7bed9f" : ["#ffe28a", "#ffd04d", "#fff6c8", "#ff9f43"][k % 4], s: 2 + Math.random() * 4 });
+}
+
+// ── 主迴圈 ──
+function speed() { return Math.max(.07, .8 * Math.pow(.84, level - 1)); }
+let last = 0;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
+  if (state === "play") step(dt);
+  draw(dt); requestAnimationFrame(loop);
+}
+function step(dt) {
+  if (clearing) {
+    clearing.t += dt;
+    if (clearing.t > .05 && !clearing.burst) { clearing.burst = true; clearing.rows.forEach(y => burstRow(y, clearing.dino)); }
+    if (clearing.t > .32) {
+      const rows = clearing.rows.slice().sort((a, b) => a - b);
+      rows.forEach(y => { grid.splice(y, 1); grid.unshift(Array(COLS).fill(0)); });
+      const wasDino = clearing.dino; clearing = null;
+      if (wasDino) { if (!fits(cur.x, cur.y, cur.rot)) { /* 吃掉後往下有空間，維持原位即可 */ } } else spawn();
+    }
+    return;
+  }
+  // 燒焦塊：Lv2 起，間隔隨等級縮短
+  if (level >= 2) { garbT -= dt; if (garbT < 2.2 && garbT + dt >= 2.2) { sfx.warn(); warnT = 2.2; } if (garbT <= 0) { garbT = Math.max(9, 24 - level * 2.2); addGarbage(); } }
+  if (warnT > 0) warnT -= dt;
+  dropT += dt * (keySoft ? 12 : 1);
+  if (dropT >= speed()) { dropT = 0; if (!onGround()) { cur.y++; if (keySoft) score += 1; } }
+  if (onGround()) { lockT += dt; if (lockT > .5) { sfx.land(); lock(); } } else lockT = 0;
+}
+let warnT = 0;
+function draw(dt = 0) {
+  if (!grid) return;
+  const W = COLS * S, H = ROWS * S;
+  ctx.save();
+  if (shake > 0) { ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake); shake = Math.max(0, shake - dt * 40); }
+  // 烤盤底
+  const bg = ctx.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#3b2418"); bg.addColorStop(1, "#24150d"); ctx.fillStyle = bg; ctx.fillRect(-10, -10, W + 20, H + 20);
+  ctx.strokeStyle = "rgba(255,200,120,.06)"; ctx.lineWidth = 1;
+  for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(x * S, 0); ctx.lineTo(x * S, H); ctx.stroke(); }
+  for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(0, y * S); ctx.lineTo(W, y * S); ctx.stroke(); }
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) { ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.beginPath(); ctx.arc((x + .5) * S, (y + .5) * S, S * .36, 0, 7); ctx.fill(); }
+  // 燒焦塊預警：底部紅光
+  if (warnT > 0) { const a = .25 + Math.sin(performance.now() / 70) * .2; const g = ctx.createLinearGradient(0, H - S * 3, 0, H); g.addColorStop(0, "rgba(255,60,0,0)"); g.addColorStop(1, `rgba(255,60,0,${a})`); ctx.fillStyle = g; ctx.fillRect(0, H - S * 3, W, S * 3); }
+  // 已落定
+  for (let y = 0; y < ROWS; y++) {
+    const cl = clearing && clearing.rows.includes(y), gl = cl ? Math.min(1, clearing.t / .15) : 0;
+    for (let x = 0; x < COLS; x++) if (grid[y][x]) {
+      if (cl && clearing.t > .15) { const k = 1 - (clearing.t - .15) / .17; if (k <= 0) continue; ctx.save(); ctx.translate((x + .5) * S, (y + .5) * S); ctx.scale(k, k); cake(ctx, -S / 2, -S / 2, S, grid[y][x], 1, 1); ctx.restore(); }
+      else cake(ctx, x * S, y * S, S, grid[y][x], 1, gl);
+    }
+  }
+  // 小暴龍吃排動畫
+  if (clearing && clearing.dino) { const k = clearing.t / .32; ctx.font = `${S * 2.2}px sans-serif`; ctx.textBaseline = "middle"; ctx.fillText("🦖", -S * 2 + k * (W + S * 2), H - S); }
+  if (state === "play" && cur && !clearing) {
+    // 落點影子
+    let gy = cur.y; while (fits(cur.x, gy + 1, cur.rot)) gy++;
+    cellsOf(cur.t, cur.rot).forEach(([cx, cy]) => { if (gy + cy >= 0) { ctx.strokeStyle = "rgba(255,240,200,.45)"; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); rr(ctx, (cur.x + cx) * S + 3, (gy + cy) * S + 3, S - 6, S - 6, S * .25); ctx.stroke(); ctx.setLineDash([]); } });
+    // 快速落下殘影
+    if (trail && trail.a > 0) { cellsOf(trail.t, trail.rot).forEach(([cx, cy]) => { const g = ctx.createLinearGradient(0, (trail.y0 + cy) * S, 0, (trail.y1 + cy) * S); g.addColorStop(0, "rgba(255,230,150,0)"); g.addColorStop(1, `rgba(255,230,150,${trail.a})`); ctx.fillStyle = g; ctx.fillRect((trail.x + cx) * S + S * .15, Math.max(0, (trail.y0 + cy) * S), S * .7, (trail.y1 - trail.y0) * S); }); trail.a -= dt * 2.5; }
+    const lockGlow = onGround() ? Math.min(.35, lockT * .7) : 0;
+    cellsOf(cur.t, cur.rot).forEach(([cx, cy]) => { if (cur.y + cy >= 0) cake(ctx, (cur.x + cx) * S, (cur.y + cy) * S, S, cur.t, 1, lockGlow); });
+  }
+  // 粒子
+  parts = parts.filter(p => (p.life -= dt * 1.4) > 0);
+  parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .35; ctx.globalAlpha = p.life; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1;
+  // 加分字
+  if (floatPts) { floatPts.t += dt; const a = 1 - floatPts.t / 1.1; if (a <= 0) floatPts = null; else { ctx.globalAlpha = a; ctx.font = `900 ${S * .9}px sans-serif`; ctx.textAlign = "center"; ctx.fillStyle = "#fff3c4"; ctx.strokeStyle = "#b9381c"; ctx.lineWidth = 4; const y = H * .45 - floatPts.t * 50; ctx.strokeText("+" + floatPts.v, W / 2, y); ctx.fillText("+" + floatPts.v, W / 2, y); ctx.globalAlpha = 1; ctx.textAlign = "left"; } }
+  ctx.restore();
+  $("sc").textContent = "⭐ " + score; $("lv").textContent = "Lv " + level; $("bx").textContent = `📦 ${boxes} 盒`; $("ln").textContent = lines;
+  $("dinoP").textContent = Math.floor(dino) + "%"; $("dinoBar").style.width = dino + "%"; $("dino").classList.toggle("ready", dino >= 100);
+}
+function drawPiece(c, t, cw, ch) {
+  const cells = cellsOf(t, 0), xs = cells.map(p => p[0]), ys = cells.map(p => p[1]);
+  const w = Math.max(...xs) - Math.min(...xs) + 1, h = Math.max(...ys) - Math.min(...ys) + 1, s = Math.min(16, cw / (w + .5));
+  const ox = (cw - w * s) / 2 - Math.min(...xs) * s, oy = (ch - h * s) / 2 - Math.min(...ys) * s;
+  cells.forEach(([x, y]) => cake(c, ox + x * s, oy + y * s, s, t));
+}
+function drawSide() {
+  const n = $("next").getContext("2d"); n.clearRect(0, 0, 72, 150);
+  nextQ.slice(0, 3).forEach((t, i) => { n.save(); n.translate(0, i * 50); if (i) n.globalAlpha = .7; drawPiece(n, t, 72, 50); n.restore(); });
+  const h = $("hold").getContext("2d"); h.clearRect(0, 0, 72, 50); if (holdP) { h.globalAlpha = canHold ? 1 : .4; drawPiece(h, holdP, 72, 50); h.globalAlpha = 1; }
+}
+
+// ── 開始 ──
+function start() {
+  unlock(); sfx.start();
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  bag = []; nextQ = [nextType(), nextType(), nextType(), nextType()]; holdP = 0;
+  score = 0; lines = 0; level = 1; boxes = 0; dropT = 0; combo = 0; dino = 0; dinoReadyShown = false; garbT = 20; clearing = null; parts = []; warnT = 0;
+  state = "play"; $("start").classList.add("hide"); $("end").classList.add("hide");
+  layout(); spawn(); drawSide(); toast("開始烤！", 1);
+}
+$("go").onclick = start; $("again").onclick = start;
+function pause() { if (state !== "play") return; state = "pause"; keySoft = false; $("pause").classList.remove("hide"); }
+function resume() { if (state !== "pause") return; unlock(); state = "play"; last = performance.now(); $("pause").classList.add("hide"); toast("繼續烤！", 0); }
+function quit() { if (EMBED) return embedClose(); state = "ready"; $("pause").classList.add("hide"); $("end").classList.add("hide"); $("bestTxt").textContent = best ? `🏆 最佳紀錄 ${best}` : ""; $("start").classList.remove("hide"); }
+$("pauseB").onclick = pause; $("resume").onclick = resume; $("restart").onclick = () => { $("pause").classList.add("hide"); start(); }; $("quit").onclick = quit; $("home").onclick = quit;
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+addEventListener("blur", pause);
+$("bestTxt").textContent = best ? `🏆 最佳紀錄 ${best}` : "";
+$("mute").textContent = muted ? "🔇" : "🔊";
+$("mute").onclick = () => { unlock(); muted = !muted; try { localStorage.setItem("stack_mute", muted ? "1" : "0"); } catch (e) {} if (master) master.gain.value = muted ? 0 : .5; $("mute").textContent = muted ? "🔇" : "🔊"; };
+$("holdBox").onclick = hold; $("dino").onclick = useDino;
+
+// ── 按鈕（可長按連續）──
+let keySoft = false;
+function btn(id, fn, repeat = true) {
+  const e = $(id); let t1, t2;
+  const down = ev => { ev.preventDefault(); unlock(); fn(); if (repeat) t1 = setTimeout(() => (t2 = setInterval(fn, 60)), 220); };
+  const up = () => { clearTimeout(t1); clearInterval(t2); };
+  e.addEventListener("pointerdown", down); ["pointerup", "pointerleave", "pointercancel"].forEach(x => e.addEventListener(x, up));
+}
+btn("bL", () => move(-1)); btn("bR", () => move(1)); btn("bRot", rotate, false); btn("bDrop", hardDrop, false);
+$("bDown").addEventListener("pointerdown", e => { e.preventDefault(); keySoft = true; }); ["pointerup", "pointerleave", "pointercancel"].forEach(x => $("bDown").addEventListener(x, () => (keySoft = false)));
+
+// ── 鍵盤 ──
+addEventListener("keydown", e => {
+  unlock(); if (e.code === "Escape" || e.code === "KeyP") { state === "play" ? pause() : resume(); return; }
+  if (state === "pause") return; if (state !== "play") { if (e.code === "Enter" || e.code === "Space") start(); return; }
+  if (e.code === "ArrowLeft") move(-1); else if (e.code === "ArrowRight") move(1);
+  else if (e.code === "ArrowUp" || e.code === "KeyX") rotate(); else if (e.code === "ArrowDown") keySoft = true;
+  else if (e.code === "Space") { e.preventDefault(); hardDrop(); } else if (e.code === "KeyC" || e.code === "ShiftLeft") hold(); else if (e.code === "KeyD") useDino();
+});
+addEventListener("keyup", e => { if (e.code === "ArrowDown") keySoft = false; });
+
+// ── 盤面手勢：左右滑移動、點擊旋轉、往下拉加速、快速往下甩落下 ──
+let tch = null;
+cv.addEventListener("pointerdown", e => { unlock(); tch = { x0: e.clientX, y0: e.clientY, lx: e.clientX, ly: e.clientY, t: performance.now(), moved: false, soft: false }; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener("pointermove", e => {
+  if (!tch) return; const step = Math.max(18, S * .8);
+  while (e.clientX - tch.lx > step) { move(1); tch.lx += step; tch.moved = true; }
+  while (tch.lx - e.clientX > step) { move(-1); tch.lx -= step; tch.moved = true; }
+  if (e.clientY - tch.ly > step) { softDrop(); tch.ly += step; tch.moved = true; tch.soft = true; }
+});
+cv.addEventListener("pointerup", e => {
+  if (!tch) return; const dt = performance.now() - tch.t, dy = e.clientY - tch.y0, dx = e.clientX - tch.x0;
+  if (dy > 60 && dy / dt > .9 && Math.abs(dy) > Math.abs(dx) * 1.5) hardDrop();
+  else if (!tch.moved && dt < 300 && Math.hypot(dx, dy) < 12) rotate();
+  else if (dy < -60 && Math.abs(dy) > Math.abs(dx)) hold();
+  tch = null;
+});
+
+// ── 放進 App 樂園時（?embed=1）：結束把分數交給 App，離開就關閉 ──
+const EMBED = new URLSearchParams(location.search).get("embed") === "1";
+function embedClose() { try { parent.postMessage({ rh: "game", type: "close" }, "*"); } catch (e) {} }
+if (EMBED) {
+  $("again").style.display = "none"; $("restart").style.display = "none";
+  $("home").textContent = "✅ 完成，回樂園"; $("home").className = "go";
+  $("quit").textContent = "🚪 離開（回樂園，不計分）";
+}
+layout(); grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0)); nextQ = []; holdP = 0;
+score = 0; lines = 0; level = 1; boxes = 0; dino = 0;
+requestAnimationFrame(loop);
+window.__stack = { get state() { return state; }, get score() { return score; }, get lines() { return lines; }, get level() { return level; }, get grid() { return grid; }, get cur() { return cur; }, start, move, rotate, hardDrop, hold, useDino, set dinoV(v) { dino = v; }, set lvl(v) { level = v; lines = (v - 1) * 10; }, fits };
+</script>
+</body>
+</html>
