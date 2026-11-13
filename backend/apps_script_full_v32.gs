@@ -10565,3 +10565,552 @@ function extHandler_(action, p) {
   } catch (e) { return { error: '缺貨看板錯誤:' + e.message }; }
   return null;
 }
+
+// ═══════════════════════════════════════════════
+// v1.28 寵物隊伍與寵物市集＋塔防戰報 A～D＋行事曆（2026-11-13）
+// 貼在「赤心幣塔防 v1.27」之後、「路由v1.28」之前。部署後執行一次 p28_setup()
+// 1. 寵物隊伍：每人最多 5 隻（第 1 隻免費，第 2～5 隻 200／300／400／500），全部跟在身後；「身邊」＝主寵物，其他是「隊伍」
+//    賣回系統：蛋 30・雛形 60・嬰兒 90・兒童 130・完全體 180；寵物市集：賣家自訂 100～1,000，成交拿 80%，掛 3 天沒賣出自動收回
+//    至少留 1 隻；賣掉的寵物留在自己的圖鑑和相簿
+// 2. 塔防：A 每週戰報（首頁公告＋LINE）B 進步獎（比前 4 週平均成長最多 +100）C 櫃位 MVP 徽章 D 等級稱號
+// 3. 行事曆：公司「紅玉滿行事曆」（全員看，Lv.3 以上新增修改）＋大隊長個人行事曆（只有大隊長看得到）；與 Google 日曆雙向同步
+// 覆蓋：gm_petSyncAll_、gm_petDex_、td_weekly_（加 A～C）、td_simulate_（加 D 稱號）
+// ═══════════════════════════════════════════════
+
+var P28_PARAMS = [
+  ['寵物上限', 5, '每人最多幾隻寵物'],
+  ['寵物價格_2', 200, '第 2 隻'], ['寵物價格_3', 300, '第 3 隻'], ['寵物價格_4', 400, '第 4 隻'], ['寵物價格_5', 500, '第 5 隻'],
+  ['寵物回收價', '30,60,90,130,180', '賣回系統：蛋、雛形、嬰兒、兒童、完全體'],
+  ['寵物市集最低價', 100, ''], ['寵物市集最高價', 1000, ''], ['寵物市集賣家比例', 0.8, '成交後賣家拿幾成，其餘系統回收'], ['寵物市集天數', 3, '掛賣幾天沒賣出自動收回'],
+  ['塔防進步獎', 100, '本週積分比前 4 週平均成長最多的櫃位，依上班時數分'],
+  ['塔防等級稱號', '小攤,人氣攤,名店,排隊名店,傳奇櫃位', 'Lv.1、2、3、4、5 以上']
+];
+P28_PARAMS.forEach(function (p) { GM_PARAM_DEFAULTS.push(p); });
+['黑糖', '芝麻'].forEach(function (f) { if (GM_PET_FLAVORS.indexOf(f) < 0) GM_PET_FLAVORS.push(f); });
+GM_BADGES.push(['td_mvp', '本週 MVP', '🏅', '櫃位當週上班時數最多', 0, true]);
+GM_BADGES.push(['td_progress', '進步之星', '📈', '塔防進步獎的櫃位', 0, true]);
+var P28_MKT_HEAD = ['編號', '賣家', '寵物編號', '價格', '狀態', '掛賣時間', '買家', '成交時間'];
+
+// ── 寵物 ──
+function p28_n_(k, d) { var v = Number(gm_param_(k)); return isFinite(v) && v > 0 ? v : d; }
+function p28_alive_(emp) {     // 身邊＋隊伍（含掛賣中），主寵物在最前
+  var out = [];
+  gm_rows_('pets').forEach(function (r, i) {
+    var st = String(r[8] || '身邊') || '身邊';
+    if (r[0] === emp && (st === '身邊' || st === '隊伍' || st === '掛賣')) out.push(gm_petFromRow_(r, i));
+  });
+  return out.sort(function (a, b) { return (a.status === '身邊' ? 0 : 1) - (b.status === '身邊' ? 0 : 1) || (a.since < b.since ? -1 : 1); });
+}
+function p28_price_(n) { return n <= 1 ? 0 : p28_n_('寵物價格_' + Math.min(5, n), [0, 0, 200, 300, 400, 500][Math.min(5, n)]); }
+function p28_buyback_(stage) { var a = String(gm_param_('寵物回收價') || '30,60,90,130,180').split(',').map(Number); return a[Math.max(0, Math.min(4, stage - 1))] || 30; }
+function p28_mktSheet_() {
+  var ss = gm_ss_(), sh = ss.getSheetByName('寵物市集');
+  if (!sh) { sh = ss.insertSheet('寵物市集'); sh.getRange(1, 1, 1, P28_MKT_HEAD.length).setValues([P28_MKT_HEAD]); sh.setFrozenRows(1); }
+  return sh;
+}
+function p28_mkt_() {
+  var sh = p28_mktSheet_(); if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 8).getValues().map(function (r, i) {
+    return { row: i + 2, id: String(r[0]), seller: String(r[1]), pet: String(r[2]), price: Number(r[3]) || 0, status: String(r[4]), at: String(r[5]), buyer: String(r[6] || ''), done: String(r[7] || '') };
+  }).filter(function (x) { return x.id; });
+}
+function p28_petRow_(petId) {
+  var rows = gm_rows_('pets');
+  for (var i = 0; i < rows.length; i++) if (String(rows[i][9]) === String(petId)) return gm_petFromRow_(rows[i], i);
+  return null;
+}
+function p28_expire_() {         // 掛賣超過天數 → 收回
+  var days = p28_n_('寵物市集天數', 3), lim = Date.now() - days * 86400000;
+  p28_mkt_().forEach(function (m) {
+    if (m.status !== '掛賣' || new Date(m.at.replace(' ', 'T') + '+08:00').getTime() > lim) return;
+    p28_mktSheet_().getRange(m.row, 5).setValue('收回');
+    var pt = p28_petRow_(m.pet); if (pt && pt.status === '掛賣') gm_petSet_(pt.row, 9, ['隊伍']);
+  });
+}
+function p28_ensureMain_(emp) {  // 沒有「身邊」的就把隊伍第一隻升上來
+  var a = p28_alive_(emp);
+  if (a.length && !a.some(function (x) { return x.status === '身邊'; })) {
+    var first = a.filter(function (x) { return x.status === '隊伍'; })[0]; if (first) gm_petSet_(first.row, 9, ['身邊']);
+  }
+}
+function p28_team_(emp) {
+  p28_expire_();
+  var a = p28_alive_(emp), max = p28_n_('寵物上限', 5), mkt = p28_mkt_();
+  return { list: a.map(function (x) {
+      var m = mkt.filter(function (k) { return k.pet === x.id && k.status === '掛賣'; })[0];
+      return { id: x.id, name: x.name, flavor: x.flavor, type: x.type, typeName: x.typeName, stage: x.stage, stageName: x.stageName, hours: x.hours, nextAt: x.nextAt,
+        main: x.status === '身邊', listed: m ? { id: m.id, price: m.price, at: m.at } : null, buyback: p28_buyback_(x.stage) };
+    }), max: max, count: a.length, nextPrice: a.length >= max ? null : p28_price_(a.length + 1) };
+}
+function p28_buyMore_(p) {
+  var emp = String(p.empId || '').trim(), e = gm_emp_(emp); if (!e || gm_isFrozen_(emp)) return { error: '帳號無法使用' };
+  var a = p28_alive_(emp), max = p28_n_('寵物上限', 5);
+  if (!a.length) return gm_petBuy_(p);                                 // 第一隻：原本的免費領養
+  if (a.length >= max) return { error: '最多 ' + max + ' 隻，請先賣掉一隻' };
+  var price = p28_price_(a.length + 1);
+  if (gm_balance_(emp) < price) return { error: '赤心幣不足（需要 ' + price + ' 枚）' };
+  var flavor = GM_PET_FLAVORS.concat(['黑糖', '芝麻']).indexOf(p.flavor) >= 0 ? p.flavor : '原味';
+  var name = String(p.name || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 8) || '小雞蛋糕';
+  var id = gm_petId_();
+  gm_credit_(emp, '寵物', -price, '買第 ' + (a.length + 1) + ' 隻寵物「' + name + '」', 'PETBUY|' + emp + '|' + id);
+  gm_append_('pets', [[emp, flavor, name, gm_today_(), '', 0, 1, '', '隊伍', id, '']]);
+  gm_petEvent_(emp, 'join', (e.nick || e.name) + ' 的隊伍多了一顆蛋「' + name + '」');
+  return { success: true, data: p28_team_(emp), balance: gm_balance_(emp) };
+}
+function p28_setMain_(p) {
+  var emp = String(p.empId || '').trim(), a = p28_alive_(emp), t = a.filter(function (x) { return x.id === String(p.pet); })[0];
+  if (!t) return { error: '找不到這隻寵物' };
+  if (t.status === '掛賣') return { error: '掛賣中的寵物不能當主寵物' };
+  a.forEach(function (x) { if (x.status === '身邊') gm_petSet_(x.row, 9, ['隊伍']); });
+  gm_petSet_(t.row, 9, ['身邊']);
+  return { success: true, data: p28_team_(emp) };
+}
+function p28_sellSys_(p) {
+  var emp = String(p.empId || '').trim(), a = p28_alive_(emp), t = a.filter(function (x) { return x.id === String(p.pet); })[0];
+  if (!t) return { error: '找不到這隻寵物' };
+  if (t.status === '掛賣') return { error: '請先從市集收回' };
+  if (a.filter(function (x) { return x.status !== '掛賣'; }).length <= 1) return { error: '至少要留 1 隻寵物' };
+  gm_petSync_(t);
+  var amt = p28_buyback_(t.stage);
+  gm_petSet_(t.row, 9, ['已售出']);
+  gm_credit_(emp, '寵物回收', amt, '「' + t.name + '」（' + t.stageName + '）賣回系統', 'PETSELL|' + t.id);
+  p28_ensureMain_(emp);
+  return { success: true, data: p28_team_(emp), got: amt, balance: gm_balance_(emp) };
+}
+function p28_list_(p) {
+  var emp = String(p.empId || '').trim(), a = p28_alive_(emp), t = a.filter(function (x) { return x.id === String(p.pet); })[0];
+  if (!t) return { error: '找不到這隻寵物' };
+  if (t.status === '掛賣') return { error: '已經在市集上了' };
+  if (a.filter(function (x) { return x.status !== '掛賣'; }).length <= 1) return { error: '至少要留 1 隻寵物在身邊' };
+  var lo = p28_n_('寵物市集最低價', 100), hi = p28_n_('寵物市集最高價', 1000), price = Math.floor(Number(p.price) || 0);
+  if (price < lo || price > hi) return { error: '價格要在 ' + lo + '～' + hi + ' 之間' };
+  gm_petSync_(t);
+  gm_petSet_(t.row, 9, ['掛賣']);
+  p28_mktSheet_().appendRow(['K' + Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyMMddHHmmss') + Math.floor(Math.random() * 90 + 10), emp, t.id, price, '掛賣', gm_now_(), '', '']);
+  p28_ensureMain_(emp);
+  return { success: true, data: p28_team_(emp) };
+}
+function p28_unlist_(p) {
+  var emp = String(p.empId || '').trim(), m = p28_mkt_().filter(function (k) { return k.id === String(p.id) && k.status === '掛賣'; })[0];
+  if (!m || m.seller !== emp) return { error: '找不到這筆掛賣' };
+  p28_mktSheet_().getRange(m.row, 5).setValue('收回');
+  var pt = p28_petRow_(m.pet); if (pt && pt.status === '掛賣') gm_petSet_(pt.row, 9, ['隊伍']);
+  p28_ensureMain_(emp);
+  return { success: true, data: p28_team_(emp) };
+}
+function p28_market_(p) {
+  p28_expire_();
+  var emps = gm_emps_(), emp = String(p.empId || '');
+  return { success: true, data: p28_mkt_().filter(function (m) { return m.status === '掛賣'; }).map(function (m) {
+    var pt = p28_petRow_(m.pet), s = emps[m.seller]; if (!pt) return null;
+    return { id: m.id, price: m.price, at: m.at, mine: m.seller === emp, seller: s ? (s.nick || s.name) : m.seller,
+      pet: { name: pt.name, flavor: pt.flavor, type: pt.type, typeName: pt.typeName, stage: pt.stage, stageName: pt.stageName, hours: pt.hours } };
+  }).filter(Boolean).reverse(), sellerShare: Number(gm_param_('寵物市集賣家比例')) || 0.8 };
+}
+function p28_buyMkt_(p) {
+  var emp = String(p.empId || '').trim(), e = gm_emp_(emp); if (!e || gm_isFrozen_(emp)) return { error: '帳號無法使用' };
+  p28_expire_();
+  var m = p28_mkt_().filter(function (k) { return k.id === String(p.id) && k.status === '掛賣'; })[0];
+  if (!m) return { error: '這隻已經被買走或收回了' };
+  if (m.seller === emp) return { error: '不能買自己的寵物' };
+  if (p28_alive_(emp).length >= p28_n_('寵物上限', 5)) return { error: '你的寵物已經滿 5 隻，請先賣掉一隻' };
+  if (gm_balance_(emp) < m.price) return { error: '赤心幣不足' };
+  var pt = p28_petRow_(m.pet); if (!pt) return { error: '找不到這隻寵物' };
+  var share = Number(gm_param_('寵物市集賣家比例')) || 0.8, get = Math.floor(m.price * share);
+  gm_credit_(emp, '寵物市集', -m.price, '買下「' + pt.name + '」', 'MKTBUY|' + m.id);
+  if (!gm_isFrozen_(m.seller)) gm_credit_(m.seller, '寵物市集', get, '「' + pt.name + '」賣出 ' + m.price + ' 枚（拿 ' + Math.round(share * 100) + '%）', 'MKTSELL|' + m.id);
+  // 賣家留一筆紀錄（圖鑑、相簿用），寵物本身交給買家：保留目前的成長時數，之後依新主人的工時繼續長大
+  gm_append_('pets', [[m.seller, pt.flavor, pt.name, pt.since, pt.acc, 0, 1, pt.type, '已售出', pt.id + 'S', pt.hatched]]);
+  var bonus = pt.hours;
+  gm_petSet_(pt.row, 1, [emp]); gm_petSet_(pt.row, 4, [gm_today_(), '', bonus]);
+  gm_petSet_(pt.row, 9, [p28_alive_(emp).some(function (x) { return x.status === '身邊'; }) ? '隊伍' : '身邊']);
+  p28_mktSheet_().getRange(m.row, 5, 1, 4).setValues([['成交', m.at, emp, gm_now_()]]);
+  gm_petEvent_(emp, 'trade', (e.nick || e.name) + ' 在寵物市集帶回了「' + pt.name + '」');
+  return { success: true, data: p28_team_(emp), balance: gm_balance_(emp) };
+}
+// 覆蓋：孵化檢查擴及隊伍
+function gm_petSyncAll_() {
+  var rows = gm_rows_('pets').slice();
+  rows.forEach(function (r, i) { var st = String(r[8] || '身邊') || '身邊'; if (st === '身邊' || st === '隊伍' || st === '掛賣') gm_petSync_(gm_petFromRow_(r, i)); });
+}
+// 覆蓋：圖鑑包含賣掉的完全體
+function gm_petDex_(emp) {
+  var out = [], seen = {};
+  gm_rows_('pets').forEach(function (r, i) {
+    if (r[0] !== emp) return; var pt = gm_petFromRow_(r, i), id = pt.id.replace(/S$/, '');
+    var stage = pt.stage;
+    if (pt.status === '已售出') { stage = 0; gm_rows_('album').forEach(function (al) { if (String(al[1]) === id && Number(al[2]) > stage) stage = Number(al[2]); }); }
+    if (seen[id]) return;
+    if (pt.status === '圖鑑' || stage >= 5) { seen[id] = 1; out.push({ id: id, name: pt.name, type: pt.type, typeName: pt.typeName, flavor: pt.flavor, current: pt.status === '身邊', sold: pt.status === '已售出' }); }
+  });
+  return out;
+}
+// 宇宙辦公室：每個人的隊伍（主寵物以外）
+function p28_sceneTeams_() {
+  var out = {};
+  gm_rows_('pets').forEach(function (r, i) {
+    var st = String(r[8] || ''); if (st !== '隊伍' && st !== '掛賣') return;
+    var pt = gm_petFromRow_(r, i); (out[r[0]] = out[r[0]] || []).push({ flavor: pt.flavor, name: pt.name, stage: pt.stage, type: pt.type, acc: '' });
+  });
+  return out;
+}
+
+// ── 塔防 A～D ──
+function td_title_(lv) { var a = String(gm_param_('塔防等級稱號') || '小攤,人氣攤,名店,排隊名店,傳奇櫃位').split(','); return a[Math.min(a.length, Math.max(1, lv)) - 1] || ''; }
+function td_weekly_(today) {
+  if (((new Date(today + 'T00:00:00Z').getUTCDay() + 6) % 7) !== 0) return;
+  var last = td_weekRange_(gm_addDays_(today, -1)), key = last.from;
+  if (gm_getState_('塔防已結算') === key || last.to < gm_param_('測試版開始日')) return;
+  var R = td_simulate_(last.from, last.to);
+  R.matches.forEach(function (m) { pv_append_('tdLog', [[key, m.a, m.b, m.winner, JSON.stringify(m.waves)]]); });
+  var hrs = function (loc) { var mins = {}, tot = 0; gm_rows_('hours').forEach(function (r) { if (r[2] === loc && String(r[0]) >= last.from && String(r[0]) <= last.to) { mins[r[1]] = (mins[r[1]] || 0) + (Number(r[3]) || 0); tot += Number(r[3]) || 0; } }); return { mins: mins, tot: tot }; };
+  var pay = function (loc, pool, kind, label) { var h = hrs(loc); if (h.tot) Object.keys(h.mins).forEach(function (emp) { if (!gm_isFrozen_(emp)) gm_credit_(emp, kind, Math.round(pool * h.mins[emp] / h.tot), key + ' ' + label + ' ' + loc, kind + '|' + emp + '|' + key); }); return h; };
+  var champ = '', champCrew = [], prog = null, mvps = [];
+  if (R.standings.length && R.standings[0].score > 0) {
+    champ = R.standings[0].loc;
+    var h = pay(champ, pv_param_('塔防冠軍獎勵'), '塔防冠軍', '週塔防冠軍');
+    champCrew = Object.keys(h.mins).map(function (e) { var x = gm_emp_(e); return x ? (x.nick || x.name) : e; });
+    gm_setState_('塔防冠軍_' + key, champ);
+  }
+  // B 進步獎：本週積分 ÷ 前 4 週平均，成長最多的櫃位
+  R.standings.forEach(function (s) {
+    var sum = 0, n = 0;
+    for (var w = 1; w <= 4; w++) { var f = gm_addDays_(last.from, -7 * w), t = gm_addDays_(f, 6); if (t < gm_param_('測試版開始日')) continue; sum += td_score_(s.loc, f, t).score; n++; }
+    if (!n || !sum) return;
+    var g = s.score / (sum / n) - 1;
+    if (g > 0 && (!prog || g > prog.g)) prog = { loc: s.loc, g: g };
+  });
+  if (prog) { var hp = pay(prog.loc, p28_n_('塔防進步獎', 100), '塔防進步獎', '塔防進步獎（+' + Math.round(prog.g * 100) + '%）'); Object.keys(hp.mins).forEach(function (e) { gm_award_(e, 'td_progress', key); }); }
+  // C 櫃位 MVP：每個百貨櫃位本週上班時數最多
+  R.standings.forEach(function (s) {
+    var h = hrs(s.loc), best = '', bm = 0; Object.keys(h.mins).forEach(function (e) { if (h.mins[e] > bm) { bm = h.mins[e]; best = e; } });
+    if (best) { gm_award_(best, 'td_mvp', key + '|' + s.loc); var x = gm_emp_(best); mvps.push(String(s.loc).replace(/^\d+/, '') + ' ' + (x ? (x.nick || x.name) : best)); }
+  });
+  gm_setState_('塔防戰報_' + key, JSON.stringify(R.standings.map(function (s) { return [s.loc, s.score, s.revScore, s.giveScore]; })));
+  // A 每週戰報：首頁公告＋LINE
+  if (champ) {
+    var title = '🏰 上週塔防戰報：' + champ.replace(/^\d+/, '') + ' 奪冠！';
+    var body = R.standings.map(function (s, i) { return (['🥇', '🥈', '🥉'][i] || (i + 1) + '.') + ' ' + s.loc.replace(/^\d+/, '') + '　' + s.score.toLocaleString() + ' 分（Lv.' + s.level + ' ' + td_title_(s.level) + '）'; }).join('\n') +
+      '\n\n辛苦了！冠軍夥伴：' + (champCrew.join('、') || '—') +
+      (prog ? '\n📈 進步獎：' + prog.loc.replace(/^\d+/, '') + '（比前 4 週平均成長 ' + Math.round(prog.g * 100) + '%）' : '') +
+      (mvps.length ? '\n🏅 本週 MVP：' + mvps.join('、') : '');
+    try {
+      var sh = ann_sheet_();
+      if (sh) sh.appendRow(['A' + Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyMMddHHmmss') + 'TD', title, body, '一般', '否', '系統', Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy-MM-dd HH:mm:ss'), gm_addDays_(today, 6), '發布', JSON.stringify({ by: 'system', groups: [], target: [] })]);
+    } catch (e) {}
+    try { if (typeof line_notify_ === 'function') line_notify_('公告', title + '\n\n' + body); } catch (e) {}
+  }
+  gm_setState_('塔防已結算', key);
+}
+
+// ── 行事曆 ──
+var CAL_CATS = ['進撤櫃', '快閃', '活動', '會議', '其他'];
+function cal_company_() {
+  var id = String(gm_param_('公司行事曆ID') || '').trim();
+  if (id) { var c = CalendarApp.getCalendarById(id); if (c) return c; }
+  var list = CalendarApp.getCalendarsByName('紅玉滿行事曆');
+  return list && list.length ? list[0] : null;
+}
+function cal_personal_() { var id = String(gm_param_('大隊長行事曆ID') || '').trim(); return id ? CalendarApp.getCalendarById(id) : null; }
+function cal_cat_(desc) { var m = String(desc || '').match(/分類[:：]\s*(\S+)/); return m && CAL_CATS.indexOf(m[1]) >= 0 ? m[1] : '其他'; }
+function cal_ev_(ev, src) {
+  var all = ev.isAllDayEvent(), st = ev.getStartTime(), en = ev.getEndTime(), f = function (d, fmt) { return Utilities.formatDate(d, 'Asia/Taipei', fmt); };
+  var desc = String(ev.getDescription() || '');
+  return { id: ev.getId(), src: src, title: ev.getTitle(), allDay: all, date: f(st, 'yyyy-MM-dd'), end: f(all ? new Date(en.getTime() - 1) : en, 'yyyy-MM-dd'),
+    start: all ? '' : f(st, 'HH:mm'), endTime: all ? '' : f(en, 'HH:mm'), loc: String(ev.getLocation() || ''), cat: cal_cat_(desc),
+    desc: desc.replace(/\n?分類[:：]\s*\S+/, '').trim() };
+}
+function cal_isBoss_(emp) { var e = gm_emp_(emp); return !!e && e.role >= 5; }
+function cal_list_(p) {
+  var emp = String(p.empId || ''), from = gm27_ymd_(p.from) || gm_today_(), to = gm27_ymd_(p.to) || gm_addDays_(from, 41);
+  var a = new Date(from + 'T00:00:00+08:00'), b = new Date(to + 'T23:59:59+08:00'), out = [];
+  var c = cal_company_(); if (c) c.getEvents(a, b).forEach(function (ev) { out.push(cal_ev_(ev, 'company')); });
+  if (cal_isBoss_(emp)) { var pc = cal_personal_(); if (pc) pc.getEvents(a, b).forEach(function (ev) { out.push(cal_ev_(ev, 'personal')); }); }
+  out.sort(function (x, y) { return (x.date + x.start) < (y.date + y.start) ? -1 : 1; });
+  return { success: true, data: out, cats: CAL_CATS, ready: { company: !!c, personal: cal_isBoss_(emp) ? !!cal_personal_() : null },
+    canEdit: (gm_emp_(emp) || {}).role >= 3, isBoss: cal_isBoss_(emp) };
+}
+function cal_save_(p) {
+  var emp = String(p.empId || ''), me = gm_emp_(emp); if (!me || me.role < 3) return { error: '需要 Lv.3 以上' };
+  var src = p.src === 'personal' ? 'personal' : 'company';
+  if (src === 'personal' && !cal_isBoss_(emp)) return { error: '只有大隊長可以使用個人行事曆' };
+  var cal = src === 'personal' ? cal_personal_() : cal_company_(); if (!cal) return { error: src === 'personal' ? '個人行事曆還沒連結（〈遊戲參數〉大隊長行事曆ID）' : '找不到「紅玉滿行事曆」' };
+  var title = String(p.title || '').trim().slice(0, 60); if (!title) return { error: '請填標題' };
+  var date = gm27_ymd_(p.date), end = gm27_ymd_(p.end) || date; if (!date) return { error: '請選日期' };
+  var cat = CAL_CATS.indexOf(p.cat) >= 0 ? p.cat : '其他';
+  var desc = (String(p.desc || '').trim().slice(0, 1000) + '\n分類：' + cat).trim(), opt = { description: desc, location: String(p.loc || '').slice(0, 100) };
+  var allDay = !p.start, ev;
+  var s = allDay ? new Date(date + 'T00:00:00+08:00') : new Date(date + 'T' + p.start + ':00+08:00');
+  var e = allDay ? new Date(new Date(end + 'T00:00:00+08:00').getTime() + 86400000) : new Date(end + 'T' + (p.endTime || p.start) + ':00+08:00');
+  if (e <= s && !allDay) e = new Date(s.getTime() + 3600000);
+  if (p.id) {
+    ev = cal.getEventById(String(p.id)); if (!ev) return { error: '找不到這個行程' };
+    ev.setTitle(title); ev.setDescription(desc); ev.setLocation(opt.location);
+    if (allDay) ev.setAllDayDates(s, e); else ev.setTime(s, e);
+  } else ev = allDay ? cal.createAllDayEvent(title, s, e, opt) : cal.createEvent(title, s, e, opt);
+  return { success: true, id: ev.getId() };
+}
+function cal_del_(p) {
+  var emp = String(p.empId || ''), me = gm_emp_(emp); if (!me || me.role < 3) return { error: '需要 Lv.3 以上' };
+  var src = p.src === 'personal' ? 'personal' : 'company';
+  if (src === 'personal' && !cal_isBoss_(emp)) return { error: '只有大隊長可以使用個人行事曆' };
+  var cal = src === 'personal' ? cal_personal_() : cal_company_(), ev = cal && cal.getEventById(String(p.id || ''));
+  if (!ev) return { error: '找不到這個行程' };
+  ev.deleteEvent(); return { success: true };
+}
+// 每天早上提醒今天的公司行程（LINE，選用）：〈遊戲參數〉行事曆LINE提醒＝是；p28_setup 會建立每天 8 點的觸發
+function cal_morningPush() {
+  if (!/^(是|Y|TRUE|1)$/i.test(String(gm_param_('行事曆LINE提醒') || ''))) return;
+  var c = cal_company_(); if (!c) return;
+  var today = gm_today_(), evs = c.getEvents(new Date(today + 'T00:00:00+08:00'), new Date(today + 'T23:59:59+08:00')).map(function (ev) { return cal_ev_(ev, 'company'); });
+  if (!evs.length) return;
+  try { line_notify_('公告', '📅 今天的行程\n' + evs.map(function (x) { return '・' + (x.start ? x.start + ' ' : '') + '【' + x.cat + '】' + x.title + (x.loc ? '（' + x.loc + '）' : ''); }).join('\n')); } catch (e) {}
+}
+function cal_todayTodo_(emp) {
+  var out = [], today = gm_today_(), tmr = gm_addDays_(today, 1);
+  try {
+    var r = cal_list_({ empId: emp, from: today, to: tmr });
+    r.data.forEach(function (x) { out.push({ icon: x.src === 'personal' ? '🔒' : '📅', text: (x.date === today ? '今天' : '明天') + (x.start ? ' ' + x.start : '') + '【' + x.cat + '】' + x.title, tab: 'calendar', red: false }); });
+  } catch (e) {}
+  return out;
+}
+
+AU_READ = /^(get|check|estimate)|List$|^(annFeed|annOptions|annReaders|buList|opsFranchise|opsMatItems|opsMatMonthly|opsMe|opsOnboard|opsPnl|opsPriceList|opsReceivable|payRecon|pvLiveMine|pvLiveState|pvMe|rpCount|rpMeta|schBoard|schMine|schReconcile|spList|spScene|tdMe|gmMe|gmScene|gmGames|lineGroups|lineQuota|login|fsMeta|fsTemps|fsAudit|fsHealthMine|fsHealthView|gmRules|gmBoostList|homeTodo|gmPetTeam|gmPetMarket|calList)$/;
+
+function p28Handler_(action, p) {
+  var map = { gmPetTeam: function (q) { return { success: true, data: p28_team_(String(q.empId || '')) }; }, gmPetBuyMore: p28_buyMore_, gmPetMain: p28_setMain_, gmPetSell: p28_sellSys_,
+    gmPetList: p28_list_, gmPetUnlist: p28_unlist_, gmPetMarket: p28_market_, gmPetMarketBuy: p28_buyMkt_, calList: cal_list_, calSave: cal_save_, calDel: cal_del_ };
+  if (action === 'gmScene') {           // 加上每個人的隊伍
+    try { GM_CACHE_ = {}; var r = gm_scene_(); if (r && r.data) r.data.teams = p28_sceneTeams_(); return r; } catch (e) { return null; }
+  }
+  if (action === 'homeTodo') {          // 加上今天／明天的行程
+    try { var t = gm27_todo_(p); GM_CACHE_ = {}; if (t && t.success) t.data = cal_todayTodo_(String(p.empId || '')).concat(t.data); return t; } catch (e) { return null; }
+  }
+  if (action === 'tdMe') {              // 加上等級稱號
+    try { GM_CACHE_ = {}; var d = td_me_(p); if (d && d.data) d.data.standings.forEach(function (s) { s.title = td_title_(s.level); }); return d; } catch (e) { return null; }
+  }
+  if (!map[action]) return null;
+  var lock = /^(gmPetBuyMore|gmPetMain|gmPetSell|gmPetList|gmPetUnlist|gmPetMarketBuy)$/.test(action) ? LockService.getScriptLock() : null;
+  try { if (lock) lock.waitLock(20000); GM_CACHE_ = {}; return map[action](p); }
+  catch (e) { return { error: e.message }; }
+  finally { if (lock) lock.releaseLock(); }
+}
+
+function p28_setup() {
+  var sh = gm_sh_('params'), v = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues() : [], have = {}, log = [];
+  v.forEach(function (r) { have[String(r[0]).trim()] = 1; });
+  P28_PARAMS.concat([['公司行事曆ID', '', '空白＝自動找名為「紅玉滿行事曆」的日曆'], ['大隊長行事曆ID', '', '大隊長個人 Google 日曆共用給公司帳號後，填日曆 ID（通常是 Gmail 地址）'], ['行事曆LINE提醒', '否', '是＝每天早上 8 點把今天的公司行程發到 LINE 公告群組']])
+    .forEach(function (x) { if (!have[x[0]]) { sh.appendRow(x); log.push('新增參數 ' + x[0]); } });
+  p28_mktSheet_();
+  var c = null; try { c = cal_company_(); if (!c) { c = CalendarApp.createCalendar('紅玉滿行事曆', { color: CalendarApp.Color.RED }); log.push('建立 Google 日曆「紅玉滿行事曆」'); } } catch (e) { log.push('日曆：' + e.message); }
+  try {
+    var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'cal_morningPush'; });
+    if (!has) { ScriptApp.newTrigger('cal_morningPush').timeBased().atHour(8).everyDays(1).inTimezone('Asia/Taipei').create(); log.push('建立每天 8 點行程提醒觸發'); }
+  } catch (e) { log.push('觸發：' + e.message); }
+  GM_CACHE_ = {};
+  Logger.log('p28_setup 完成\n' + log.join('\n'));
+  return log;
+}
+
+// ═══════════════════════════════════════════════
+// v1.29 內帳（2026-11-13）— 只有大隊長（Lv.5）可以用
+// 貼在「寵物行事曆 v1.28」之後、「路由v1.29」之前。部署後執行一次 ac_setup()
+// 〈內帳〉欄位和「營收總表」一樣：日期、公司、收支、記帳類別、子類別、單位、銷貨金額、稅額、發票金額、備註，另加照片、登記人、登記時間、編號、來源
+// 動作：acMeta 類別清單、acList 明細、acSave 記一筆／修改、acDel 刪除、acImport 匯入（重複的自動跳過）、acSummary 損益看板
+// 匯出營收總表 Excel 在 App 前端產生（格式和原本一樣）
+// ═══════════════════════════════════════════════
+
+var AC_HEAD = ['日期', '公司', '收支', '記帳類別', '子類別', '單位', '銷貨金額', '稅額', '發票金額', '備註', '照片', '登記人', '登記時間', '編號', '來源'];
+var AC_COMPANY = ['90011886', '42274298'];
+var AC_EXP = ['薪資人事', '通路費用', '食材成本', '租金費用', '政府費用', '生財器具', '交通費用', '包材費用', '物流費用', '輸出費用', '保險費用', '會計費用', '辦公費用', '電信費用', '其他費用', '裝潢費用', '水電費用', '公益捐贈',
+  '金融費用', '餐飲費用', '清潔費用', '差旅費用', '通路押金', '系統費用'];
+var AC_INC = ['百貨營收', '通路營收', '活動營收', '展覽營收', '技術營收', '加盟營收', '其他營收'];
+
+function ac_need_(p) { var me = ops_me_(p.empId); if (me.role < 5) throw new Error('內帳只有大隊長可以使用'); return me; }
+function ac_sheet_() {
+  var ss = ops_ss_(), sh = ss.getSheetByName('內帳');
+  if (!sh) { sh = ss.insertSheet('內帳'); sh.getRange(1, 1, 1, AC_HEAD.length).setValues([AC_HEAD]); sh.setFrozenRows(1); }
+  return sh;
+}
+function ac_d_(v) { return v instanceof Date ? Utilities.formatDate(v, 'Asia/Taipei', 'yyyy-MM-dd') : String(v || '').slice(0, 10).replace(/\//g, '-'); }
+function ac_rows_() {
+  var sh = ac_sheet_(); if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, AC_HEAD.length).getValues().map(function (r, i) {
+    return { row: i + 2, date: ac_d_(r[0]), co: String(r[1] || ''), io: String(r[2] || ''), cat: String(r[3] || ''), sub: String(r[4] || ''), unit: String(r[5] || ''),
+      net: r[6] === '' ? null : Number(r[6]), tax: r[7] === '' ? null : Number(r[7]), amt: Number(r[8]) || 0, note: String(r[9] || ''), photo: String(r[10] || ''),
+      by: String(r[11] || ''), at: String(r[12] || ''), id: String(r[13] || ''), src: String(r[14] || '') };
+  }).filter(function (x) { return x.date; });
+}
+function ac_key_(x) { return [x.date, x.io, Math.round(Number(x.amt) || 0), String(x.unit || '').trim(), String(x.note || '').trim()].join('|'); }
+function ac_period_(ym) { var y = Number(ym.slice(0, 4)), m = Number(ym.slice(5, 7)), s = m % 2 ? m : m - 1; return { from: y + '-' + ('0' + s).slice(-2) + '-01', to: y + '-' + ('0' + (s + 1)).slice(-2) + '-31', label: (y - 1911) + '年' + s + '-' + (s + 1) + '月' }; }
+
+function ac_meta_(p) { ac_need_(p); return { success: true, data: { companies: AC_COMPANY, exp: AC_EXP, inc: AC_INC } }; }
+function ac_list_(p) {
+  ac_need_(p);
+  var from = ac_d_(p.from) || '0000', to = ac_d_(p.to) || '9999', q = String(p.q || '').trim(), cat = String(p.cat || ''), io = String(p.io || '');
+  var list = ac_rows_().filter(function (x) {
+    return x.date >= from && x.date <= to && (!cat || x.cat === cat) && (!io || x.io === io) && (!q || (x.unit + x.sub + x.note + x.cat).indexOf(q) >= 0);
+  }).sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : a.row - b.row; });
+  return { success: true, data: list };
+}
+function ac_clean_(x) {
+  var date = ac_d_(x.date); if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: '日期格式不對' };
+  var io = x.io === '收入' ? '收入' : '支出', amt = Math.round(Number(x.amt) * 100) / 100;
+  if (!isFinite(amt) || amt === 0) return { error: '請填發票金額' };
+  var net = x.net === '' || x.net == null ? '' : Number(x.net), tax = x.tax === '' || x.tax == null ? '' : Number(x.tax);
+  if (x.autoTax && net === '' && tax === '') { net = Math.round(amt / 1.05); tax = amt - net; }
+  return { v: [date, String(x.co || AC_COMPANY[0]).slice(0, 10), io, String(x.cat || '').slice(0, 10), String(x.sub || '').slice(0, 30), String(x.unit || '').slice(0, 40), net, tax, amt, String(x.note || '').slice(0, 200)] };
+}
+function ac_save_(p) {
+  var me = ac_need_(p), x = p.item || {}; if (typeof x === 'string') x = ops_json_(x, {});
+  var c = ac_clean_(x); if (c.error) return c;
+  var sh = ac_sheet_(), lock = LockService.getScriptLock(); lock.waitLock(15000);
+  try {
+    if (x.id) {
+      var hit = ac_rows_().filter(function (r) { return r.id === String(x.id); })[0]; if (!hit) return { error: '找不到這筆' };
+      sh.getRange(hit.row, 1, 1, 15).setValues([c.v.concat([String(x.photo || hit.photo || ''), me.name, ops_now_(), hit.id, hit.src || 'App'])]);
+      return { success: true, id: hit.id };
+    }
+    var id = typeof au_id_ === 'function' ? au_id_('B') : 'B' + Date.now();
+    sh.appendRow(c.v.concat([String(x.photo || ''), me.name, ops_now_(), id, 'App']));
+    return { success: true, id: id };
+  } finally { lock.releaseLock(); }
+}
+function ac_del_(p) {
+  ac_need_(p);
+  var hit = ac_rows_().filter(function (r) { return r.id === String(p.id); })[0]; if (!hit) return { error: '找不到這筆' };
+  ac_sheet_().deleteRow(hit.row); return { success: true };
+}
+// 匯入（前端讀 Excel 後分批送來，一批最多 500 筆）；日期＋收支＋金額＋單位＋備註都一樣的，已經有幾筆就跳過幾筆（重複匯入不會多算，同一天真的有兩筆一樣的也不會漏）
+function ac_import_(p) {
+  var me = ac_need_(p), list = ops_arr_(p.rows); if (list.length > 500) return { error: '一次最多 500 筆' };
+  var have = {}, seen = {}; ac_rows_().forEach(function (r) { var k = ac_key_(r); have[k] = (have[k] || 0) + 1; });   // 同一天同店同金額可能真的有好幾筆：只跳過已經存在的筆數
+  var add = [], skip = 0, bad = 0, src = String(p.src || '匯入').slice(0, 40);
+  list.forEach(function (x, i) {
+    var c = ac_clean_(x); if (c.error) { bad++; return; }
+    var k = ac_key_({ date: c.v[0], io: c.v[2], amt: c.v[8], unit: c.v[5], note: c.v[9] });
+    seen[k] = (seen[k] || 0) + 1;
+    if (seen[k] <= (have[k] || 0)) { skip++; return; }
+    add.push(c.v.concat(['', me.name, ops_now_(), 'B' + Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyMMddHHmmss') + ('000' + i).slice(-4) + Math.floor(Math.random() * 90 + 10), String(x.src || src).slice(0, 40)]));
+  });
+  if (add.length) { var sh = ac_sheet_(), lock = LockService.getScriptLock(); lock.waitLock(20000); try { sh.getRange(sh.getLastRow() + 1, 1, add.length, AC_HEAD.length).setValues(add); } finally { lock.releaseLock(); } }
+  return { success: true, added: add.length, skipped: skip, bad: bad };
+}
+// 損益看板：每月收入、支出（依類別）、淨額；另附 App 收店盤點的營業額做對照，以及要注意的資料
+function ac_summary_(p) {
+  ac_need_(p);
+  var y = String(p.year || Utilities.formatDate(new Date(), 'Asia/Taipei', 'yyyy')), months = {}, warn = [];
+  var mk = function (m) { return months[m] = months[m] || { ym: m, inc: 0, exp: 0, incCat: {}, expCat: {}, storeRev: 0, count: 0 }; };
+  ac_rows_().forEach(function (x) {
+    if (x.date.slice(0, 4) !== y) return;
+    var m = mk(x.date.slice(0, 7)); m.count++;
+    if (x.io === '收入') { m.inc += x.amt; m.incCat[x.cat || '未分類'] = (m.incCat[x.cat || '未分類'] || 0) + x.amt; if (AC_INC.indexOf(x.cat) < 0) warn.push({ id: x.id, date: x.date, text: '收入的類別是「' + (x.cat || '空白') + '」', amt: x.amt, unit: x.unit }); }
+    else { m.exp += x.amt; m.expCat[x.cat || '未分類'] = (m.expCat[x.cat || '未分類'] || 0) + x.amt; if (!x.cat) warn.push({ id: x.id, date: x.date, text: '支出沒有填類別', amt: x.amt, unit: x.unit }); }
+  });
+  try {   // App 營業額（收店盤點）對照
+    gm_closeRows_().forEach(function (r) { var d = String(r.date || ''); if (d.slice(0, 4) === y) mk(d.slice(0, 7)).storeRev += Number(r.rev) || 0; });
+  } catch (e) {}
+  var list = Object.keys(months).sort().map(function (k) { var m = months[k]; m.net = m.inc - m.exp; return m; });
+  var tot = { inc: 0, exp: 0, expCat: {}, incCat: {} };
+  list.forEach(function (m) { tot.inc += m.inc; tot.exp += m.exp; Object.keys(m.expCat).forEach(function (c) { tot.expCat[c] = (tot.expCat[c] || 0) + m.expCat[c]; }); Object.keys(m.incCat).forEach(function (c) { tot.incCat[c] = (tot.incCat[c] || 0) + m.incCat[c]; }); });
+  tot.net = tot.inc - tot.exp;
+  return { success: true, data: { year: y, months: list, total: tot, warn: warn.slice(0, 50) } };
+}
+
+AU_READ = new RegExp(AU_READ.source.replace('|calList)$', '|calList|acMeta|acSummary)$'));
+
+function acHandler_(action, p) {
+  var map = { acMeta: ac_meta_, acList: ac_list_, acSave: ac_save_, acDel: ac_del_, acImport: ac_import_, acSummary: ac_summary_ };
+  if (!map[action]) return null;
+  try { GM_CACHE_ = {}; return map[action](p); } catch (e) { return { error: e.message }; }
+}
+function ac_setup() {
+  ac_sheet_();
+  var sh = ac_sheet_(); sh.getRange('A:A').setNumberFormat('yyyy-mm-dd');
+  try { var prot = sh.protect().setDescription('內帳：只有擁有者可以直接改'); prot.setWarningOnly(true); } catch (e) {}
+  Logger.log('ac_setup 完成：〈內帳〉已建立');
+}
+
+// ═══════════════════════════════════════════════
+// 內帳與大隊長個人行事曆：一定要有效的登入通行證（2026-11-13，部署端）
+// 問題：「登入驗證模式」目前是「記錄」，沒帶通行證的呼叫照樣放行、後端相信傳來的員工編號。
+//       內帳（ac_need_）與個人行事曆（cal_isBoss_）只看員工編號，帶大隊長編號就能讀財務資料與個人行程。
+// 修正：這兩項不管模式，一律要有效通行證，且通行證本人是 Lv.5（夥伴視角時是被看的人，自然不會是大隊長）。
+// 貼在「內帳 v1」之後、「路由v1.29」之前。覆蓋：auHandler_（只多記下本次請求）、ac_need_、cal_isBoss_
+// ═══════════════════════════════════════════════
+var AU_REQ_ = null;
+function au_verifiedId_() {
+  var p = AU_REQ_; if (!p || !p.token) return '';
+  var tid = au_tokenId_(p.token);
+  return tid && sec_verifyToken_(p.token, tid) ? tid : '';
+}
+function auHandler_(action, p) {
+  AU_REQ_ = p || null;
+  if (action === 'getDailyReport') { try { return au_dailyScoped_(p); } catch (e) { return null; } }
+  if (action === 'getBatterStock' && p.mine) {
+    try {
+      var sc = au_scope_(p.empId), r = bt_get_(p);
+      if (sc && !sc.all && r && r.success) r.data = (r.data || []).filter(function (x) { return sc.has(x.loc) || sc.has(x.code); });
+      return r;
+    } catch (e) { return null; }
+  }
+  if (!/^au[A-Z]/.test(String(action || ''))) return null;
+  try {
+    switch (action) {
+      case 'auWho':    return au_who_(p);
+      case 'auViewAs': return au_viewAs_(p);
+      case 'auPeople': return au_people_(p);
+    }
+  } catch (e) { return { error: e.message }; }
+  return null;
+}
+function ac_need_(p) {
+  var tid = au_verifiedId_();
+  if (!tid) throw new Error('請更新 App 後重新登入');
+  var me = ops_me_(tid); if (me.role < 5) throw new Error('內帳只有大隊長可以使用');
+  return me;
+}
+function cal_isBoss_(emp) {
+  var e = gm_emp_(emp); if (!e || e.role < 5) return false;
+  if (!AU_REQ_) return true;               // 觸發程序（每天 8 點推播）沒有請求
+  return au_verifiedId_() === String(emp);
+}
+
+// ═══════════════════════════════════════════════
+// 路由 extHandler_ v1.29（2026-11-13）
+// 整段貼在「程式碼.gs」最底部即可（Apps Script 以檔案中最後一個同名函式為準，不必改原本那一個）。
+// 與 v1.28 路由的差別：p28Handler_ 之後加 acHandler_（內帳，只有大隊長）。
+// ═══════════════════════════════════════════════
+function extHandler_(action, p) {
+  p = p || {};
+  var gate = au_gate_(action, p); if (gate) return gate;
+  var au = auHandler_(action, p); if (au) return au;
+  var sec = secHandler_(action, p); if (sec) return sec;
+  var op = opsHandler_(action, p); if (op) return op;
+  var bu = buHandler_(action, p); if (bu) return bu;
+  var rp = rpHandler_(action, p); if (rp) return rp;
+  var fs = fsHandler_(action, p); if (fs) return fs;
+  var p28 = p28Handler_(action, p); if (p28) return p28;
+  var ac = acHandler_(action, p); if (ac) return ac;
+  var g27 = gm27Handler_(action, p); if (g27) return g27;
+  var py = payHandler_(action, p); if (py) return py;
+  var ln = lineHandler_(action, p); if (ln) return ln;
+  var pr = pollHandler_(action, p);
+  if (pr) return pr;
+  var sc = schHandler_(action, p); if (sc) return sc;
+  var pw = pwHandler_(action, p); if (pw) return pw;
+  var av = avHandler_(action, p); if (av) return av;
+  var od = odHandler_(action, p); if (od) return od;
+  var bt = btHandler_(action, p); if (bt) return bt;
+  var gm = gmHandler_(action, p); if (gm) return gm;
+  var pv = pvHandler_(action, p); if (pv) return pv;
+  var so = sopHandler_(action, p); if (so) return so;
+  if (action === 'getOnDutyCrew') { try { return uo_onDutyCrew_(p); } catch (e) { return { error: '在班名單錯誤:' + e.message }; } }
+  try {
+    if (action === 'getTodayBirthdays') return bday_today_(p);
+    if (action === 'getShortages')    return uo_getShortages();
+    if (action === 'addShortage')     return uo_addShortage(p);
+    if (action === 'resolveShortage') return uo_resolveShortage(p);
+  } catch (e) { return { error: '缺貨看板錯誤:' + e.message }; }
+  return null;
+}
