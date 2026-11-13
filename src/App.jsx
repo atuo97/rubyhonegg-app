@@ -6,6 +6,7 @@ import BatterPage from "./BatterTab.jsx";
 import ReportPage from "./ReportTab.jsx";
 import { RulesPage, BoostAdmin, BrandPage, LoginSlogan } from "./Park27.jsx";
 import { CalendarPage } from "./Cal28.jsx";
+import { AcPage } from "./Ac29.jsx";
 import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
@@ -673,7 +674,7 @@ export default function App(){
   // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
-    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", about:"info", calendar:"home",
+    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", about:"info", calendar:"home", ledger:"manage",
     schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
@@ -694,7 +695,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -807,6 +808,10 @@ export default function App(){
             <ListItem icon="shield" title="食安管理" desc={user.role>=3 ? "冰箱溫度紀錄、櫃位證照、體檢確認" : "冰箱溫度紀錄"} onClick={()=>setTab("foodsafe")}/>
             {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
             {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
+            {user.role>=5 && <>
+              <div style={{ ...s.sectionTitle, marginTop:16 }}>大隊長</div>
+              <ListItem icon="chart" title="內帳" desc="記一筆、損益看板、匯出營收總表 Excel（只有你看得到）" onClick={()=>setTab("ledger")}/>
+            </>}
             {user.role>=3 && <>
               <div style={{ ...s.sectionTitle, marginTop:16 }}>人員與設定</div>
               <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
@@ -818,6 +823,7 @@ export default function App(){
         {tab==="rules" && <RulesPage user={user} apiGet={apiGet} C={C} s={s} loc={activeSeg?.location || ""} onOpenLedger={()=>openGame("home")} />}
         {tab==="boost" && user.role>=3 && <BoostAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} todayStr={todayStr} />}
         {tab==="about" && <BrandPage C={C} s={s} locations={locations} />}
+        {tab==="ledger" && user.role>=5 && <AcPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} todayStr={todayStr} />}
         {tab==="calendar" && <CalendarPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="sop" && <SopPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} />}
         {tab==="audit" && <AuditPage user={user} apiGet={apiGet} C={C} s={s} locations={locations} defaultLoc={effLoc} />}
