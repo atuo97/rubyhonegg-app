@@ -28,6 +28,9 @@ const CSS = `
 .uo-ftabs button.on{background:rgba(192,57,43,.92)}
 .uo-card{position:absolute;z-index:4;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:420px;margin:0 auto;background:rgba(255,250,242,.97);border-radius:14px;padding:10px 12px;box-shadow:0 6px 20px rgba(0,0,0,.35);color:#2b1d14}
 .uo-frame_glow{background:#c0392b;border:1.5px solid #ffe066;box-shadow:0 0 8px #ffe066}
+.uo-title{font-size:9.5px;font-weight:700;color:#6b3d00;background:linear-gradient(#fff1b8,#ffd36b);padding:0 6px;border-radius:6px;white-space:nowrap}
+.uo-x_frame{background:#2f6fb0;border:1.5px solid #fff;box-shadow:0 0 6px #bfe3ff}
+.uo-c_frame{background:#b81d1d;border:1.5px solid #f1c40f;box-shadow:0 0 6px #f1c40f}
 `;
 
 // 節日(農曆日期每年要更新;週年日由後端「遊戲參數」提供)
@@ -199,7 +202,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     // v1.19:互動動態＋寵物動態(孵化、交換、收進圖鑑)合併,依時間排序
     setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
-    engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
+    engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
     // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
     const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);
@@ -279,7 +282,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const stores = SCENE_KEYS.filter(k => SCENES[k].store && (k === "other" ? count(k) > 0 || view === k : !openScenes || openScenes[k] || count(k) || view === k));
     const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
     stores.sort((a, b) => n(a) - n(b));
-    return ["office", "factory", ...stores, "street"];
+    return ["office", ...(game && game.seats && game.seats.length ? ["seats"] : []), "factory", ...stores, "street"];
   })();
   // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
   const opsMap = (() => {

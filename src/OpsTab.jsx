@@ -319,6 +319,16 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
           <label style={s.label}>離職日（填了就不能登入、不再計薪；留空＝在職）</label>
           <input type="date" value={edit.left} onChange={e => setEdit({ ...edit, left:e.target.value })} style={{ ...s.input, marginBottom:12 }}/>
           <button disabled={busy} onClick={saveEdit} style={{ ...s.btn("primary"), opacity:busy ? .6 : 1 }}>{busy ? "儲存中…" : "儲存"}</button>
+          {user.role >= 3 && edit.id !== user.id && (user.role >= 5 || edit.role < user.role) && !edit.left && (
+            <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
+              <div style={{ fontSize:12.5, color:C.muted, lineHeight:1.6, marginBottom:8 }}>夥伴忘記密碼時：重設成生日 4 碼，他下次登入一定要先改一組新密碼。</div>
+              <button disabled={busy} onClick={async () => {
+                if (!confirm(`把 ${edit.name} 的密碼重設成生日 4 碼？`)) return;
+                setBusy(true); const r = await apiPost({ action:"s30PwReset", empId:user.id, token:user.token || "", target:edit.id }, 0); setBusy(false);
+                if (r && r.success) { setEdit(null); setMsg({ ok:true, text:`已重設 ${r.name} 的密碼為${r.hint}，請告訴他用這組登入，登入後會要求他改新密碼。` }); }
+                else alert((r && r.error) || "重設失敗");
+              }} style={s.btn("secondary")}>🔑 重設密碼</button>
+            </div>)}
         </Sheet>
       )}
       {form && (

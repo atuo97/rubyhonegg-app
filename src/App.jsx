@@ -5,6 +5,8 @@ import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import BatterPage from "./BatterTab.jsx";
 import ReportPage from "./ReportTab.jsx";
 import { RulesPage, BoostAdmin, BrandPage, LoginSlogan } from "./Park27.jsx";
+import { SpendPage, EntryFxOnPunch } from "./Spend30.jsx";
+import { QuotePage } from "./Quote30.jsx";
 import { CalendarPage } from "./Cal28.jsx";
 import { AcPage } from "./Ac29.jsx";
 import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
@@ -659,6 +661,12 @@ export default function App(){
     setGameTab("home"); setTab("game");
   };
   const [avatarCfg, setAvatarCfg] = useState(null);
+  // v1.30 管理者重設過密碼的夥伴：登入後一定要先改密碼
+  const [pwMust, setPwMust] = useState(false);
+  useEffect(() => {
+    if (!realUser || !realUser.weakPw || realUser.role >= 3) { setPwMust(false); return; }
+    apiGet({ action:"s30PwMust", empId:realUser.id }, 0).then(r => setPwMust(!!(r && r.success && r.must))).catch(() => {});
+  }, [realUser && realUser.id, realUser && realUser.weakPw]);
   const inAvatar = tab === "avatar";
   useEffect(() => {
     if (!user || inAvatar) return;
@@ -667,6 +675,7 @@ export default function App(){
   const openMePet = () => openMe("avatar");
   if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen notice={reloginMsg} onLogin={u => { setReloginMsg(""); setUser(u); }} /></>;
   // v1.25 管理者（Lv.3 以上）密碼還是生日：先改密碼才能用
+  if (!preview && realUser.weakPw && realUser.role < 3 && pwMust) return <><GlobalStyle/><ForcePwScreen user={realUser} reset onDone={() => { setPwMust(false); setUser(u => ({ ...u, weakPw:false })); }} onLogout={logout} /></>;
   if (!preview && realUser.role >= 3 && realUser.weakPw) return <><GlobalStyle/><ForcePwScreen user={realUser} onDone={() => setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} /></>;
   const roleName = r => r>=5?"大隊長":r===4?"總經理":r===3?"管理者":r===2?"分隊長":"夥伴";
   const previewLabel = !preview ? "" : preview.mode === "role" ? `Lv.${preview.role} ${roleName(preview.role)}${preview.type && preview.type !== "員工" ? "（" + preview.type + "）" : ""}` : `${user.name}（Lv.${user.role} ${roleName(user.role)}）`;
@@ -674,7 +683,7 @@ export default function App(){
   // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
-    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", about:"info", calendar:"home", ledger:"manage",
+    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"info", calendar:"home", ledger:"manage", quote:"manage",
     schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
@@ -695,7 +704,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣花費", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -705,6 +714,7 @@ export default function App(){
     <div style={s.app}>
       <GlobalStyle/>
       <PetGreeting user={user} game={game} />
+      <EntryFxOnPunch apiGet={apiGet} />
       {!online && <OfflineBar/>}
       {/* TOP BAR(＋訂單提醒列,一起固定在頂端) */}
       <div style={{ position:"sticky", top:0, zIndex:50 }}>
@@ -792,6 +802,7 @@ export default function App(){
               <GameTile title="夥伴商店街" sub="逛店・開店・扭蛋機" icon="home" onClick={()=>setTab("street")}/>
               <GameTile title="我的錢包" sub="赤心幣餘額與明細" icon="coin" onClick={()=>openGame("home")}/>
             </div>
+            <ListItem icon="coin" title="赤心幣花費" desc="我的座位・進場特效・稱號・寵物顏色・裝備強化・季節扭蛋・全員大魔王・和隊長吃飯" onClick={()=>setTab("spend")}/>
             <ListItem icon="book" title="赤心幣規則" desc="怎麼賺、加倍怎麼算、怎麼用、你現在套用中的加倍" onClick={()=>setTab("rules")}/>
           </div>
         )}
@@ -806,6 +817,7 @@ export default function App(){
             <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
             {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
             <ListItem icon="shield" title="食安管理" desc={user.role>=3 ? "冰箱溫度紀錄、櫃位證照、體檢確認" : "冰箱溫度紀錄"} onClick={()=>setTab("foodsafe")}/>
+            {user.role>=3 && <ListItem icon="order" title="報價單" desc="活動報價、存成 Word＋PDF 到雲端、報價紀錄" onClick={()=>setTab("quote")}/>}
             {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
             {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
             {user.role>=5 && <>
@@ -820,6 +832,8 @@ export default function App(){
             </>}
           </div>
         )}
+        {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="spend" && <SpendPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={() => game.refresh && game.refresh()} />}
         {tab==="rules" && <RulesPage user={user} apiGet={apiGet} C={C} s={s} loc={activeSeg?.location || ""} onOpenLedger={()=>openGame("home")} />}
         {tab==="boost" && user.role>=3 && <BoostAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} todayStr={todayStr} />}
         {tab==="about" && <BrandPage C={C} s={s} locations={locations} />}
@@ -1948,14 +1962,15 @@ function PartnerInfo({ user, onPwChanged, onLogout }) {
 }
 
 // v1.25 管理者（Lv.3 以上）密碼還是生日：一定要先改
-function ForcePwScreen({ user, onDone, onLogout }) {
+function ForcePwScreen({ user, onDone, onLogout, reset }) {
   return (
     <div style={{ ...s.app, padding:"36px 18px" }}>
       <div style={{ textAlign:"center", marginBottom:18 }}>
         <div style={{ fontSize:34 }}>🔒</div>
         <div style={{ fontSize:18, fontWeight:600, marginTop:6 }}>{user.name}，請先改一組新密碼</div>
         <div style={{ fontSize:12.5, color:C.muted, marginTop:8, lineHeight:1.7 }}>
-          你的帳號可以看到夥伴資料、薪資與營運數字，<br/>密碼還是生日很容易被猜到。改好就能繼續使用。
+          {reset ? <>管理者剛幫你把密碼重設成生日，<br/>請改一組只有你知道的新密碼，改好就能繼續使用。</>
+            : <>你的帳號可以看到夥伴資料、薪資與營運數字，<br/>密碼還是生日很容易被猜到。改好就能繼續使用。</>}
         </div>
       </div>
       <ChangePasswordCard user={user} onChanged={onDone} force />

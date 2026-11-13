@@ -20,6 +20,7 @@ export const SCENES = {
   huatai:  { x: 400, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true, focus: { x: -0.8, z: -1.2, zoom: 1.3 } },
   event:   { x: 440, name: "活動",         short: "活動",   icon: "⛺", aisle: -2.8, store: true, focus: { x: 1.4, z: -0.6, zoom: 1.35 } },
   guangfu: { x: 480, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -3.6, store: true, focus: { x: 0.6, z: -1.2, zoom: 1.9, az: 0.3 } },
+  seats:   { x: 520, name: "夥伴座位區",   short: "座位",   icon: "🪑", aisle: 4.6, focus: { x: -1.8, z: -2.6, zoom: 1.6 } },   // v1.30 我的座位
 };
 export const SCENE_KEYS = Object.keys(SCENES);
 
@@ -346,6 +347,14 @@ export function createOffice(container, opts) {
       case "g_helmet": { const m = glassBox(0.95, 0.9, 0.9, 0xbfe7ff, 0.35); m.position.set(0, y - 0.45, 0.02); g.add(m); box(0.98, 0.1, 0.92, 0xdfe6ec, 0, y - 0.88, 0.02, g); break; }
       case "g_ufo": box(0.8, 0.08, 0.8, 0x9aa3ad, 0, y + 0.05, 0, g); box(0.4, 0.2, 0.4, 0x8fd3ff, 0, y + 0.18, 0, g);
         [[-0.3, 0], [0.3, 0], [0, 0.3], [0, -0.3]].forEach(s => box(0.07, 0.05, 0.07, 0xffe066, s[0], y + 0.02, s[1], g)); break;
+      // v1.30 季節扭蛋
+      case "x_antler": [-1, 1].forEach(sx => { box(0.07, 0.42, 0.07, 0x8b5a2b, sx * 0.24, y + 0.12, 0, g); box(0.24, 0.07, 0.07, 0x8b5a2b, sx * 0.33, y + 0.26, 0, g); box(0.07, 0.18, 0.07, 0x8b5a2b, sx * 0.42, y + 0.36, 0, g); }); break;
+      case "x_tree": { const m = new THREE.Mesh(new THREE.ConeGeometry(0.3, 0.7, 8), mat(0x1e8449)); m.position.set(0, y + 0.3, 0); g.add(m);
+        box(0.14, 0.14, 0.14, 0xffe066, 0, y + 0.7, 0, g); [[0.12, 0.2, 0.2], [-0.15, 0.35, 0.12], [0.08, 0.48, -0.1]].forEach(b => box(0.07, 0.07, 0.07, 0xe74c3c, b[0], y + b[1], b[2], g)); break; }
+      case "c_ingot": box(0.5, 0.14, 0.32, 0xf1c40f, 0, y + 0.02, 0, g); box(0.26, 0.16, 0.2, 0xf7dc6f, 0, y + 0.16, 0, g); [-1, 1].forEach(sx => box(0.12, 0.16, 0.3, 0xf1c40f, sx * 0.28, y + 0.12, 0, g)); break;
+      case "c_lion": box(0.98, 0.7, 0.9, 0xd62828, 0, y - 0.2, 0.06, g); box(1.02, 0.14, 0.94, 0xf1c40f, 0, y + 0.1, 0.06, g);
+        [-0.22, 0.22].forEach(sx => { box(0.18, 0.18, 0.05, 0xffffff, sx, y - 0.1, 0.53, g); box(0.09, 0.09, 0.05, 0x111111, sx, y - 0.1, 0.56, g); });
+        box(0.5, 0.12, 0.05, 0xf1c40f, 0, y - 0.42, 0.53, g); box(0.16, 0.22, 0.16, 0xffffff, 0, y + 0.3, 0.1, g); break;
       case "crown": box(0.7, 0.14, 0.64, 0xf1c40f, 0, y - 0.02, 0, g);
         [[-0.26, -0.22], [0.26, -0.22], [-0.26, 0.22], [0.26, 0.22], [0, 0]].forEach(s => box(0.12, 0.24, 0.12, 0xf1c40f, s[0], y + 0.16, s[1], g)); break;
     }
@@ -368,6 +377,15 @@ export function createOffice(container, opts) {
       case "g_galaxy": box(0.82, 1.0, 0.05, 0x2c2c6e, 0, 0.98, -0.27, g);
         [[-0.25, 1.2], [0.2, 0.9], [0.05, 1.3], [-0.1, 0.7], [0.28, 1.15]].forEach(s => box(0.06, 0.06, 0.02, 0xffffff, s[0], s[1], -0.3, g)); break;
       case "g_saturn": ring(0.62, 0xf5b041, 1.85, 0.35); break;
+      // v1.30 季節扭蛋
+      case "x_bell": box(0.84, 0.08, 0.52, 0xc0392b, 0, 1.5, 0, g); box(0.16, 0.16, 0.12, 0xf1c40f, 0, 1.38, 0.27, g); break;
+      case "x_scarf": box(0.84, 0.14, 0.52, 0x1e8449, 0, 1.46, 0, g); box(0.84, 0.05, 0.53, 0xffffff, 0, 1.46, 0, g); box(0.14, 0.38, 0.05, 0xc0392b, -0.22, 1.25, 0.26, g); break;
+      case "x_gift": box(0.56, 0.56, 0.4, 0xc0392b, 0, 1.12, -0.42, g); box(0.1, 0.58, 0.42, 0xf1c40f, 0, 1.12, -0.42, g); box(0.58, 0.1, 0.42, 0xf1c40f, 0, 1.12, -0.42, g); box(0.24, 0.12, 0.12, 0xf1c40f, 0, 1.46, -0.42, g); break;
+      case "c_fu": box(0.2, 0.2, 0.04, 0xd62828, -0.2, 1.3, 0.25, g); box(0.1, 0.1, 0.05, 0xf1c40f, -0.2, 1.3, 0.26, g); break;
+      case "c_lantern": box(0.05, 0.4, 0.05, 0x8b5a2b, 0.5, 1.1, 0.25, g); box(0.26, 0.3, 0.26, 0xd62828, 0.5, 0.8, 0.25, g); box(0.28, 0.05, 0.28, 0xf1c40f, 0.5, 0.97, 0.25, g); box(0.28, 0.05, 0.28, 0xf1c40f, 0.5, 0.63, 0.25, g); break;
+      case "c_redpack": box(0.5, 0.62, 0.14, 0xd62828, 0, 1.1, -0.34, g); box(0.22, 0.22, 0.04, 0xf1c40f, 0, 1.2, -0.42, g); break;
+      case "c_dragon": box(0.82, 1.0, 0.05, 0xf1c40f, 0, 0.98, -0.27, g); box(0.84, 0.1, 0.5, 0xd62828, 0, 1.46, 0, g);
+        [[-0.25, 1.25], [-0.1, 1.05], [0.1, 0.9], [0.25, 0.7]].forEach(s2 => box(0.14, 0.14, 0.02, 0xd62828, s2[0], s2[1], -0.3, g)); break;
     }
   }
   // 服裝(取代上衣/圍裙的細節)
@@ -376,6 +394,9 @@ export function createOffice(container, opts) {
       case "chefsuit": [1.3, 1.1, 0.9].forEach(y => { box(0.06, 0.06, 0.02, 0x333333, -0.12, y, 0.24, g); box(0.06, 0.06, 0.02, 0x333333, 0.12, y, 0.24, g); }); box(0.8, 0.1, 0.48, 0xc0392b, 0, 1.46, 0, g); break;
       case "spacesuit": box(0.4, 0.3, 0.04, 0x2e86de, 0, 1.15, 0.24, g); box(0.1, 0.1, 0.03, 0xe74c3c, -0.1, 1.17, 0.27, g); box(0.1, 0.1, 0.03, 0x2ecc71, 0.08, 1.17, 0.27, g); box(0.6, 0.55, 0.3, 0xdfe6ec, 0, 1.12, -0.36, g); break;
       case "raincoat": box(0.8, 0.3, 0.7, 0xf4d03f, 0, 2.05, -0.06, g); break;
+      case "x_santa": box(0.8, 0.1, 0.48, 0xffffff, 0, 1.46, 0, g); box(0.8, 0.1, 0.48, 0x1a1a1a, 0, 0.92, 0, g); box(0.16, 0.1, 0.03, 0xf1c40f, 0, 0.92, 0.25, g); box(0.1, 0.5, 0.03, 0xffffff, 0, 1.2, 0.25, g); break;
+      case "x_snowman": [1.3, 1.1].forEach(y => box(0.08, 0.08, 0.03, 0x1a1a1a, 0, y, 0.25, g)); box(0.8, 0.12, 0.5, 0xc0392b, 0, 1.46, 0, g); break;
+      case "c_tang": box(0.06, 0.6, 0.03, 0xf1c40f, 0.1, 1.15, 0.25, g); [1.35, 1.15, 0.95].forEach(y => box(0.14, 0.04, 0.03, 0xf1c40f, 0.1, y, 0.26, g)); box(0.8, 0.1, 0.5, 0xf1c40f, 0, 1.46, 0, g); break;
     }
   }
   // 小暴龍裝(品牌吉祥物,可自選穿上)
@@ -1453,6 +1474,127 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   huataiScene("huatai");
   eventScene("event");
   guangfuScene("guangfu");
+
+  // ── v1.30 夥伴座位區：每個買了座位的人一張桌子（桌、椅、擺飾、寵物小窩依自己買的）──
+  const SEAT_IDX = {}; let seatsG = null;
+  {
+    const P = group("seats");
+    room(P, 0xe9d6b6, 0x8a5a3b, 0xc0392b, [0xe2c9a1, 0xefdcbc]);
+    for (let i = 1; i < 8; i += 2) for (let j = -5; j < 6; j += 2) box(1.96, 0.02, 1.96, ((i + j) / 2) % 2 ? 0xe2c9a1 : 0xefdcbc, i, 0.01, j, P);
+    put(P, textPlane("夥伴座位區 · 我的座位", 6, 0.9, { bg: "#c0392b", color: "#fff3e0", size: 46 }), 0, 2.7, -5.98);
+    plant(P, 7.3, -5.3); plant(P, -7.4, 5.2); plant(P, 7.3, 5.2);
+    SLOTS.seats = [];
+  }
+  function seatXZ(i) { return { x: -5.4 + (i % 4) * 3.6, z: -4.4 + Math.floor(i / 4) * 3.0 }; }
+  function seatDesk(P, x, z, kind) {
+    const top = { desk_white: 0xf4f1ea, desk_game: 0x23232b, desk_boss: 0xa93226 }[kind] || 0x9b6b43;
+    const leg = { desk_white: 0xd0d0d0, desk_game: 0x111111, desk_boss: 0x7b241c }[kind] || 0x5d3a1f;
+    const w = kind === "desk_boss" ? 2.4 : 2;
+    box(w, 0.12, 1.1, top, x, 1.0, z, P);
+    if (kind === "desk_boss") { box(w, 0.86, 0.08, 0x7b241c, x, 0.5, z - 0.5, P); box(w + 0.04, 0.07, 0.07, 0xf1c40f, x, 1.0, z + 0.56, P); box(w + 0.04, 0.07, 0.07, 0xf1c40f, x, 1.0, z - 0.56, P); }
+    else [[-w / 2 + 0.1, -0.45], [w / 2 - 0.1, -0.45], [-w / 2 + 0.1, 0.45], [w / 2 - 0.1, 0.45]].forEach(q => box(0.1, 0.95, 0.1, leg, x + q[0], 0.47, z + q[1], P));
+    if (kind === "desk_game") { const strip = box(w, 0.05, 0.04, 0x00e5ff, x, 0.92, z + 0.56, P); strip.material = new THREE.MeshBasicMaterial({ color: 0x00e5ff }); FX.push({ kind: "rgb", mesh: strip }); }
+    box(0.95, 0.62, 0.08, 0x2c2c34, x, 1.55, z - 0.3, P); box(0.12, 0.3, 0.12, 0x2c2c34, x, 1.15, z - 0.3, P);
+    const scr = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.82, 0.5), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), x, 1.55, z - 0.255);
+    box(0.6, 0.04, 0.22, 0xdddddd, x, 1.08, z + 0.1, P);
+    const fx = { kind: "screen", mesh: scr, on: false }; FX.push(fx); return fx;
+  }
+  function seatChair(P, x, z, kind) {
+    if (kind === "chair_bean") { box(0.95, 0.45, 0.9, 0xe67e22, x, 0.24, z, P); box(0.95, 0.5, 0.3, 0xd35400, x, 0.5, z + 0.4, P); return; }
+    const c = { chair_game: 0x1a1a1a, chair_throne: 0xc0392b }[kind] || 0x8b5a2b, hi = kind === "chair_throne" ? 1.9 : kind === "chair_game" ? 1.6 : 0.7;
+    box(0.75, 0.12, 0.7, c, x, 0.6, z, P); box(0.75, hi, 0.12, c, x, 0.6 + hi / 2, z + 0.35, P); box(0.12, 0.55, 0.12, 0x222222, x, 0.28, z, P);
+    if (kind === "chair_game") { box(0.2, hi * 0.8, 0.13, 0xc0392b, x, 0.7 + hi / 2, z + 0.36, P); box(0.12, 0.3, 0.6, 0x1a1a1a, x - 0.42, 0.8, z, P); box(0.12, 0.3, 0.6, 0x1a1a1a, x + 0.42, 0.8, z, P); }
+    if (kind === "chair_throne") { box(0.85, 0.08, 0.16, 0xf1c40f, x, 0.6 + hi, z + 0.35, P); [-0.3, 0, 0.3].forEach(dx => box(0.1, 0.22, 0.1, 0xf1c40f, x + dx, 0.75 + hi, z + 0.35, P)); box(0.12, 0.4, 0.62, 0xf1c40f, x - 0.43, 0.82, z, P); box(0.12, 0.4, 0.62, 0xf1c40f, x + 0.43, 0.82, z, P); }
+  }
+  function seatDeco(P, x, z, kind) {
+    const y = 1.06;
+    switch (kind) {
+      case "deco_plant": box(0.22, 0.2, 0.22, 0xb5532d, x, y + 0.1, z, P); box(0.3, 0.3, 0.3, 0x2ecc71, x, y + 0.36, z, P); break;
+      case "deco_frame": { const f = box(0.34, 0.28, 0.04, 0x8e5b3a, x, y + 0.16, z, P); f.rotation.y = 0.3; box(0.26, 0.2, 0.02, 0xffe7c2, x + 0.01, y + 0.16, z + 0.03, P); break; }
+      case "deco_globe": { const m = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), mat(0x3498db)); m.position.set(x, y + 0.3, z); P.add(m); box(0.2, 0.05, 0.2, 0x8b5a2b, x, y + 0.03, z, P); box(0.05, 0.12, 0.05, 0x8b5a2b, x, y + 0.1, z, P); break; }
+      case "deco_figure": box(0.26, 0.24, 0.2, 0xf0b429, x, y + 0.12, z, P); [-0.06, 0.06].forEach(dx => box(0.04, 0.05, 0.02, 0x222222, x + dx, y + 0.16, z + 0.11, P)); box(0.08, 0.03, 0.02, 0xd9534f, x, y + 0.08, z + 0.11, P); break;
+      case "deco_trex": box(0.2, 0.22, 0.18, 0xd94a3a, x, y + 0.11, z, P); box(0.22, 0.18, 0.22, 0xd94a3a, x, y + 0.3, z + 0.04, P); box(0.12, 0.08, 0.14, 0xd94a3a, x, y + 0.08, z - 0.16, P); [-0.05, 0.05].forEach(dx => box(0.03, 0.04, 0.02, 0x222222, x + dx, y + 0.33, z + 0.16, P)); break;
+      case "deco_trophy": box(0.2, 0.06, 0.2, 0x7b5a2b, x, y + 0.03, z, P); box(0.06, 0.12, 0.06, 0xf1c40f, x, y + 0.12, z, P); box(0.24, 0.2, 0.24, 0xf1c40f, x, y + 0.28, z, P); break;
+      case "deco_oven": box(0.36, 0.2, 0.24, 0xf1c40f, x, y + 0.1, z, P); box(0.3, 0.06, 0.2, 0xb8860b, x, y + 0.28, z, P); box(0.26, 0.05, 0.02, 0xff6a1a, x, y + 0.12, z + 0.13, P); break;
+    }
+  }
+  function seatDen(P, x, z, kind) {
+    if (kind === "den_cushion") { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.45, 0.14, 14), mat(0xf5a3c7)); m.position.set(x, 0.07, z); P.add(m); return; }
+    if (kind === "den_house") { box(0.8, 0.6, 0.7, 0xc49a6c, x, 0.3, z, P); const r = box(0.95, 0.12, 0.85, 0x8b4513, x, 0.68, z, P); r.rotation.z = 0.0; box(0.3, 0.35, 0.04, 0x3a2a1a, x, 0.2, z + 0.36, P); return; }
+    if (kind === "den_castle") { box(0.9, 0.55, 0.8, 0xbfc5cc, x, 0.28, z, P); [[-0.4, -0.35], [0.4, -0.35], [-0.4, 0.35], [0.4, 0.35]].forEach(q => { box(0.2, 0.85, 0.2, 0xa9b0b8, x + q[0], 0.42, z + q[1], P); box(0.04, 0.18, 0.12, 0xd62828, x + q[0], 0.95, z + q[1], P); }); box(0.3, 0.35, 0.04, 0x5a3a1a, x, 0.18, z + 0.41, P); }
+  }
+  function syncSeats() {
+    if (seatsG) { GROUPS[SCENE_KEYS.indexOf("seats")].remove(seatsG); for (let i = FX.length - 1; i >= 0; i--) if (FX[i].seat) FX.splice(i, 1); }
+    Object.keys(SEAT_IDX).forEach(k => delete SEAT_IDX[k]); SLOTS.seats = [];
+    const P = seatsG = new THREE.Group(); GROUPS[SCENE_KEYS.indexOf("seats")].add(P);
+    (GAME.seats || []).slice(0, 12).forEach((st, i) => {
+      const { x, z } = seatXZ(i);
+      const fx = seatDesk(P, x, z, st.desk); fx.seat = true;
+      seatChair(P, x, z + 0.9, st.chair);
+      (st.deco || []).slice(0, 3).forEach((d, j) => seatDeco(P, x + [-0.7, 0.72, -0.42][j], z + [0.2, 0.15, -0.2][j], d));
+      if (st.den) seatDen(P, x - 1.3, z + 1.45, st.den);
+      put(P, textPlane(st.name, 1.1, 0.26, { bg: "#fff3e0", color: "#7a2a1a", size: 40 }), x, 0.72, z + 0.565);
+      SEAT_IDX[String(st.id)] = i;
+      SLOTS.seats[i] = { x, z: z + 0.9, rotY: Math.PI, sit: st.chair !== "chair_bean", anim: "type", fx, via: [{ x: x + 1.8, z: z + 0.9 }] };
+    });
+  }
+
+  // ── v1.30 進場特效：打卡上班 30 分鐘內第一次出現在宇宙時播放 ──
+  const fresh = p => p && p.inTime && Date.now() - Date.parse(p.inTime) < 30 * 60e3;
+  const ENTRY = [];
+  function burst(cx, cy, cz, col, n = 26, down) {
+    for (let i = 0; i < n; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.12), new THREE.MeshBasicMaterial({ color: col, transparent: true }));
+      m.position.set(cx, cy, cz); const a = Math.random() * Math.PI * 2, b = Math.random() * Math.PI - Math.PI / 2, sp = down ? 0.6 : 2.5 + Math.random() * 1.5;
+      m.userData = { v: down ? new THREE.Vector3(Math.cos(a) * sp, -1.2 - Math.random(), Math.sin(a) * sp) : new THREE.Vector3(Math.cos(a) * Math.cos(b) * sp, Math.sin(b) * sp + 1, Math.sin(a) * Math.cos(b) * sp), life: 1.4 };
+      scene.add(m); SPARKS.push(m);
+    }
+  }
+  function rideTrex() {
+    const g = new THREE.Group(), R = 0xd94a3a, D = 0xa8322a; scene.add(g);
+    box(0.9, 0.6, 1.4, R, 0, 0.75, 0, g); box(0.7, 0.6, 0.7, R, 0, 1.15, 0.85, g); box(0.6, 0.15, 0.5, 0xffe6c7, 0, 0.92, 1.1, g);
+    [-0.2, 0.2].forEach(sx => { box(0.12, 0.12, 0.03, 0xffffff, sx, 1.3, 1.21, g); box(0.06, 0.06, 0.03, 0x222222, sx, 1.3, 1.23, g); });
+    box(0.3, 0.3, 0.6, R, 0, 0.75, -0.95, g); box(0.18, 0.18, 0.4, R, 0, 0.7, -1.4, g);
+    const legs = [-0.28, 0.28].map(sx => { const l = new THREE.Group(); l.position.set(sx, 0.55, 0.1); g.add(l); box(0.24, 0.55, 0.3, D, 0, -0.27, 0, l); return l; });
+    return { g, legs, t: 0 };
+  }
+  function playEntry(m) {
+    const kind = (GAME.fx || {})[String(m.p.id)]; if (!kind || m.fxDone) return;
+    m.fxDone = true;
+    const label = { fx_firework: "🎆 煙火進場！", fx_rainbow: "🌈 彩虹進場！", fx_stars: "🌠 星星雨進場！", fx_trex: "🦖 騎小暴龍上班！" }[kind] || "✨";
+    setTimeout(() => say(m.c, label, 2600), 300);
+    const e = { m, kind, t: 0, dur: kind === "fx_trex" ? 30 : kind === "fx_rainbow" ? 5 : 3.2, clock: 0 };
+    if (kind === "fx_trex") { e.mount = rideTrex(); m.c.rideY = 0.72; }
+    if (kind === "fx_rainbow") {
+      e.g = new THREE.Group(); scene.add(e.g);
+      [0xe74c3c, 0xe67e22, 0xf1c40f, 0x2ecc71, 0x3498db, 0x5b2c83, 0x9b59b6].forEach((c, i) => {
+        const r = 1.6 - i * 0.14;
+        for (let a = 0; a <= 12; a++) { const th = Math.PI * a / 12, b = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.9 })); b.position.set(Math.cos(th) * r, Math.sin(th) * r + 2.6, 0); e.g.add(b); }
+      });
+    }
+    ENTRY.push(e);
+  }
+  function tickEntry(dt) {
+    for (let i = ENTRY.length - 1; i >= 0; i--) {
+      const e = ENTRY[i], c = e.m.c, p = c.g.position; e.t += dt; e.clock -= dt;
+      const gone = !crew.has(String(e.m.p.id)) || e.m.leaving;
+      if (e.kind === "fx_firework" && e.clock <= 0 && e.t < e.dur) { e.clock = 0.55; burst(p.x + (Math.random() - 0.5) * 2, 3.6 + Math.random(), p.z + (Math.random() - 0.5) * 1.5, [0xff5e5e, 0xffd166, 0x6ee7b7, 0x7cc4ff, 0xf9a8d4][Math.floor(Math.random() * 5)]); }
+      if (e.kind === "fx_stars" && e.clock <= 0 && e.t < e.dur) { e.clock = 0.18; burst(p.x + (Math.random() - 0.5) * 1.6, 4.2, p.z + (Math.random() - 0.5) * 1.2, Math.random() < 0.6 ? 0xffe066 : 0xffffff, 5, true); }
+      if (e.g) { e.g.position.set(p.x, 0, p.z); e.g.rotation.y = c.g.rotation.y + Math.PI / 2; const k = Math.max(0, Math.min(1, (e.dur - e.t) / 1.2)); e.g.children.forEach(b => (b.material.opacity = 0.9 * k)); }
+      if (e.mount) {
+        e.mount.g.position.set(p.x, 0, p.z); e.mount.g.rotation.y = c.g.rotation.y; e.mount.t += dt;
+        const walking = c.anim === "walk"; e.mount.legs.forEach((l, j) => (l.rotation.x = walking ? Math.sin(e.mount.t * 10 + j * Math.PI) * 0.6 : 0));
+        e.mount.g.visible = c.g.visible;
+        if (e.m.arrived && !e.arr) e.arr = e.t;
+        if (e.arr != null && e.t - e.arr > 1.2) e.t = e.dur;
+      }
+      if (e.t >= e.dur || gone) {
+        if (e.g) scene.remove(e.g);
+        if (e.mount) { scene.remove(e.mount.g); c.rideY = 0; if (e.m.arrived) settle(e.m); }
+        ENTRY.splice(i, 1);
+      }
+    }
+  }
   const STALL_COLOR = { "咖啡店": 0x6f4e37, "甜點店": 0xf8a5c2, "花店": 0x58b368, "武器鋪": 0x7f8c8d, "卡片屋": 0x8e44ad, "雜貨店": 0xe67e22 };
   const STALL_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸" };
   function syncShops(list) {
@@ -1479,6 +1621,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     opt = opt || {};
     const w = document.createElement("div"); w.className = "uo-tagw";
     if (opt.saying) { const sy = document.createElement("div"); sy.className = "uo-say"; sy.textContent = opt.saying; w.appendChild(sy); }
+    if (opt.title) { const ti = document.createElement("div"); ti.className = "uo-title"; ti.textContent = "「" + opt.title + "」"; w.appendChild(ti); }   // v1.30 稱號
     const t = document.createElement("div");
     t.className = "uo-tag" + (opt.frame ? " uo-" + opt.frame : "") + (opt.rest ? " uo-rest" : "");
     t.textContent = (opt.rest ? "💤 " : "") + name + (opt.icons && opt.icons.length ? " " + opt.icons.join("") : "");
@@ -1497,6 +1640,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   const REST_SLOTS = [4, 5, 6, 7, 8], BOSS_SLOT = 9, RESERVED = new Set([6, 7, 8, 9]);
   function freeSlot(k, p) {
     const list = SLOTS[k];
+    if (k === "seats" && p && SEAT_IDX[String(p.id)] != null) return SEAT_IDX[String(p.id)];
     if (p && p.isBoss && k === "office" && !occupied.office.has(BOSS_SLOT)) return BOSS_SLOT;
     if (p && p.resting && k === "office") { for (const i of REST_SLOTS) if (!occupied.office.has(i)) return i; }
     for (let i = 0; i < list.length; i++) if (!occupied[k].has(i) && !(k === "office" && RESERVED.has(i))) return i;
@@ -1515,14 +1659,16 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const c = m.c, p = c.g.position;
     c.sit = false; c.anim = "walk"; m.arrived = false;
     const back = [];
-    if (m.slot != null && m.scene) { const s = slotPos(m.scene, m.slot); if (s.via) for (let i = s.via.length - 1; i >= 0; i--) back.push({ x: worldX(m.scene, s.via[i].x), z: s.via[i].z }); }
+    // v1.30 走到一半又換目的地時，以實際所在的場景為準（例：剛從辦公室出發要去座位區）
+    const here = !m.scene ? null : Math.abs(p.x - SCENES[m.scene].x) < 12 ? m.scene : (SCENE_KEYS.find(k => Math.abs(p.x - SCENES[k].x) < 12) || m.scene);
+    if (m.slot != null && m.scene && here === m.scene) { const s = slotPos(m.scene, m.slot); if (s.via) for (let i = s.via.length - 1; i >= 0; i--) back.push({ x: worldX(m.scene, s.via[i].x), z: s.via[i].z }); }
     const intoPath = (k, s) => {
       const a = SCENES[k].aisle, pts = [];
       if (s.via) { pts.push({ x: worldX(k, s.via[0].x), z: a }); s.via.forEach(v => pts.push({ x: worldX(k, v.x), z: v.z })); }
       else pts.push({ x: worldX(k, s.x), z: a });
       pts.push({ x: worldX(k, s.x), z: s.z }); return pts;
     };
-    const cur = m.scene;
+    const cur = here;
     if (cur === toScene) {
       const s = slotPos(toScene, toSlot);
       c.path = [...back, { x: (back.length ? back[back.length - 1].x : p.x), z: SCENES[cur].aisle }, ...intoPath(toScene, s)];
@@ -1545,7 +1691,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   let lastList = [];
   // ── 遊戲化資料(setGame 傳入)──
   let GAME = { pets: {}, worn: {}, birthdays: [], champion: "", fireworks: false, unlocks: [], holiday: "", weather: {} };
-  const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [], saying: av.saying || "", rest: !!p.resting });
+  const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [], saying: av.saying || "", rest: !!p.resting, title: (GAME.titles || {})[String(p.id)] || "" });
+  const sigOf = (p, av) => JSON.stringify(av) + (p.resting ? "R" : "") + ((GAME.titles || {})[String(p.id)] || "");
   function avatarOf(p) {
     const av = Object.assign({}, avatarFor(p));
     if (GAME.birthdays.some(b => String(b.id) === String(p.id)) && (!av.hat || av.hat === "none")) av.hat = "party";
@@ -1571,22 +1718,23 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       m.scene = k;
     }
     list.forEach(p => {
-      const id = String(p.id), k = sceneOf(p.location);
+      const id = String(p.id), k0 = sceneOf(p.location), k = SEAT_IDX[id] != null && (k0 === "office" || p.resting) ? "seats" : k0;
       let m = crew.get(id);
       if (m && m.leaving) return;
       const wasRest = m ? !!m.p.resting : false;
-      if (m) { const av = avatarOf(p), sig = JSON.stringify(av) + (p.resting ? "R" : ""); if (sig !== m.sig) { m.p = p; rebuildChar(m, av); m.sig = sig; } }
+      if (m) { const av = avatarOf(p), sig = sigOf(p, av); if (sig !== m.sig) { m.p = p; rebuildChar(m, av); m.sig = sig; } }
       if (!m) {
         const av = avatarOf(p);
         const c = buildChar(av);
         nameTag(c, p.name, tagOpt(p, av));
-        m = { p, c, sig: JSON.stringify(av) + (p.resting ? "R" : ""), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
+        m = { p, c, sig: sigOf(p, av), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
         crew.set(id, m);
         const slot = freeSlot(k, p); occupied[k].add(slot);
         // 還沒有場景 → 從該場景入口走進來
         route(m, k, slot, () => { settle(m); if (!p.resting && !p.isBoss) say(m.c, "上班囉！💪", 3200); });
         m.scene = k; m.slot = slot;
-      } else if (m.scene !== k || wasRest !== !!p.resting) {
+        if (!p.resting && !p.isBoss && fresh(p)) playEntry(m);
+      } else if (m.scene !== k || wasRest !== !!p.resting || (k === "seats" && m.slot !== SEAT_IDX[id])) {
         occupied[m.scene].delete(m.slot);
         const slot = freeSlot(k, p); occupied[k].add(slot);
         route(m, k, slot, () => settle(m));
@@ -1614,7 +1762,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (c.anim === "walk") { const s = Math.sin(t * 10) * 0.6; c.legL.rotation.x = s; c.legR.rotation.x = -s; aL = -s; aR = s; }
     else if (c.sit) { c.legL.rotation.x = c.legR.rotation.x = -Math.PI / 2; ly = 0.05; }
     else c.legL.rotation.x = c.legR.rotation.x = 0;
-    c.armL.rotation.x = aL; c.armR.rotation.x = aR; c.armL.rotation.z = zL; c.armR.rotation.z = zR; c.g.position.y = ly;
+    c.armL.rotation.x = aL; c.armR.rotation.x = aR; c.armL.rotation.z = zL; c.armR.rotation.z = zR; c.g.position.y = ly + (c.rideY || 0);
+    if (c.rideY) { c.legL.rotation.x = c.legR.rotation.x = -0.9; }
     c.g.rotation.x = c.anim === "nod" ? Math.max(0, Math.sin(t * 7)) * 0.18 : 0;
   }
   function stepMove(c, dt) {
@@ -1723,7 +1872,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp); window.addEventListener("pointermove", onMove);
 
   // ════════ 遊戲化圖層:寵物(v1.19:5 型態 × 5 階段、會說話、會互相玩)、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
-  const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4], "黑糖": [0x7a4a2a, 0x4f2c16, 0xa9744f], "芝麻": [0x5b5550, 0x3a3532, 0x8d8680] };
+  const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4], "黑糖": [0x7a4a2a, 0x4f2c16, 0xa9744f], "芝麻": [0x5b5550, 0x3a3532, 0x8d8680],
+    "櫻花": [0xf4a6c0, 0xd9708f, 0xfbd3e0], "星空": [0x3b4a9c, 0x232c66, 0x8f9de0], "金色": [0xf1c40f, 0xb8860b, 0xffe680] };
   const EYE = 0x1e1e1e, WHITE = 0xffffff, CREAM = 0xf6e7c8;
   // 完全體模型(朝 +z 方向),高約 0.7~0.9;回傳頭頂高度
   function petModel(type, P, b, d, l) {
@@ -2077,13 +2227,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
           talkUntil[m.scene] = now + 3200;
           m.talk = 10 + Math.random() * 12;
           m.sayN = (m.sayN || 0) + 1;
-          const lines = m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "office" ? OFFICE_LINES : SHOP_LINES;
+          const lines = m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : (m.scene === "office" || m.scene === "seats") ? OFFICE_LINES : SHOP_LINES;
           say(c, pick(lines), 2800);
         }
       }
     }
     boss.g.visible = camX < 34 && !GAME.boss; animChar(boss, dt); place(boss);
-    tickGame(dt);
+    tickGame(dt); tickEntry(dt);
     TWINKLE.forEach((b, i) => b.visible = Math.sin(now / 300 + i * 1.7) > -0.6);
     SNOW.forEach(f => { f.position.y -= dt * 0.8; if (f.position.y < 0) f.position.y = 9; });
     if (EVENT_CAR) {
@@ -2100,6 +2250,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     FX.forEach(f => {
       if (f.kind === "screen") f.mesh.material.color.setHex(f.on ? (Math.sin(now / 120 + f.mesh.position.x) > -0.6 ? 0x5dade2 : 0x85c1e9) : 0x2a2f45);
       if (f.kind === "pos") f.mesh.material.color.setHex(f.on ? 0x58d68d : 0x2a2f45);
+      if (f.kind === "rgb") f.mesh.material.color.setHSL((now / 3000) % 1, 0.9, 0.55);
       if (f.kind === "oven") {
         if (f.link && f.on) f.link.forEach(l => (l.on = true));
         f.mesh.material.color.setHex(f.on ? (Math.sin(blinkFast + f.seed) > -0.5 ? 0xff6a1a : 0xffa040) : 0x3a2a2a);
@@ -2139,7 +2290,9 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setGame(g) {
       const prev = GAME; GAME = Object.assign({}, GAME, g || {});
       const ch = k => JSON.stringify(prev[k]) !== JSON.stringify(GAME[k]);
-      if (ch("worn") || ch("birthdays")) setCrew(lastList);
+      if (ch("seats")) syncSeats();
+      if (ch("worn") || ch("birthdays") || ch("titles") || ch("seats")) setCrew(lastList);
+      if (ch("fx")) for (const m of crew.values()) if (!m.fxDone && !m.arrived && !m.leaving && !m.p.resting && !m.p.isBoss && fresh(m.p)) playEntry(m);
       syncPets();
       if (ch("birthdays")) syncParty();
       if (ch("champion")) syncChampion();

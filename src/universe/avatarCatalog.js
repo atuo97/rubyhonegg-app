@@ -48,6 +48,9 @@ export const HATS = [
   { id: "goldchef", name: "金廚師帽", kind: "limited", note: "管理者發放" },
   { id: "g_antenna", name: "外星觸角", kind: "shop" }, { id: "g_helmet", name: "太空頭盔", kind: "shop" },
   { id: "g_ufo", name: "小飛碟頭飾", kind: "shop" },
+  // v1.30 季節扭蛋
+  { id: "x_antler", name: "麋鹿角", kind: "shop" }, { id: "x_tree", name: "聖誕樹頭飾", kind: "shop" },
+  { id: "c_ingot", name: "元寶頭飾", kind: "shop" }, { id: "c_lion", name: "舞獅頭", kind: "shop" },
 ];
 // 赤心幣商店／扭蛋:配件、服裝、名牌框(要先擁有才能穿,價格與來源以後端「商品目錄」為準)
 export const ACCS = [
@@ -55,12 +58,15 @@ export const ACCS = [
   { id: "wings", name: "小翅膀" }, { id: "cape", name: "紅玉披風" }, { id: "halo", name: "光環" },
   { id: "g_starclip", name: "星星髮夾" }, { id: "g_moonpin", name: "月亮胸章" }, { id: "g_rocket", name: "火箭背包" },
   { id: "g_galaxy", name: "銀河披風" }, { id: "g_saturn", name: "土星光環" },
+  { id: "x_bell", name: "鈴鐺項圈" }, { id: "x_scarf", name: "聖誕圍巾" }, { id: "x_gift", name: "禮物背包" },
+  { id: "c_fu", name: "福字胸章" }, { id: "c_lantern", name: "小燈籠" }, { id: "c_redpack", name: "紅包背包" }, { id: "c_dragon", name: "金龍披風" },
 ];
 export const OUTFITS = [
   { id: "none", name: "無(穿上衣)" }, { id: "raincoat", name: "黃色雨衣" }, { id: "chefsuit", name: "主廚服" },
   { id: "spacesuit", name: "太空服" }, { id: "goldtrex", name: "金色小暴龍裝" },
+  { id: "x_snowman", name: "雪人裝" }, { id: "x_santa", name: "聖誕老人裝" }, { id: "c_tang", name: "紅色唐裝" },
 ];
-export const FRAMES = [{ id: "none", name: "無" }, { id: "frame_wood", name: "木質名牌框" }, { id: "frame_glow", name: "發光名牌框" }];
+export const FRAMES = [{ id: "none", name: "無" }, { id: "frame_wood", name: "木質名牌框" }, { id: "frame_glow", name: "發光名牌框" }, { id: "x_frame", name: "雪花名牌框" }, { id: "c_frame", name: "金色春聯框" }];
 export const MASCOTS = [
   { id: "none", name: "夥伴本人" }, { id: "trex", name: "小暴龍" }, { id: "penguin", name: "企鵝" },
 ];
@@ -116,7 +122,7 @@ const pickC = (list, id) => (list.find(x => x.id === id) || list[0]).c;
 
 // 設定 → 3D 場景用的參數(場景的 makeChar / makePenguin / makeTrex 讀這個)
 // 期間過了的季節帽自動不戴;限定款以後端存檔時的檢查為準
-const OUTFIT_COLORS = { chefsuit: [0xffffff, 0x2c2c3a], spacesuit: [0xdfe6ec, 0xdfe6ec], raincoat: [0xf4d03f, null] };
+const OUTFIT_COLORS = { chefsuit: [0xffffff, 0x2c2c3a], spacesuit: [0xdfe6ec, 0xdfe6ec], raincoat: [0xf4d03f, null], x_santa: [0xc0392b, 0xc0392b], x_snowman: [0xf7f9fb, 0xf7f9fb], c_tang: [0xc0392b, 0x1a1a1a] };
 export function toSceneOpts(rawCfg, today) {
   const cfg = sanitize(rawCfg);
   const hatItem = HATS.find(h => h.id === cfg.hat);

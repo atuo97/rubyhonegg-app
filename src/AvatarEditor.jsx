@@ -132,8 +132,8 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
   }, []);
   // 商店／扭蛋物品:有在商品目錄裡、但還沒擁有 → 鎖住
   const lockedItem = id => !!prices[id] && !owned[id];
-  const lockText = id => { const c = prices[id]; return !c ? "" : c.where === "扭蛋" ? "扭蛋限定" : `❤️ ${c.price}`; };
-  const tryPick = (k, id, name) => lockedItem(id) ? setMsg(`「${name}」要先${prices[id].where === "扭蛋" ? "從扭蛋機抽到" : "到赤心幣商店購買"}才能穿`) : set(k, id);
+  const lockText = id => { const c = prices[id]; return !c ? "" : c.where === "扭蛋" ? "扭蛋限定" : c.where === "季節扭蛋" ? (c.series || "季節") + "扭蛋" : `❤️ ${c.price}`; };
+  const tryPick = (k, id, name) => lockedItem(id) ? setMsg(`「${name}」要先${prices[id].where === "扭蛋" ? "從扭蛋機抽到" : prices[id].where === "季節扭蛋" ? "從" + (prices[id].series || "季節") + "扭蛋抽到" : "到赤心幣商店購買"}才能穿`) : set(k, id);
 
   const set = (k, v) => { setCfg(c => ({ ...c, [k]: v })); if (state === "saved") setState("ready"); };
 
