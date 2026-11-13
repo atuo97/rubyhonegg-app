@@ -36,14 +36,15 @@ const Canvas = ({ cref, h = 440 }) => <canvas ref={cref} style={{ width: "100%",
 const Hud = ({ items }) => <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{items.map((x, i) => <span key={i}>{x}</span>)}</div>;
 
 // ── 1 接雞蛋糕 ──
-function Catch({ pet, lives0, onEnd }) {
+function Catch({ pet, lives0, onEnd, pr }) {
   const [hud, setHud] = useState({ score: 0, lives: lives0, time: 60 });
   const ref = useCanvas((cv, g, W, H) => {
     let bx = W / 2, items = [], spawn = 0, score = 0, lives = lives0, time = 60, last = performance.now(), raf, over = false;
     const move = e => { const r = cv.getBoundingClientRect(); bx = Math.max(35, Math.min(W - 35, (e.touches ? e.touches[0].clientX : e.clientX) - r.left)); };
     cv.addEventListener("pointermove", move); cv.addEventListener("pointerdown", move); cv.addEventListener("touchmove", move, { passive: true });
-    const key = e => { if (e.key === "ArrowLeft") bx = Math.max(35, bx - 30); if (e.key === "ArrowRight") bx = Math.min(W - 35, bx + 30); }; window.addEventListener("keydown", key);
+    const key = e => { if (pr.current) return; if (e.key === "ArrowLeft") bx = Math.max(35, bx - 30); if (e.key === "ArrowRight") bx = Math.min(W - 35, bx + 30); }; window.addEventListener("keydown", key);
     const loop = now => {
+      if (pr.current) { last = now; raf = requestAnimationFrame(loop); return; }   // 暫停中
       const dt = Math.min(0.05, (now - last) / 1000); last = now; time -= dt; spawn -= dt;
       if (spawn <= 0) { spawn = Math.max(0.28, 0.75 - (60 - time) * 0.008); const r = Math.random(); items.push({ x: 20 + Math.random() * (W - 40), y: -20, v: 120 + (60 - time) * 3 + Math.random() * 60, k: r < 0.15 ? "burnt" : r < 0.25 ? "gold" : "cake", f: FL[Math.floor(Math.random() * 4)][1] }); }
       g.clearRect(0, 0, W, H); g.fillStyle = "#5b3a29"; g.fillRect(0, 0, W, 26); g.fillStyle = "#ff8c1a"; for (let i = 0; i < W; i += 30) g.fillRect(i + 4, 20, 22, 6);
@@ -68,19 +69,19 @@ function Catch({ pet, lives0, onEnd }) {
 }
 
 // ── 2 翻翻樂 ──
-function Memory({ onEnd }) {
+function Memory({ onEnd, pr }) {
   const SYM = ["原味", "可可", "紅玉", "抹茶", "🥚", "🧈", "🍯", "🧁"];
   const [cards] = useState(() => [...SYM, ...SYM].map((s, i) => ({ s, i, r: Math.random() })).sort((a, b) => a.r - b.r));
   const [open, setOpen] = useState([]); const [done, setDone] = useState({}); const [miss, setMiss] = useState(0);
-  const [t0] = useState(Date.now()); const [sec, setSec] = useState(0);
-  useEffect(() => { const t = setInterval(() => setSec(Math.floor((Date.now() - t0) / 1000)), 500); return () => clearInterval(t); }, []);
+  const el = useRef(0); const [sec, setSec] = useState(0);   // 經過時間（暫停時不算）
+  useEffect(() => { const t = setInterval(() => { if (!pr.current) { el.current += 250; setSec(Math.floor(el.current / 1000)); } }, 250); return () => clearInterval(t); }, []);
   const tap = c => {
-    if (done[c.s] || open.includes(c.i) || open.length === 2) return;
+    if (pr.current || done[c.s] || open.includes(c.i) || open.length === 2) return;
     const nx = [...open, c.i]; setOpen(nx);
     if (nx.length === 2) {
       const [a, b] = nx.map(i => cards.find(x => x.i === i));
       setTimeout(() => {
-        if (a.s === b.s) { const d = { ...done, [a.s]: 1 }; setDone(d); if (Object.keys(d).length === 8) onEnd(Math.max(50, 1000 - Math.floor((Date.now() - t0) / 1000) * 8 - miss * 15)); }
+        if (a.s === b.s) { const d = { ...done, [a.s]: 1 }; setDone(d); if (Object.keys(d).length === 8) onEnd(Math.max(50, 1000 - Math.floor(el.current / 1000) * 8 - miss * 15)); }
         else setMiss(m => m + 1);
         setOpen([]);
       }, 650);
@@ -100,7 +101,7 @@ function Memory({ onEnd }) {
 }
 
 // ── 3 打磚塊 ──
-function Breakout({ pet, lives0, onEnd }) {
+function Breakout({ pet, lives0, onEnd, pr }) {
   const [hud, setHud] = useState({ score: 0, lives: lives0, lv: 1 });
   const ref = useCanvas((cv, g, W, H) => {
     let px = W / 2, pw = 80, wideT = 0, score = 0, lives = lives0, lv = 1, raf, last = performance.now(), over = false, bricks = [], ball = null;
@@ -110,8 +111,9 @@ function Breakout({ pet, lives0, onEnd }) {
     const move = e => { const r = cv.getBoundingClientRect(); px = Math.max(pw / 2, Math.min(W - pw / 2, (e.touches ? e.touches[0].clientX : e.clientX) - r.left)); };
     const launch = () => { if (ball.stuck) { ball.stuck = false; const sp = 260 + lv * 30; ball.vx = (Math.random() - 0.5) * sp * 0.8; ball.vy = -sp; } };
     cv.addEventListener("pointermove", move); cv.addEventListener("pointerdown", e => { move(e); launch(); });
-    const key = e => { if (e.key === "ArrowLeft") px = Math.max(pw / 2, px - 30); if (e.key === "ArrowRight") px = Math.min(W - pw / 2, px + 30); if (e.key === " ") launch(); }; window.addEventListener("keydown", key);
+    const key = e => { if (pr.current) return; if (e.key === "ArrowLeft") px = Math.max(pw / 2, px - 30); if (e.key === "ArrowRight") px = Math.min(W - pw / 2, px + 30); if (e.key === " ") launch(); }; window.addEventListener("keydown", key);
     const loop = now => {
+      if (pr.current) { last = now; raf = requestAnimationFrame(loop); return; }   // 暫停中
       const dt = Math.min(0.03, (now - last) / 1000); last = now;
       if (wideT > 0) { wideT -= dt; pw = 120; } else pw = 80;
       if (ball.stuck) { ball.x = px; ball.y = H - 52; }
@@ -139,7 +141,7 @@ function Breakout({ pet, lives0, onEnd }) {
 }
 
 // ── 4 烤爐大挑戰 ──
-function Oven({ lives0, onEnd }) {
+function Oven({ lives0, onEnd, pr, paused }) {
   const mkOrder = n => { const o = {}; const k = 1 + Math.min(3, Math.floor(n / 3)); for (let i = 0; i < k; i++) { const f = FL[Math.floor(Math.random() * 4)][0]; o[f] = (o[f] || 0) + 1; } return o; };
   const [slots, setSlots] = useState(Array(6).fill(null));
   const [pick, setPick] = useState("原味");
@@ -148,10 +150,18 @@ function Oven({ lives0, onEnd }) {
   const [st, setSt] = useState({ score: 0, served: 0, burnt: 0, time: 75 });
   const [now, setNow] = useState(Date.now());
   const ended = useRef(false);
-  useEffect(() => { const t = setInterval(() => { setNow(Date.now()); setSt(s => ({ ...s, time: s.time - 0.25 })); }, 250); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => { if (pr.current) return; setNow(Date.now()); setSt(s => ({ ...s, time: s.time - 0.25 })); }, 250); return () => clearInterval(t); }, []);
+  const pausedAt = useRef(0);
+  useEffect(() => {   // 暫停期間烤模的時間也停住：繼續時把每格的開始時間往後推
+    if (paused) { pausedAt.current = Date.now(); return; }
+    if (!pausedAt.current) return;
+    const d = Date.now() - pausedAt.current; pausedAt.current = 0;
+    setSlots(ss => ss.map(sl => (sl ? { ...sl, t: sl.t + d } : sl))); setNow(Date.now());
+  }, [paused]);
   useEffect(() => { if (st.time <= 0 && !ended.current) { ended.current = true; onEnd(Math.max(0, st.score)); } }, [st.time]);
   const stage = sl => { if (!sl) return null; const a = (now - sl.t) / 1000; if (!sl.flipped) return a < 2.5 ? "raw" : a < 5.5 ? "flip" : "burnt"; return a < 2 ? "cook" : a < 6 ? "done" : "burnt"; };
   const tap = i => {
+    if (pr.current) return;
     const sl = slots[i], s = stage(sl), nx = [...slots];
     if (!sl) nx[i] = { f: pick, t: Date.now(), flipped: false };
     else if (s === "flip") nx[i] = { ...sl, flipped: true, t: Date.now() };
@@ -187,13 +197,14 @@ function Oven({ lives0, onEnd }) {
 }
 
 // ── 5 寵物跑酷 ──
-function Runner({ pet, lives0, onEnd }) {
+function Runner({ pet, lives0, onEnd, pr }) {
   const [hud, setHud] = useState({ score: 0, lives: lives0 });
   const ref = useCanvas((cv, g, W, H) => {
     const GY = H - 60; let y = GY, vy = 0, jumps = 0, obs = [], coins = [], dist = 0, cnt = 0, sp = 220, spawn = 1, cspawn = 0.6, lives = lives0, inv = 0, raf, last = performance.now(), over = false, t = 0;
     const jump = () => { if (jumps < 2) { vy = -520; jumps++; } };
-    cv.addEventListener("pointerdown", jump); const key = e => { if (e.key === " " || e.key === "ArrowUp") jump(); }; window.addEventListener("keydown", key);
+    cv.addEventListener("pointerdown", jump); const key = e => { if (pr.current) return; if (e.key === " " || e.key === "ArrowUp") jump(); }; window.addEventListener("keydown", key);
     const loop = now => {
+      if (pr.current) { last = now; raf = requestAnimationFrame(loop); return; }   // 暫停中
       const dt = Math.min(0.03, (now - last) / 1000); last = now; t += dt; sp += dt * 6; dist += sp * dt; spawn -= dt; cspawn -= dt; inv -= dt;
       vy += 1400 * dt; y += vy * dt; if (y >= GY) { y = GY; vy = 0; jumps = 0; }
       if (spawn <= 0) { spawn = 0.9 + Math.random() * 1.1 - Math.min(0.5, sp / 1500); obs.push({ x: W + 20, w: 22 + Math.random() * 18, h: 24 + Math.random() * 26, oven: Math.random() < 0.3 }); }
@@ -226,13 +237,21 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
   const [err, setErr] = useState("");
   const [play, setPlay] = useState(null);    // {id, extra}
   const [result, setResult] = useState(null);
+  const [paused, setPaused] = useState(false);   // 暫停（店裡有客人時用）
+  const pr = useRef(false); pr.current = paused;
+  useEffect(() => {   // 切到別的 App 或關螢幕：自動暫停
+    if (!play) return;
+    const h = e => { if (document.hidden || e.type === "blur") setPaused(true); };
+    document.addEventListener("visibilitychange", h); window.addEventListener("blur", h);
+    return () => { document.removeEventListener("visibilitychange", h); window.removeEventListener("blur", h); };
+  }, [play]);
   const load = async () => { const r = await apiGet({ action: "gmGames", empId: user.id }, 1); if (r && r.success) { setD(r.data); setErr(""); } else setErr((r && r.error) || "小遊戲尚未開通"); };
   useEffect(() => { load(); }, []);
   const start = async id => {
     const h = +new Date().toLocaleString("en-GB", { timeZone: "Asia/Taipei", hour: "2-digit", hour12: false });
     if (h >= 10 && h < 21 && !window.confirm("現在可能是上班時間，確定要玩嗎？工作優先喔！")) return;
     const r = await apiPost({ action: "gmGameStart", empId: user.id, game: id }, 0);
-    if (r && r.success) { setResult(null); setPlay({ id, extra: r.data.extra }); } else alert((r && r.error) || "無法開始");
+    if (r && r.success) { setResult(null); setPaused(false); setPlay({ id, extra: r.data.extra }); } else alert((r && r.error) || "無法開始");
   };
   const end = async score => {
     const id = play.id;
@@ -247,8 +266,22 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
     const G = GAMES[play.id], g = d.games.find(x => x.id === play.id);
     return <div style={s.card}>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}><b>{ICON[play.id]} {g.name}</b>{play.extra ? <span style={{ fontSize: 12, color: C.green }}>寵物零食 +1 命</span> : null}</div>
-      <G pet={d.pet} lives0={BASE_LIVES[play.id] + play.extra} onEnd={end} />
-      <button onClick={() => setPlay(null)} style={{ ...s.btn("ghost"), marginTop: 10, padding: 8, fontSize: 12.5 }}>離開（不計分）</button>
+      <div style={{ position: "relative" }}>
+        <G pet={d.pet} lives0={BASE_LIVES[play.id] + play.extra} onEnd={end} pr={pr} paused={paused} />
+        {paused && <div style={{ position: "absolute", inset: 0, zIndex: 5, borderRadius: 16, background: "rgba(43,34,28,.72)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+          <div style={{ background: C.card, borderRadius: 18, padding: "18px 16px", width: "100%", maxWidth: 280, textAlign: "center" }}>
+            <div style={{ fontSize: 34 }}>☕</div>
+            <div style={{ fontSize: 17, fontWeight: 700, margin: "4px 0 2px" }}>暫停中</div>
+            <div style={{ fontSize: 12.5, color: C.muted }}>去招呼客人吧，回來再繼續！</div>
+            <button onClick={() => setPaused(false)} style={{ ...s.btn("primary"), marginTop: 12 }}>▶ 繼續</button>
+            <button onClick={() => { setPaused(false); setPlay(null); }} style={{ ...s.btn("ghost"), marginTop: 8, padding: 8, fontSize: 12.5 }}>離開（不計分）</button>
+          </div>
+        </div>}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+        <button onClick={() => setPaused(true)} disabled={paused} style={{ ...s.btn("primary"), padding: 8, fontSize: 12.5, opacity: paused ? .5 : 1 }}>⏸ 暫停</button>
+        <button onClick={() => { setPaused(false); setPlay(null); }} style={{ ...s.btn("ghost"), padding: 8, fontSize: 12.5 }}>離開（不計分）</button>
+      </div>
     </div>;
   }
   return (
