@@ -122,7 +122,8 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
   const loadInv = async () => { const r = await apiGet({ action: "pvLiveMine", empId: user.id }, 0); if (r && r.success) setInv(r.data || []); };
   useEffect(() => { load(); loadInv(); const t = setInterval(() => { if (!document.hidden) loadInv(); }, 10000); return () => clearInterval(t); }, []);   // 部署端調整:5 秒→10 秒、背景時暫停
   const flash = t => { setToast(t); setTimeout(() => setToast(""), 2500); };
-  const post = async (payload) => { setBusy(true); const r = await apiPost({ empId: user.id, ...payload }, 0); setBusy(false); if (!(r && r.success)) flash((r && r.error) || "失敗"); return r && r.success ? (r.data || true) : null; };
+  const [notice, setNotice] = useState("");   // v1.33 錯誤訊息常駐顯示（例如對戰尚未開放），不只閃一下
+  const post = async (payload) => { setBusy(true); const r = await apiPost({ empId: user.id, ...payload }, 0); setBusy(false); if (!(r && r.success)) { const m = (r && r.error) || "失敗"; flash(m); setNotice(m); } else setNotice(""); return r && r.success ? (r.data || true) : null; };
 
   if (err) return <div style={{ ...s.card, textAlign: "center", color: C.muted }}>{err}</div>;
   if (!d) return <div className="rh-skel" style={{ height: 160, borderRadius: 18 }} />;
@@ -175,6 +176,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ ...s.sectionTitle, marginBottom: 0 }}>選擇對手</div><span style={{ fontSize: 12, color: C.muted }}>今天還能自動切磋 {d.left} 次</span>
         </div>
+        {notice && <div style={{ fontSize: 12.5, color: C.red, background: "#fdeceb", borderRadius: 10, padding: "8px 10px", marginBottom: 8 }}>⚠️ {notice}</div>}
         {d.opponents.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有可以挑戰的夥伴</div>}
         {d.opponents.slice().sort((a, b) => b.power - a.power).map(o => (
           <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
@@ -182,7 +184,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
             <button disabled={busy || d.left <= 0} onClick={async () => { const r = await post({ action: "pvDuel", to: o.id }); if (r) setReplay(r); }} style={{ ...s.btn("secondary"), width: "auto", padding: "5px 10px", fontSize: 12, opacity: d.left <= 0 ? .4 : 1 }}>自動切磋</button>
             <button disabled={busy} onClick={async () => { const r = await post({ action: "pvLiveInvite", to: o.id }); if (r) { flash("已送出邀請，等對方接受"); setLive(r.id); } }} style={{ ...s.btn("primary"), width: "auto", padding: "5px 10px", fontSize: 12 }}>即時對戰</button>
           </div>))}
-        <div style={{ fontSize: 11, color: C.light, marginTop: 8 }}>友善切磋：輸了不扣任何東西；贏了 +2 枚（每天最多 10 枚）。即時對戰需要對方在 2 分鐘內接受，每回合 {d.roundSec} 秒。</div>
+        <div style={{ fontSize: 11, color: C.light, marginTop: 8 }}>友善切磋：輸了不扣任何東西；贏了 +2 枚（每天有上限，見「赤心幣規則」）。即時對戰需要對方在 2 分鐘內接受，每回合 {d.roundSec} 秒。</div>
       </div>
 
       <div style={s.card}>

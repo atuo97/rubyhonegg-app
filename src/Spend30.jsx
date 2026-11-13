@@ -10,8 +10,8 @@ const BOSS_ICON = { "燒焦怪": "🔥", "麵糊黏黏怪": "🫠", "停電魔�
 const STAT = { atk: "攻擊", def: "防禦", hp: "體力", spd: "速度" };
 const statTxt = o => Object.keys(o || {}).map(k => (STAT[k] || k) + " +" + o[k]).join("、");
 
-export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged }) {
-  const [d, setD] = useState(null), [tab, setTab] = useState(initial || "seat"), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, only, hideBalance }) {   // v1.33 only：只顯示某一類（給赤心幣商店用）
+  const [d, setD] = useState(null), [tab, setTab] = useState(only || initial || "seat"), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
   const [hit, setHit] = useState(""), [gres, setGres] = useState(null), [mealNote, setMealNote] = useState(""), [mealDate, setMealDate] = useState({}), [demo, setDemo] = useState("");
   const load = () => apiGet({ action: "s30Me" }, 0).then(r => setD(r && r.success ? r.data : { error: (r && r.error) || "讀取失敗" }));
   useEffect(() => { load(); }, []);
@@ -244,13 +244,13 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged }) {
   const body = { seat: Seat, fx: Fx, title: Title, pet: Pet, enh: Enh, gacha: Gacha, boss: Boss, meal: Meal }[tab];
   return (
     <div>
-      <div style={{ ...s.card, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
+      {!hideBalance && <div style={{ ...s.card, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
         <span style={{ fontSize: 13 }}>餘額 {coin(d.balance)}</span>
         {d.tickets > 0 && <span style={{ fontSize: 12.5, color: C.muted }}>🎟️ 扭蛋券 {d.tickets}</span>}
-      </div>
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, scrollbarWidth: "none" }}>
+      </div>}
+      {!only && <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, scrollbarWidth: "none" }}>
         {TABS.map(([k, l]) => <button key={k} onClick={() => { setTab(k); setMsg(""); setGres(null); }} style={chip(tab === k)}>{l}</button>)}
-      </div>
+      </div>}
       {msg && <div style={{ ...s.card, padding: "10px 14px", fontSize: 13, color: /^✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
       {body()}
     </div>

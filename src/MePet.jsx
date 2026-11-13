@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import GameTab from "./GameTab.jsx";
+import CoinShop from "./CoinShop.jsx";   // v1.33 我和寵物的「商店」改成整合後的赤心幣商店
 import { PetSprite, PET_STAGE_NAMES, PET_TYPE_NAME } from "./pets/petSprites.jsx";
 import { defaultCfg, sanitize } from "./universe/avatarCatalog.js";
 
@@ -33,7 +34,7 @@ export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, 
         </div>
         <div style={{ textAlign: "center", flex: 1 }}>
           {pet && pet.id ? <>
-            <div style={{ height: 118, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} size={pet.stage >= 4 ? 104 : 84} /></div>
+            <div style={{ height: 118, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} acc={pet.acc} size={pet.stage >= 4 ? 104 : 84} /></div>
             <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4 }}>{pet.name || "我的寵物"}</div>
             <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{PET_STAGE_NAMES[(pet.stage || 1) - 1] || ""}{pet.type ? `・${PET_TYPE_NAME[pet.type] || ""}` : ""}</div>
           </> : <>
@@ -45,7 +46,8 @@ export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, 
       </div>
       <div style={{ display: "flex", background: C.warm, borderRadius: 12, padding: 3, gap: 2, marginBottom: 12, overflowX: "auto" }}>{seg("avatar", "👕 造型")}{seg("pet", "🐣 寵物")}{seg("shop", "🛍 商店")}{seg("play", "🎮 小遊戲")}{seg("badge", "🏅 徽章")}</div>
       {view === "avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={() => nav("shop")} />}
-      {view !== "avatar" && <GameTab key={view} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab={view} onNav={nav} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
+      {view === "shop" && <CoinShop key="shop" user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
+      {view !== "avatar" && view !== "shop" && <GameTab key={view} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab={view} onNav={nav} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
     </div>
   );
 }

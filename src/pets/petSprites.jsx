@@ -44,11 +44,35 @@ export function spriteCanvas(type, stage, flavor = "原味", silhouette = false)
   for (let n = 0; n < 1024; n++) { const ch = s[n]; if (ch === ".") continue; g.fillStyle = silhouette ? (ch === "o" ? "#9a8f86" : "#cfc6bd") : col[ch] || "#000"; g.fillRect(n % 32, (n / 32) | 0, 1, 1); }
   cache.set(key, cv); return cv;
 }
-export function PetSprite({ type, stage, flavor, size = 64, silhouette, style, className }) {
+// v1.33 寵物配件畫在像素圖上（領結、小翅膀、皇冠），每個階段都看得到；位置依寵物實際外框自動對齊
+export function drawPetAcc(g, acc) {
+  if (!acc) return;
+  const im = g.getImageData(0, 0, 32, 32).data;
+  let x0 = 32, x1 = -1, y0 = 32, y1 = -1;
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 32; x++) if (im[(y * 32 + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < 0) return;
+  const cx = Math.round((x0 + x1) / 2), h = y1 - y0 + 1, px = (x, y, c) => { if (x < 0 || x > 31 || y < 0 || y > 31) return; g.fillStyle = c; g.fillRect(x, y, 1, 1); };
+  if (acc === "pet_crown") {
+    const y = Math.max(2, y0 - 1), w = 7, l = cx - 3;
+    for (let i = 0; i < w; i++) { px(l + i, y, "#f1c40f"); px(l + i, y - 1, "#f1c40f"); }
+    [0, 3, 6].forEach(i => { px(l + i, y - 2, "#f1c40f"); px(l + i, y - 3, "#ffe680"); });
+    px(l + 3, y - 1, "#d9534f");
+  } else if (acc === "pet_bow") {
+    const y = y0 + Math.round(h * 0.45);
+    [[-3, 0], [-3, -1], [-3, 1], [-2, 0], [-2, -1], [-2, 1], [-1, 0], [1, 0], [2, 0], [2, -1], [2, 1], [3, 0], [3, -1], [3, 1]].forEach(([dx, dy]) => px(cx + dx, y + dy, "#c0392b"));
+    px(cx, y, "#ff8a7a");
+  } else if (acc === "pet_wings") {
+    const y = y0 + Math.round(h * 0.4);
+    for (let i = 0; i < 4; i++) for (let j = 0; j <= i; j++) { px(x0 - 1 - j, y + i, "#ffffff"); px(x1 + 1 + j, y + i, "#ffffff"); }
+    for (let j = 0; j < 4; j++) { px(x0 - 1 - j, y + 4, "#cfe3ff"); px(x1 + 1 + j, y + 4, "#cfe3ff"); }
+  }
+}
+export function PetSprite({ type, stage, flavor, size = 64, silhouette, style, className, acc }) {
   const ref = useRef(null);
   useEffect(() => {
     const cv = ref.current; if (!cv) return;
     const g = cv.getContext("2d"); g.clearRect(0, 0, 32, 32); g.drawImage(spriteCanvas(type, stage, flavor, silhouette), 0, 0);
-  }, [type, stage, flavor, silhouette]);
+    if (acc && !silhouette) drawPetAcc(g, acc);
+  }, [type, stage, flavor, silhouette, acc]);
   return <canvas ref={ref} width={32} height={32} className={className} style={{ width: size, height: size, imageRendering: "pixelated", ...style }} />;
 }
