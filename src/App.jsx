@@ -939,24 +939,71 @@ function PunchTab(p) {
 // ─────────────────────────────────────────────
 // LOGIN
 // ─────────────────────────────────────────────
+// v1.32 登入頁小提示：把 App 放到手機桌面（已經從桌面打開的就不顯示）
+let RH_INSTALL_EVT = null;
+if (typeof window !== "undefined") window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); RH_INSTALL_EVT = e; });
+function InstallTip() {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  const standalone = typeof window !== "undefined" && ((window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone);
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/.test(ua) && typeof document !== "undefined" && "ontouchend" in document);
+  const android = /Android/i.test(ua), line = /Line\//i.test(ua), fb = /FBAN|FBAV|Instagram/i.test(ua);
+  const iosOther = ios && /CriOS|FxiOS|EdgiOS/i.test(ua);
+  const [open, setOpen] = useState(false), [all, setAll] = useState(false), [canOne, setCanOne] = useState(!!RH_INSTALL_EVT);
+  useEffect(() => { const on = e => { e.preventDefault(); RH_INSTALL_EVT = e; setCanOne(true); }; window.addEventListener("beforeinstallprompt", on); return () => window.removeEventListener("beforeinstallprompt", on); }, []);
+  if (standalone) return null;
+  const install = async () => { if (!RH_INSTALL_EVT) return; RH_INSTALL_EVT.prompt(); try { await RH_INSTALL_EVT.userChoice; } catch (e) {} RH_INSTALL_EVT = null; setCanOne(false); };
+  const step = (n, t) => <div style={{ display:"flex", gap:8, alignItems:"flex-start", margin:"5px 0" }}><span style={{ flexShrink:0, width:18, height:18, borderRadius:9, background:C.accent, color:"#fff", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1 }}>{n}</span><span>{t}</span></div>;
+  const IOS = <div><div style={{ fontWeight:600, marginBottom:2 }}>🍎 iPhone（請用 Safari 打開）</div>{step(1, <>點畫面下方的「分享」按鈕 <b>⬆︎</b>（方框加向上箭頭）</>)}{step(2, <>往下滑，點「<b>加入主畫面</b>」</>)}{step(3, <>右上角按「<b>加入</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
+  const AND = <div><div style={{ fontWeight:600, marginBottom:2 }}>🤖 Android（請用 Chrome 打開）</div>{step(1, <>點右上角的 <b>⋮</b></>)}{step(2, <>點「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」</>)}{step(3, <>按「<b>安裝</b>」或「<b>新增</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
+  const INAPP = <div style={{ background:C.goldBg, borderRadius:10, padding:"8px 10px", marginBottom:8 }}>你現在是在 {line ? "LINE" : "社群軟體"} 裡面打開的，要先換到瀏覽器：點右上角（或右下角）的 <b>⋯</b>，選「<b>用預設瀏覽器開啟</b>」或「<b>在 {ios ? "Safari" : "Chrome"} 中開啟</b>」。</div>;
+  return (
+    <div style={{ ...s.card, marginTop:16, padding:"12px 16px", borderRadius:16 }}>
+      <button onClick={() => setOpen(o => !o)} style={{ width:"100%", display:"flex", alignItems:"center", gap:10, border:"none", background:"none", padding:0, cursor:"pointer", fontFamily:"inherit", color:C.text, textAlign:"left" }}>
+        <span style={{ fontSize:22 }}>📲</span>
+        <span style={{ flex:1 }}><b style={{ fontSize:13.5 }}>把 App 放到手機桌面</b><span style={{ display:"block", fontSize:11.5, color:C.muted, marginTop:1 }}>像一般 App 一樣，點桌面圖示就能打開</span></span>
+        <span style={{ color:C.muted, fontSize:13 }}>{open ? "▴" : "▾"}</span>
+      </button>
+      {open && <div style={{ marginTop:10, fontSize:12.5, color:C.text, lineHeight:1.6 }}>
+        {canOne && <button onClick={install} style={{ ...s.btn("primary"), marginBottom:10, padding:"10px 16px" }}>一鍵安裝到桌面</button>}
+        {(line || fb) && INAPP}
+        {iosOther && <div style={{ background:C.goldBg, borderRadius:10, padding:"8px 10px", marginBottom:8 }}>iPhone 請改用 <b>Safari</b> 打開這個網址再照下面做。</div>}
+        {all || (!ios && !android) ? <>{IOS}<div style={{ height:10 }} />{AND}</> : ios ? IOS : AND}
+        {!all && (ios || android) && <button onClick={() => setAll(true)} style={{ border:"none", background:"none", color:C.accent, fontSize:12, cursor:"pointer", padding:"6px 0 0", fontFamily:"inherit" }}>看{ios ? " Android" : " iPhone"} 的做法 ›</button>}
+        <div style={{ fontSize:11.5, color:C.muted, marginTop:8 }}>放到桌面後，從桌面圖示打開就好，不用再找網址；登入一次會記住 30 天。</div>
+      </div>}
+    </div>
+  );
+}
+
 function LoginScreen({ onLogin, notice }) {
   const [about, setAbout]   = useState(false);
-  const [phone, setPhone]   = useState("");
+  // v1.32：記住帳號（只記手機號碼，不記密碼；密碼交給手機的鑰匙圈／Google 密碼管理工具）
+  const LAST_KEY = "rh_last_account";
+  const [phone, setPhone]   = useState(() => { try { return localStorage.getItem(LAST_KEY) || ""; } catch (e) { return ""; } });
+  const [remembered, setRemembered] = useState(() => { try { return !!localStorage.getItem(LAST_KEY); } catch (e) { return false; } });
   const [pw, setPw]         = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [err, setErr]       = useState(notice || "");
   const [loading, setLoading] = useState(false);
+  const pwRef = useRef(null);
+  useEffect(() => { if (remembered && pwRef.current) pwRef.current.focus(); }, []);
+  const forget = () => { try { localStorage.removeItem(LAST_KEY); } catch (e) {} setPhone(""); setRemembered(false); setPw(""); };
 
   const handleLogin = async () => {
-    if (!phone || !pw) { setErr("請填入帳號與密碼"); return; }
+    const acct = String(phone).replace(/[\s-]/g, "");   // 手機號碼裡的空白、橫線自動去掉
+    if (!acct || !pw) { setErr(!acct ? "請填入帳號（手機號碼）" : "請填入密碼"); return; }
     setErr(""); setLoading(true);
+    const phone_ = acct;
     try {
       // v1.18:走 POST,密碼不會出現在網址;後端還沒更新時(回「未知的動作」)退回舊的 GET
-      let res = await apiPost({ action:"login", phone, password:pw }, 1);
-      if (res && !res.success && /未知的動作/.test(res.error || "")) res = await apiGet({ action:"login", phone, password:pw });
+      let res = await apiPost({ action:"login", phone:phone_, password:pw }, 1);
+      if (res && !res.success && /未知的動作/.test(res.error || "")) res = await apiGet({ action:"login", phone:phone_, password:pw });
       if (res.success) {
+        try { localStorage.setItem(LAST_KEY, phone_); } catch (e) {}
         onLogin(res.user);
       } else {
-        setErr(res.error || "帳號或密碼錯誤");
+        const m = res.error || "帳號或密碼錯誤";
+        setErr(/密碼|帳號/.test(m) && !/次數|稍後|分鐘/.test(m) ? m + "。密碼預設是生日月日 4 碼（例：6 月 7 日＝0607）；改過密碼的請用新密碼。" : m);
       }
     } catch(e) {
       setErr("連線失敗，請檢查網路");
@@ -975,16 +1022,21 @@ function LoginScreen({ onLogin, notice }) {
 
         <div style={{ ...s.card, padding:22, borderRadius:22 }}>
           <div style={{ marginBottom:16 }}>
-            <label style={s.label}>帳號(預設為手機號碼)</label>
-            <input value={phone} onChange={e=>setPhone(e.target.value)} inputMode="tel" autoComplete="username"
+            <label style={{ ...s.label, display:"flex", justifyContent:"space-between" }}><span>帳號(預設為手機號碼)</span>
+              {remembered && <button type="button" onClick={forget} style={{ border:"none", background:"none", color:C.accent, fontSize:11.5, cursor:"pointer", padding:0, fontFamily:"inherit" }}>不是你？換帳號</button>}</label>
+            <input value={phone} onChange={e=>{ setPhone(e.target.value); setRemembered(false); }} inputMode="tel" autoComplete="username" name="username"
               placeholder="請輸入帳號" style={s.input}/>
           </div>
-          <div style={{ marginBottom:20 }}>
+          <div style={{ marginBottom:8 }}>
             <label style={s.label}>密碼(預設為夥伴生日，如6月7日為0607)</label>
-            <input type="password" value={pw} onChange={e=>setPw(e.target.value)} autoComplete="current-password"
-              placeholder="請輸入密碼"
-              onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={s.input}/>
+            <div style={{ position:"relative" }}>
+              <input ref={pwRef} type={showPw ? "text" : "password"} value={pw} onChange={e=>setPw(e.target.value)} autoComplete="current-password" name="password"
+                placeholder="請輸入密碼"
+                onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{ ...s.input, paddingRight:58 }}/>
+              <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", border:"none", background:"none", color:C.muted, fontSize:12.5, cursor:"pointer", padding:"6px 8px", fontFamily:"inherit" }}>{showPw ? "隱藏" : "顯示"}</button>
+            </div>
           </div>
+          <div style={{ fontSize:11.5, color:C.muted, lineHeight:1.6, marginBottom:16 }}>🔐 登入後手機問「要儲存密碼嗎？」請按「儲存」，下次用 Face ID 或指紋就能自動帶入。這支手機會記住登入 30 天，常用就不會被登出。</div>
           {err && <div style={{ color:C.red, fontSize:12.5, textAlign:"center", marginBottom:12 }}>{err}</div>}
           <button onClick={handleLogin} disabled={loading}
             style={{ ...s.btn("primary"), opacity:loading?.7:1 }}>
@@ -995,6 +1047,7 @@ function LoginScreen({ onLogin, notice }) {
         <div style={{ textAlign:"center", marginTop:18, fontSize:11.5, color:C.muted, lineHeight:1.7 }}>
           忘記或要修改密碼，請聯絡門市總監、營運總監
         </div>
+        <InstallTip />
         <button onClick={() => setAbout(true)} style={{ display:"block", margin:"14px auto 0", border:"none", background:"none", color:C.accent, fontSize:13, cursor:"pointer", fontFamily:"inherit" }}>關於紅玉滿 ›</button>
         {about && <div style={{ position:"fixed", inset:0, background:C.bg, zIndex:300, overflowY:"auto", padding:"14px 14px 40px" }}>
           <div style={{ maxWidth:480, margin:"0 auto" }}>

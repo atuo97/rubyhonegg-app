@@ -1,0 +1,13 @@
+{
+  "name": "紅玉滿夥伴 App",
+  "short_name": "紅玉滿夥伴",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8f5f0",
+  "theme_color": "#c8490a",
+  "icons": [
+    { "src": "/icon_512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

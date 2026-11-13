@@ -240,6 +240,10 @@ export function OnboardCard({ user, apiGet, apiPost, C, s, compact }) {
 
 // ═══════════ 夥伴資料（新增夥伴）═══════════
 const ROLE_NAME = { 1:"夥伴", 2:"分隊長", 3:"管理者", 4:"總經理", 5:"大隊長" };
+// v1.30：大隊長的資料只有大隊長本人能改；其他人只能改權限比自己低的夥伴（後端也會檢查）
+const isBossP = o => !!o && (Number(o.role) >= 5 || (o.pos || o.position) === "大隊長");
+const canEditStaff = (me, x) => isBossP(x) ? isBossP(me) && String(me.id) === String(x.id) || (isBossP(me) && String(me.id) !== String(x.id))
+  : isBossP(me) ? true : String(me.id) !== String(x.id) && Number(x.role) < Number(me.role);
 export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
   const [list, setList] = useState(null);
   const [err, setErr] = useState("");
@@ -300,6 +304,9 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
       </div>
       {edit && (
         <Sheet C={C} title={`修改 ${edit.name}（${edit.id}）`} onClose={() => !busy && setEdit(null)}>
+          {!canEditStaff(user, edit) ? <div style={{ fontSize:13.5, color:C.muted, lineHeight:1.8, padding:"6px 0 10px" }}>
+            🔒 {isBossP(edit) ? "大隊長的資料只有大隊長本人可以修改。" : String(edit.id) === String(user.id) ? "不能修改自己的權限，請找大隊長。" : "只能修改權限比你低的夥伴。"}
+          </div> : <>
           <div style={{ display:"flex", gap:8, marginBottom:10 }}>
             <div style={{ flex:1 }}><label style={s.label}>權限等級</label>
               <select value={edit.role} onChange={e => setEdit({ ...edit, role:+e.target.value })} style={s.input}>
@@ -319,7 +326,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
           <label style={s.label}>離職日（填了就不能登入、不再計薪；留空＝在職）</label>
           <input type="date" value={edit.left} onChange={e => setEdit({ ...edit, left:e.target.value })} style={{ ...s.input, marginBottom:12 }}/>
           <button disabled={busy} onClick={saveEdit} style={{ ...s.btn("primary"), opacity:busy ? .6 : 1 }}>{busy ? "儲存中…" : "儲存"}</button>
-          {user.role >= 3 && edit.id !== user.id && (user.role >= 5 || edit.role < user.role) && !edit.left && (
+          {user.role >= 3 && edit.id !== user.id && (isBossP(user) || (edit.role < user.role && !isBossP(edit))) && !edit.left && (
             <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
               <div style={{ fontSize:12.5, color:C.muted, lineHeight:1.6, marginBottom:8 }}>夥伴忘記密碼時：重設成生日 4 碼，他下次登入一定要先改一組新密碼。</div>
               <button disabled={busy} onClick={async () => {
@@ -329,6 +336,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
                 else alert((r && r.error) || "重設失敗");
               }} style={s.btn("secondary")}>🔑 重設密碼</button>
             </div>)}
+          </>}
         </Sheet>
       )}
       {form && (
