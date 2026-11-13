@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>雞蛋糕消消樂（試玩）</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{height:100%;overflow:hidden;font-family:-apple-system,"PingFang TC","Noto Sans TC",sans-serif;color:#3a2a1e;touch-action:none}
+  body{background:radial-gradient(ellipse at 50% 0%,#ffe9c9 0%,#f6c98f 55%,#d98b54 100%)}
+  #wrap{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(8px + env(safe-area-inset-top)) 8px calc(10px + env(safe-area-inset-bottom))}
+  .hud{display:flex;gap:6px;width:100%;max-width:460px;align-items:stretch}
+  .pill{background:rgba(255,250,242,.95);border-radius:14px;padding:6px 10px;font-size:13px;font-weight:800;box-shadow:0 2px 8px rgba(120,60,20,.25);white-space:nowrap;display:flex;align-items:center;justify-content:center}
+  .moves{flex-direction:column;min-width:64px}.moves b{font-size:24px;color:#b9381c;line-height:1}.moves span{font-size:10px;color:#8a6a4a}
+  #orders{flex:1;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+  .ord{display:flex;align-items:center;gap:3px;font-size:14px}
+  .ord canvas{width:26px;height:26px}
+  .ord.done{opacity:.45}.ord.done::after{content:"✓";color:#27ae60;font-weight:900}
+  #bar{width:100%;max-width:460px;height:8px;background:rgba(255,255,255,.5);border-radius:5px;margin:8px 0 6px;overflow:hidden;position:relative}
+  #bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f39c12,#e74c3c);transition:width .3s}
+  #bar s{position:absolute;top:-1px;width:2px;height:10px;background:#7a4a2a}
+  #board{border-radius:18px;box-shadow:0 0 0 4px #fff3dc,0 0 0 8px #b5651d,0 10px 30px rgba(90,40,10,.45);touch-action:none}
+  .row2{display:flex;gap:8px;width:100%;max-width:460px;margin-top:10px;justify-content:space-between;align-items:center}
+  #flash{position:fixed;inset:0;pointer-events:none;opacity:0;z-index:8}
+  #toast{position:fixed;left:50%;top:40%;transform:translateX(-50%);z-index:9;font-size:30px;font-weight:900;color:#fff;text-shadow:0 3px 0 #b9381c,0 0 16px rgba(255,170,60,.95);pointer-events:none;opacity:0;white-space:nowrap}
+  #toast.show{animation:pop 1.1s ease-out forwards}
+  @keyframes pop{0%{opacity:0;transform:translateX(-50%) scale(.4)}15%{opacity:1;transform:translateX(-50%) scale(1.25)}30%{transform:translateX(-50%) scale(1)}75%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-50px)}}
+  .panel{position:fixed;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;background:rgba(60,30,10,.55);padding:16px}
+  .card{background:#fffaf2;border-radius:22px;padding:20px 18px;max-width:380px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.4);max-height:92vh;overflow-y:auto}
+  .card h1{font-size:26px;color:#b9381c;margin:4px 0}
+  .card p{font-size:13.5px;line-height:1.65;color:#5a4636;text-align:left;margin-top:8px}
+  .go{display:block;width:100%;margin-top:12px;padding:14px;border:0;border-radius:14px;background:#c0392b;color:#fff;font-size:18px;font-weight:900;font-family:inherit}
+  .ghost{background:transparent;color:#8a6a4a;border:1.5px solid #e5d6c4;font-size:14px;padding:10px;margin-top:8px}
+  .hide{display:none!important}
+  #stars{font-size:40px;letter-spacing:4px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="hud">
+    <div class="pill moves"><span>剩餘步數</span><b id="mv">25</b></div>
+    <div class="pill" id="orders"></div>
+    <div class="pill" style="flex-direction:column;gap:2px;font-size:12px"><span id="lvT">第 1 關</span><span id="sc">⭐ 0</span></div>
+  </div>
+  <div id="bar"><i id="barI"></i><s id="s1"></s><s id="s2"></s></div>
+  <canvas id="board"></canvas>
+  <div class="row2">
+    <div class="pill" id="pauseB" style="cursor:pointer">⏸ 暫停</div>
+    <div class="pill" id="tip" style="font-size:12px;color:#8a6a4a;font-weight:700">滑動交換相鄰的雞蛋糕</div>
+    <div class="pill" id="mute" style="cursor:pointer">🔊</div>
+  </div>
+</div>
+<div id="flash"></div>
+<div id="toast"></div>
+
+<div class="panel" id="start">
+  <div class="card">
+    <div style="font-size:42px">🧇✨🦖</div>
+    <h1>雞蛋糕消消樂</h1>
+    <p>把<b>相鄰的兩顆雞蛋糕交換</b>，連成 3 顆同口味就出爐！在步數用完前，完成上方的<b>客人訂單</b>就過關。</p>
+    <p>🔥 連 4 顆 → <b>烤槍</b>：消掉一整排或一整列<br>❄️ L 型或 T 型 → <b>糖粉彈</b>：炸開周圍<br>🦖 連 5 顆 → <b>小暴龍</b>：和任一顆交換，吃光那種口味<br>⚫ 第 3 關起有<b>燒焦塊</b>，在旁邊消除就能清掉</p>
+    <p style="color:#8a7e72;font-size:12px">手指按住雞蛋糕往旁邊滑就能交換；也可以先點一顆、再點旁邊那顆。</p>
+    <button class="go" id="go">🧇 開始第 1 關</button>
+    <button class="go ghost hide" id="go1">從第 1 關重新開始</button>
+  </div>
+</div>
+<div class="panel hide" id="pause">
+  <div class="card">
+    <div style="font-size:44px">☕</div>
+    <h1>暫停中</h1>
+    <p style="text-align:center">去招呼客人吧，回來再繼續！</p>
+    <button class="go" id="resume">▶ 繼續</button>
+    <button class="go ghost" id="restart">🔄 重新開始這關</button>
+    <button class="go ghost" id="quit">🚪 離開（回首頁）</button>
+  </div>
+</div>
+<div class="panel hide" id="end">
+  <div class="card">
+    <div id="stars">⭐⭐⭐</div>
+    <h1 id="endTitle">過關！</h1>
+    <p id="endDetail" style="text-align:center;font-size:15px"></p>
+    <button class="go" id="next">下一關 ▶</button>
+    <button class="go ghost" id="retry">再玩一次這關</button>
+    <button class="go ghost" id="home">🏠 回首頁</button>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// 雞蛋糕消消樂（試玩版 2026-11-14 v1）
+// 三消遊戲，紅玉滿版本：六種口味、烤槍／糖粉彈／小暴龍、燒焦塊、客人訂單關卡。
+// 單一 HTML、純 Canvas 2D，不連後端。
+// ─────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const N = 8, BURNT = 7;
+const FLAVORS = [null,
+  { name: "紅玉", c: "#d9483b", sym: "heart" }, { name: "原味", c: "#e8a33d", sym: "star" }, { name: "抹茶", c: "#7fb35a", sym: "leaf" },
+  { name: "藍莓", c: "#4f9fd6", sym: "drop" }, { name: "芋頭", c: "#a874c4", sym: "moon" }, { name: "蜂蜜", c: "#f2cf4a", sym: "flower" }];
+
+// ── 音效 ──
+let ac = null, master = null, muted = false;
+try { muted = localStorage.getItem("match_mute") === "1"; } catch (e) {}
+function unlock() { if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; ac = new C(); master = ac.createGain(); master.gain.value = muted ? 0 : .5; master.connect(ac.destination); } if (ac.state === "suspended") ac.resume(); }
+function tone(f, dur, { type = "sine", vol = .3, to = null, delay = 0 } = {}) {
+  if (!ac || muted) return; const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (to) o.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + .005); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + .02);
+}
+let nb = null;
+function noise(dur, { vol = .3, f = 1200, to = null, type = "lowpass", delay = 0 } = {}) {
+  if (!ac || muted) return; if (!nb) { nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate); const d = nb.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+  const t = ac.currentTime + delay, s = ac.createBufferSource(), fl = ac.createBiquadFilter(), g = ac.createGain();
+  s.buffer = nb; fl.type = type; fl.frequency.setValueAtTime(f, t); if (to) fl.frequency.exponentialRampToValueAtTime(to, t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); s.connect(fl); fl.connect(g); g.connect(master); s.start(t); s.stop(t + dur + .02);
+}
+const NT = s => 523.25 * Math.pow(2, s / 12);
+const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];
+const sfx = {
+  pick() { tone(700, .05, { type: "triangle", vol: .08 }); },
+  swap() { noise(.08, { vol: .08, f: 2000, to: 600, type: "bandpass" }); },
+  bad() { tone(300, .1, { type: "square", vol: .07 }); tone(240, .12, { type: "square", vol: .07, delay: .1 }); },
+  pop(c) { const s = SCALE[Math.min(c, SCALE.length - 1)]; tone(NT(s), .14, { type: "triangle", vol: .13 }); tone(NT(s + 12), .1, { type: "sine", vol: .06, delay: .03 }); noise(.06, { vol: .06, f: 4000, type: "highpass" }); },
+  make() { [0, 7, 12].forEach((s, i) => tone(NT(s + 7), .12, { type: "square", vol: .07, delay: i * .05 })); },
+  line() { noise(.35, { vol: .2, f: 300, to: 5000, type: "bandpass" }); tone(200, .3, { type: "sawtooth", vol: .08, to: 1200 }); },
+  bomb() { noise(.5, { vol: .35, f: 1500, to: 100 }); tone(90, .4, { vol: .3, to: 40 }); },
+  dino() { for (let i = 0; i < 5; i++) { noise(.07, { vol: .25, f: 900, delay: i * .09 }); tone(220 - i * 15, .07, { type: "square", vol: .08, delay: i * .09 }); } tone(NT(12), .4, { type: "triangle", vol: .12, delay: .5 }); },
+  burnt() { noise(.15, { vol: .15, f: 600 }); },
+  win() { [0, 4, 7, 12, 7, 12, 16].forEach((s, i) => tone(NT(s), i === 6 ? .6 : .14, { type: i % 2 ? "triangle" : "square", vol: .1, delay: i * .11 })); },
+  lose() { [0, -1, -2, -3].forEach((s, i) => tone(NT(s - 5), i === 3 ? .7 : .3, { type: "triangle", vol: .13, delay: i * .3 })); },
+  shuffle() { for (let i = 0; i < 6; i++) tone(NT(SCALE[i]), .06, { type: "triangle", vol: .06, delay: i * .04 }); },
+  bonus() { tone(NT(12), .08, { type: "square", vol: .06 }); },
+  order() { tone(NT(12), .1, { type: "sine", vol: .1 }); tone(NT(16), .15, { type: "sine", vol: .1, delay: .08 }); },
+};
+function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) {} }
+
+// ── 畫面 ──
+const cv = $("board"), ctx = cv.getContext("2d");
+let CS = 44, DPR = Math.min(2, window.devicePixelRatio || 1);
+function layout() {
+  const W = Math.min(innerWidth - 24, 460), H = innerHeight - 190;
+  CS = Math.floor(Math.min(W, H) / N); CS = Math.max(30, Math.min(CS, 58));
+  cv.width = N * CS * DPR; cv.height = N * CS * DPR; cv.style.width = N * CS + "px"; cv.style.height = N * CS + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+addEventListener("resize", layout);
+function shade(hex, k) { const n = parseInt(hex.slice(1), 16); const f = v => Math.max(0, Math.min(255, v + k)); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; }
+function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+function symbol(c, kind, x, y, s) {
+  c.beginPath();
+  if (kind === "heart") { c.moveTo(x, y + s * .9); c.bezierCurveTo(x - s * 1.4, y - s * .1, x - s * .6, y - s * 1.1, x, y - s * .35); c.bezierCurveTo(x + s * .6, y - s * 1.1, x + s * 1.4, y - s * .1, x, y + s * .9); }
+  else if (kind === "star") { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? s * .45 : s; c.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } }
+  else if (kind === "leaf") { c.ellipse(x, y, s * .55, s, .6, 0, 7); }
+  else if (kind === "drop") { c.moveTo(x, y - s); c.bezierCurveTo(x + s * .9, y, x + s * .7, y + s * .9, x, y + s * .9); c.bezierCurveTo(x - s * .7, y + s * .9, x - s * .9, y, x, y - s); }
+  else if (kind === "moon") { c.arc(x, y, s * .85, 0.6, 5.7); c.arc(x + s * .35, y, s * .6, 5.4, .9, true); }
+  else { for (let i = 0; i < 5; i++) { const a = i * Math.PI * 2 / 5; c.moveTo(x, y); c.arc(x + Math.cos(a) * s * .5, y + Math.sin(a) * s * .5, s * .45, 0, 7); } }
+  c.closePath();
+}
+function drawCake(c, x, y, s, tile, t, scale = 1, alpha = 1, glow = 0) {
+  c.save(); c.translate(x + s / 2, y + s / 2); c.scale(scale, scale); c.globalAlpha = alpha;
+  const w = s * .86, r = s * .3;
+  if (tile.t === BURNT) {
+    const g = c.createLinearGradient(0, -w / 2, 0, w / 2); g.addColorStop(0, "#4a3528"); g.addColorStop(1, "#1e140e");
+    c.fillStyle = g; rr(c, -w / 2, -w / 2, w, w, r); c.fill();
+    c.fillStyle = "rgba(255,110,30,.35)"; c.beginPath(); c.arc(-w * .2, w * .15, w * .1, 0, 7); c.arc(w * .2, -w * .15, w * .08, 0, 7); c.fill();
+    c.strokeStyle = "rgba(0,0,0,.55)"; c.lineWidth = 1.5; c.beginPath(); c.moveTo(-w * .3, -w * .2); c.lineTo(-w * .05, 0); c.lineTo(-w * .15, w * .3); c.stroke();
+    c.fillStyle = "rgba(180,180,180,.35)"; c.beginPath(); c.arc(w * .1, -w * .55 - Math.sin(t * 3) * 3, w * .12, 0, 7); c.fill();
+  } else if (tile.sp === "dino") {
+    const g = c.createRadialGradient(0, 0, 2, 0, 0, w * .7); g.addColorStop(0, "#fffbe6"); g.addColorStop(1, `hsl(${(t * 120) % 360},80%,62%)`);
+    c.fillStyle = g; c.beginPath(); c.arc(0, 0, w * .5, 0, 7); c.fill();
+    c.font = `${s * .62}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("🦖", 0, s * .03 + Math.sin(t * 6) * 1.5);
+  } else {
+    const F = FLAVORS[tile.t], g = c.createLinearGradient(0, -w / 2, 0, w / 2);
+    g.addColorStop(0, shade(F.c, 55)); g.addColorStop(.5, F.c); g.addColorStop(1, shade(F.c, -50));
+    c.fillStyle = g; rr(c, -w / 2, -w / 2, w, w, r); c.fill();
+    c.strokeStyle = shade(F.c, -75); c.lineWidth = Math.max(1.2, s * .045); c.stroke();
+    c.fillStyle = shade(F.c, -35); symbol(c, F.sym, 0, 1.5, w * .22); c.fill();
+    c.fillStyle = shade(F.c, 40); symbol(c, F.sym, 0, 0, w * .22); c.fill();
+    c.fillStyle = "rgba(255,255,255,.4)"; c.beginPath(); c.ellipse(-w * .2, -w * .28, w * .18, w * .07, -.4, 0, 7); c.fill();
+    if (tile.sp === "h" || tile.sp === "v") {   // 烤槍：條紋
+      c.save(); rr(c, -w / 2, -w / 2, w, w, r); c.clip(); c.strokeStyle = "rgba(255,255,255,.85)"; c.lineWidth = w * .09;
+      for (let k = -1; k <= 1; k++) { c.beginPath(); if (tile.sp === "h") { c.moveTo(-w / 2, k * w * .26); c.lineTo(w / 2, k * w * .26); } else { c.moveTo(k * w * .26, -w / 2); c.lineTo(k * w * .26, w / 2); } c.stroke(); }
+      c.restore(); c.font = `${s * .3}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("🔥", w * .32, -w * .32);
+    }
+    if (tile.sp === "bomb") { c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.arc(0, 0, w * .28, 0, 7); c.fill(); c.font = `${s * .36}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("❄️", 0, 1); c.strokeStyle = `rgba(160,220,255,${.5 + Math.sin(t * 6) * .4})`; c.lineWidth = 3; rr(c, -w / 2 - 1, -w / 2 - 1, w + 2, w + 2, r); c.stroke(); }
+  }
+  if (glow > 0) { c.globalAlpha = glow * alpha; c.fillStyle = "#fffbe0"; rr(c, -w / 2, -w / 2, w, w, r); c.fill(); }
+  c.restore();
+}
+
+// ── 遊戲狀態 ──
+let grid, phase = "idle", state = "ready", level = 1, moves, score, orders, combo, sel = null, popT = 0, hintT = 0, hint = null, parts = [], beams = [], floats = [], shake = 0, dinoRun = null, swapInfo = null, starTh, maxLevel = 1, bonusLeft = 0, bonusT = 0, idSeq = 0;
+try { maxLevel = +localStorage.getItem("match_level") || 1; } catch (e) {}
+const tile = (t, sp = null) => ({ t, sp, x: 0, y: 0, vy: 0, pop: 0, id: ++idSeq });
+const inB = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+const colorable = tl => tl && tl.t !== BURNT && tl.sp !== "dino";
+function rndT() { return 1 + Math.floor(Math.random() * 6); }
+
+function levelCfg(L) {
+  const k = Math.min(3, 1 + Math.floor((L + 1) / 2)), pool = [1, 2, 3, 4, 5, 6].sort(() => Math.random() - .5).slice(0, k);
+  const o = pool.map(t => ({ t, need: 9 + L * 2 + Math.floor(Math.random() * 3), got: 0 }));
+  const burnt = L >= 3 ? Math.min(14, 4 + (L - 3) * 2) : 0;
+  if (burnt) o.push({ t: BURNT, need: burnt, got: 0 });
+  return { moves: Math.max(18, 26 - Math.floor(L / 3)), orders: o, burnt };
+}
+function newBoard(burnt) {
+  grid = []; for (let r = 0; r < N; r++) { grid.push([]); for (let c = 0; c < N; c++) { let t; do t = rndT(); while ((c >= 2 && grid[r][c - 1].t === t && grid[r][c - 2].t === t) || (r >= 2 && grid[r - 1][c].t === t && grid[r - 2][c].t === t)); const tl = tile(t); tl.x = c; tl.y = r - N - 2 - Math.random() * 2; grid[r].push(tl); } }
+  let placed = 0, guard = 0;
+  while (placed < burnt && guard++ < 500) { const r = N - 1 - Math.floor(Math.random() * 4), c = Math.floor(Math.random() * N); if (grid[r][c].t !== BURNT) { const b = tile(BURNT); b.x = c; b.y = grid[r][c].y; grid[r][c] = b; placed++; } }
+  if (!hasMove()) newBoard(burnt);
+}
+
+// ── 找連線 ──
+function findRuns() {
+  const runs = [];
+  for (let r = 0; r < N; r++) { let c = 0; while (c < N) { const t = grid[r][c] && colorable(grid[r][c]) ? grid[r][c].t : 0; let e = c + 1; while (t && e < N && grid[r][e] && colorable(grid[r][e]) && grid[r][e].t === t) e++; if (t && e - c >= 3) runs.push({ dir: "h", t, cells: Array.from({ length: e - c }, (_, i) => [r, c + i]) }); c = e; } }
+  for (let c = 0; c < N; c++) { let r = 0; while (r < N) { const t = grid[r][c] && colorable(grid[r][c]) ? grid[r][c].t : 0; let e = r + 1; while (t && e < N && grid[e][c] && colorable(grid[e][c]) && grid[e][c].t === t) e++; if (t && e - r >= 3) runs.push({ dir: "v", t, cells: Array.from({ length: e - r }, (_, i) => [r + i, c]) }); r = e; } }
+  return runs;
+}
+function swapCells(a, b) { const t = grid[a[0]][a[1]]; grid[a[0]][a[1]] = grid[b[0]][b[1]]; grid[b[0]][b[1]] = t; }
+function hasMove() {
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) for (const [dr, dc] of [[0, 1], [1, 0]]) {
+    const r2 = r + dr, c2 = c + dc; if (!inB(r2, c2)) continue; const A = grid[r][c], B = grid[r2][c2];
+    if (A.t === BURNT || B.t === BURNT) continue;
+    if (A.sp === "dino" || B.sp === "dino" || (A.sp && B.sp)) return [[r, c], [r2, c2]];
+    swapCells([r, c], [r2, c2]); const ok = findRuns().length > 0; swapCells([r, c], [r2, c2]); if (ok) return [[r, c], [r2, c2]];
+  }
+  return null;
+}
+function shuffle() {
+  const pool = []; grid.forEach(row => row.forEach(tl => { if (tl.t !== BURNT && !tl.sp) pool.push(tl.t); }));
+  let guard = 0;
+  do { pool.sort(() => Math.random() - .5); let i = 0; grid.forEach(row => row.forEach(tl => { if (tl.t !== BURNT && !tl.sp) tl.t = pool[i++]; })); } while ((findRuns().length || !hasMove()) && guard++ < 200);
+  sfx.shuffle(); toast("🔄 重新排一排", 0);
+}
+
+// ── 消除與特效 ──
+function resolve(swapped) {
+  const runs = findRuns(); if (!runs.length) return false;
+  const clear = new Set(), make = [], key = (r, c) => r * N + c;
+  // 交叉點：糖粉彈
+  const hCells = new Map(), vCells = new Map();
+  runs.forEach(rn => rn.cells.forEach(([r, c]) => (rn.dir === "h" ? hCells : vCells).set(key(r, c), rn)));
+  const usedRun = new Set();
+  hCells.forEach((rn, k) => { if (vCells.has(k) && !usedRun.has(rn) && !usedRun.has(vCells.get(k))) { usedRun.add(rn); usedRun.add(vCells.get(k)); make.push({ r: Math.floor(k / N), c: k % N, t: rn.t, sp: (rn.cells.length >= 5 || vCells.get(k).cells.length >= 5) ? "dino" : "bomb" }); } });
+  runs.forEach(rn => {
+    rn.cells.forEach(([r, c]) => clear.add(key(r, c)));
+    if (usedRun.has(rn) || rn.cells.length < 4) return;
+    let pos = rn.cells[Math.floor(rn.cells.length / 2)];
+    if (swapped) for (const s of swapped) if (rn.cells.some(([r, c]) => r === s[0] && c === s[1])) pos = s;
+    make.push({ r: pos[0], c: pos[1], t: rn.t, sp: rn.cells.length >= 5 ? "dino" : rn.dir === "h" ? "v" : "h" });
+  });
+  make.forEach(m => clear.delete(key(m.r, m.c)));
+  doClear(clear, make);
+  return true;
+}
+function doClear(clear, make = []) {
+  const key = (r, c) => r * N + c, list = [...clear];
+  // 特殊雞蛋糕被消到就連鎖
+  for (let i = 0; i < list.length; i++) {
+    const k = list[i], r = Math.floor(k / N), c = k % N, tl = grid[r][c]; if (!tl || tl.fired) continue;
+    if (tl.sp) { tl.fired = true; const add = effect(r, c, tl); add.forEach(k2 => { if (!clear.has(k2)) { clear.add(k2); list.push(k2); } }); }
+  }
+  // 旁邊的燒焦塊
+  const burntHit = new Set();
+  clear.forEach(k => { const r = Math.floor(k / N), c = k % N; if (grid[r][c] && grid[r][c].t !== BURNT) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => { const r2 = r + dr, c2 = c + dc; if (inB(r2, c2) && grid[r2][c2] && grid[r2][c2].t === BURNT) burntHit.add(key(r2, c2)); }); });
+  burntHit.forEach(k => clear.add(k));
+  combo++;
+  let n = 0;
+  clear.forEach(k => { const r = Math.floor(k / N), c = k % N, tl = grid[r][c]; if (!tl || tl.pop) return; tl.pop = .001; n++; countOrder(tl.t); burstAt(c, r, tl.t === BURNT ? "#3a2a20" : tl.sp === "dino" ? "#fff" : FLAVORS[tl.t].c); });
+  make.forEach(m => { const old = grid[m.r][m.c]; if (old && !old.pop) countOrder(old.t); const nt = tile(m.sp === "dino" ? 0 : m.t, m.sp); nt.x = m.c; nt.y = m.r; nt.born = .35; grid[m.r][m.c] = nt; });
+  if (make.length) setTimeout(() => sfx.make(), 120);
+  const pts = n * 20 * Math.min(combo, 8) + make.length * 60; score += pts;
+  if (n) floats.push({ x: [...clear].reduce((a, k) => a + k % N, 0) / clear.size, y: [...clear].reduce((a, k) => a + Math.floor(k / N), 0) / clear.size, v: pts, t: 0 });
+  sfx.pop(combo); if (burntHit.size) sfx.burnt();
+  if (combo === 3) toast("好吃！😋", 0); else if (combo === 4) toast("超讚！✨", 0); else if (combo >= 5) { toast(`出爐大爆發 ×${combo}！🔥`, 1); flash("rgba(255,200,80,.4)"); }
+  phase = "pop"; popT = 0;
+}
+function effect(r, c, tl, forceColor) {
+  const out = [], key = (a, b) => a * N + b;
+  if (tl.sp === "h") { for (let i = 0; i < N; i++) out.push(key(r, i)); beams.push({ dir: "h", r, c, t: 0 }); sfx.line(); shake = 6; flash("rgba(255,180,60,.25)"); }
+  else if (tl.sp === "v") { for (let i = 0; i < N; i++) out.push(key(i, c)); beams.push({ dir: "v", r, c, t: 0 }); sfx.line(); shake = 6; flash("rgba(255,180,60,.25)"); }
+  else if (tl.sp === "bomb") { for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) if (inB(r + a, c + b)) out.push(key(r + a, c + b)); beams.push({ dir: "o", r, c, t: 0 }); sfx.bomb(); shake = 10; flash("rgba(200,235,255,.5)"); buzz(60); }
+  else if (tl.sp === "dino") {
+    let col = forceColor;
+    if (!col) { const cnt = {}; grid.forEach(row => row.forEach(x => { if (colorable(x) && !x.pop) cnt[x.t] = (cnt[x.t] || 0) + 1; })); col = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0] || 1; }
+    grid.forEach((row, rr2) => row.forEach((x, cc) => { if (colorable(x) && x.t === col) out.push(key(rr2, cc)); }));
+    dinoRun = { t: 0, col }; sfx.dino(); shake = 8; flash("rgba(140,230,140,.45)"); buzz([50, 40, 50, 40, 80]); toast("🦖 啊嗚！全部吃掉", 1);
+  }
+  return out;
+}
+function countOrder(t) {
+  orders.forEach(o => { if (o.t === t && o.got < o.need) { o.got++; if (o.got === o.need) { sfx.order(); flash("rgba(120,220,140,.25)"); } } });
+  drawOrders();
+}
+function gravity() {
+  for (let c = 0; c < N; c++) {
+    let w = N - 1;
+    for (let r = N - 1; r >= 0; r--) { const tl = grid[r][c]; if (tl && !tl.pop) { grid[w][c] = tl; if (w !== r) grid[r][c] = null; w--; } else grid[r][c] = null; }
+    let k = 0; for (let r = w; r >= 0; r--) { const tl = tile(rndT()); tl.x = c; tl.y = -1 - k++ - .3; grid[r][c] = tl; }
+  }
+  phase = "fall";
+}
+function settled() { for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { const tl = grid[r][c]; if (!tl || Math.abs(tl.x - c) > .01 || Math.abs(tl.y - r) > .01 || tl.pop) return false; } return true; }
+
+// ── 交換 ──
+function trySwap(a, b) {
+  if (state !== "play" || phase !== "idle" || moves <= 0) return;
+  const A = grid[a[0]][a[1]], B = grid[b[0]][b[1]];
+  if (!A || !B || A.t === BURNT || B.t === BURNT) { sfx.bad(); return; }
+  hint = null; hintT = 0; sel = null; combo = 0;
+  swapCells(a, b); sfx.swap(); swapInfo = { a, b }; phase = "swap";
+}
+function afterSwap() {
+  const { a, b } = swapInfo, A = grid[a[0]][a[1]], B = grid[b[0]][b[1]], key = (r, c) => r * N + c;
+  // 小暴龍交換：吃光那種口味
+  if (A.sp === "dino" || B.sp === "dino") {
+    moves--; const D = A.sp === "dino" ? [a, A] : [b, B], O = A.sp === "dino" ? [b, B] : [a, A];
+    D[1].fired = true; const clear = new Set([key(D[0][0], D[0][1])]);
+    if (O[1].sp === "dino") grid.forEach((row, r) => row.forEach((x, c) => { if (x.t !== BURNT) clear.add(key(r, c)); }));
+    else { effect(D[0][0], D[0][1], D[1], O[1].t).forEach(k => clear.add(k)); clear.add(key(O[0][0], O[0][1])); }
+    doClear(clear); return;
+  }
+  if (A.sp && B.sp) { moves--; doClear(new Set([key(a[0], a[1]), key(b[0], b[1])])); return; }
+  if (resolve([b, a])) { moves--; return; }
+  swapCells(a, b); sfx.bad(); phase = "back";
+}
+
+// ── 主迴圈 ──
+let last = 0, t = 0;
+function loop(now) {
+  const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
+  if (state !== "pause") { t += dt; step(dt); }
+  draw(dt); requestAnimationFrame(loop);
+}
+function step(dt) {
+  if (!grid) return;
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const tl = grid[r][c]; if (!tl) continue;
+    tl.x += (c - tl.x) * Math.min(1, dt * 16); if (Math.abs(tl.x - c) < .01) tl.x = c;
+    if (tl.y < r) { tl.vy += 38 * dt; tl.y = Math.min(r, tl.y + tl.vy * dt); if (tl.y >= r) { tl.y = r; tl.vy = 0; } }
+    else if (tl.y > r) { tl.y += (r - tl.y) * Math.min(1, dt * 16); if (Math.abs(tl.y - r) < .01) tl.y = r; }
+    if (tl.pop) tl.pop += dt; if (tl.born) tl.born = Math.max(0, tl.born - dt);
+  }
+  if (state !== "play" && state !== "bonus") return;
+  if (phase === "swap" && settled()) afterSwap();
+  else if (phase === "back" && settled()) phase = "idle";
+  else if (phase === "pop") { popT += dt; if (popT > .24) gravity(); }
+  else if (phase === "fall" && settled()) {
+    if (resolve(null)) return;
+    if (state === "bonus") { phase = "idle"; return; }
+    if (orders.every(o => o.got >= o.need)) return win();
+    if (moves <= 0) return lose();
+    if (!hasMove()) shuffle();
+    phase = "idle"; combo = 0;
+  }
+  if (state === "bonus" && phase === "idle") {
+    bonusT -= dt;
+    if (bonusT <= 0) {
+      if (bonusLeft > 0) { bonusLeft--; moves--; bonusT = .18; const cand = []; grid.forEach((row, r) => row.forEach((x, c) => { if (colorable(x) && !x.sp) cand.push([r, c]); })); const p = cand[Math.floor(Math.random() * cand.length)]; if (p) { const tl = grid[p[0]][p[1]]; tl.sp = Math.random() < .5 ? "h" : "v"; tl.born = .3; } sfx.bonus(); score += 50; }
+      else { const sp = []; grid.forEach((row, r) => row.forEach((x, c) => { if (x.sp && x.sp !== "dino") sp.push(r * N + c); })); if (sp.length) { combo = 0; doClear(new Set(sp)); } else return showWin(); }
+    }
+  }
+  if (state === "play" && phase === "idle") { hintT += dt; if (hintT > 5 && !hint) hint = hasMove(); }
+}
+function draw(dt) {
+  if (!grid) return;
+  const W = N * CS;
+  ctx.save(); ctx.clearRect(0, 0, W, W);
+  if (shake > 0) { ctx.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake); shake = Math.max(0, shake - dt * 40); }
+  // 烤盤
+  ctx.fillStyle = "#6b3f24"; rr(ctx, 0, 0, W, W, 16); ctx.fill();
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) { ctx.fillStyle = (r + c) % 2 ? "rgba(0,0,0,.18)" : "rgba(0,0,0,.08)"; rr(ctx, c * CS + 2, r * CS + 2, CS - 4, CS - 4, CS * .28); ctx.fill(); }
+  ctx.save(); rr(ctx, 0, 0, W, W, 16); ctx.clip();
+  // 提示
+  if (hint && phase === "idle" && state === "play") hint.forEach(([r, c]) => { ctx.fillStyle = `rgba(255,240,170,${.25 + Math.sin(t * 6) * .2})`; rr(ctx, c * CS + 1, r * CS + 1, CS - 2, CS - 2, CS * .3); ctx.fill(); });
+  for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) {
+    const tl = grid[r][c]; if (!tl) continue;
+    let sc = 1, al = 1, gl = 0;
+    if (tl.pop) { const k = tl.pop / .24; sc = 1 + k * .35; al = 1 - k; gl = Math.min(1, k * 2); if (al <= 0) continue; }
+    if (tl.born) sc = 1 + Math.sin(tl.born / .35 * Math.PI) * .3;
+    if (sel && sel[0] === r && sel[1] === c) sc = 1.1 + Math.sin(t * 10) * .04;
+    if (dinoRun && tl.t === dinoRun.col && !tl.pop) gl = .3 + Math.sin(t * 20) * .2;
+    drawCake(ctx, tl.x * CS, tl.y * CS, CS, tl, t, sc, al, gl);
+  }
+  // 光束
+  beams = beams.filter(b => (b.t += dt) < .45);
+  beams.forEach(b => { const a = 1 - b.t / .45; ctx.globalAlpha = a; ctx.fillStyle = "#fff3b0";
+    if (b.dir === "h") { ctx.fillRect(0, b.r * CS + CS * .25, W, CS * .5); ctx.fillStyle = "#ff9f43"; ctx.fillRect(0, b.r * CS + CS * .42, W, CS * .16); }
+    else if (b.dir === "v") { ctx.fillRect(b.c * CS + CS * .25, 0, CS * .5, W); ctx.fillStyle = "#ff9f43"; ctx.fillRect(b.c * CS + CS * .42, 0, CS * .16, W); }
+    else { ctx.strokeStyle = "#cfefff"; ctx.lineWidth = 8 * a; ctx.beginPath(); ctx.arc((b.c + .5) * CS, (b.r + .5) * CS, CS * (.5 + b.t * 5), 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1; });
+  // 小暴龍跑過去
+  if (dinoRun) { dinoRun.t += dt; const k = dinoRun.t / .9; if (k > 1) dinoRun = null; else { ctx.font = `${CS * 1.8}px sans-serif`; ctx.textBaseline = "middle"; ctx.fillText("🦖", -CS * 2 + k * (W + CS * 3), W / 2 + Math.sin(k * 20) * 6); } }
+  ctx.restore();
+  // 粒子
+  parts = parts.filter(p => (p.life -= dt * 1.6) > 0);
+  parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .3; ctx.globalAlpha = p.life; ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill(); });
+  ctx.globalAlpha = 1;
+  floats = floats.filter(f => (f.t += dt) < 1);
+  floats.forEach(f => { ctx.globalAlpha = 1 - f.t; ctx.font = `900 ${CS * .55}px sans-serif`; ctx.textAlign = "center"; ctx.lineWidth = 4; ctx.strokeStyle = "#8a3a1a"; ctx.fillStyle = "#fff6c8"; const x = (f.x + .5) * CS, y = (f.y + .5) * CS - f.t * 40; ctx.strokeText("+" + f.v, x, y); ctx.fillText("+" + f.v, x, y); ctx.textAlign = "left"; });
+  ctx.globalAlpha = 1; ctx.restore();
+  $("mv").textContent = Math.max(0, moves); $("sc").textContent = "⭐ " + score;
+  $("mv").style.color = moves <= 5 ? "#e74c3c" : "";
+  $("barI").style.width = Math.min(100, score / starTh[2] * 100) + "%";
+}
+function burstAt(c, r, color) {
+  for (let i = 0; i < 9; i++) parts.push({ x: (c + .5) * CS, y: (r + .5) * CS, vx: (Math.random() - .5) * 6, vy: -Math.random() * 6 - 1, life: 1, c: i % 3 ? color : "#fff6c8", s: 2 + Math.random() * 3.5 });
+}
+function flash(color) { const f = $("flash"); f.style.transition = "none"; f.style.background = color; f.style.opacity = 1; void f.offsetWidth; f.style.transition = "opacity .5s"; f.style.opacity = 0; }
+function toast(tx, big) { const e = $("toast"); e.textContent = tx; e.style.fontSize = big ? "32px" : "26px"; e.classList.remove("show"); void e.offsetWidth; e.classList.add("show"); }
+
+// ── 訂單 HUD ──
+function iconCanvas(tl) { const c = document.createElement("canvas"); c.width = 52; c.height = 52; const g = c.getContext("2d"); g.scale(2, 2); drawCake(g, 0, 0, 26, tl, 0); return c; }
+function drawOrders() {
+  const box = $("orders"); box.innerHTML = "";
+  orders.forEach(o => { const d = document.createElement("div"); d.className = "ord" + (o.got >= o.need ? " done" : ""); d.appendChild(iconCanvas({ t: o.t })); const s = document.createElement("span"); s.textContent = Math.max(0, o.need - o.got); d.appendChild(s); box.appendChild(d); });
+}
+
+// ── 關卡流程 ──
+function startLevel(L) {
+  unlock(); level = L; const cfg = levelCfg(L);
+  moves = cfg.moves; orders = cfg.orders; score = 0; combo = 0; sel = null; hint = null; hintT = 0; parts = []; beams = []; floats = []; dinoRun = null;
+  const base = orders.reduce((a, o) => a + o.need, 0) * 60;
+  starTh = [base * 1.2, base * 2.2, base * 3.4];
+  $("s1").style.left = (starTh[0] / starTh[2] * 100) + "%"; $("s2").style.left = (starTh[1] / starTh[2] * 100) + "%";
+  layout(); newBoard(cfg.burnt); drawOrders(); $("lvT").textContent = `第 ${L} 關`;
+  state = "play"; phase = "fall";
+  ["start", "end", "pause"].forEach(id => $(id).classList.add("hide"));
+  toast(`第 ${L} 關・${cfg.moves} 步`, 1);
+  $("tip").textContent = L >= 3 ? "燒焦塊：在旁邊消除就能清掉" : "滑動交換相鄰的雞蛋糕";
+}
+function win() {
+  state = "bonus"; phase = "idle"; bonusLeft = Math.min(moves, 12); bonusT = .6;
+  sfx.win(); flash("rgba(255,230,120,.5)"); toast(moves > 0 ? "🎉 訂單完成！剩下的步數變烤槍" : "🎉 訂單完成！", 1);
+  if (level >= maxLevel) { maxLevel = level + 1; try { localStorage.setItem("match_level", maxLevel); } catch (e) {} }
+}
+function showWin() {
+  state = "over"; const st = score >= starTh[2] ? 3 : score >= starTh[1] ? 2 : 1;
+  $("stars").textContent = "⭐".repeat(st) + "☆".repeat(3 - st); $("endTitle").textContent = "過關！客人很滿意 🧡";
+  $("endDetail").innerHTML = `第 ${level} 關・分數 <b style="font-size:22px;color:#b9381c">${score}</b><br><span style="font-size:12.5px;color:#8a7e72">${st < 3 ? "小技巧：連 4 顆做烤槍、L 型做糖粉彈，兩個特殊雞蛋糕交換會一起爆！" : "完美！三顆星"}</span>`;
+  embedReport(true, st);
+  $("next").classList.remove("hide"); setTimeout(() => { if (state === "over") $("end").classList.remove("hide"); }, 400);
+}
+function lose() {
+  state = "over"; sfx.lose(); buzz(250);
+  $("stars").textContent = "😢"; $("endTitle").textContent = "步數用完了…";
+  const left = orders.filter(o => o.got < o.need).map(o => `${o.t === BURNT ? "燒焦塊" : FLAVORS[o.t].name} 還差 ${o.need - o.got}`).join("、");
+  $("endDetail").innerHTML = `${left}<br><span style="font-size:12.5px;color:#8a7e72">小技巧：先從下面消，掉下來的雞蛋糕常常會連鎖；🦖 和訂單口味交換最划算。</span>`;
+  embedReport(false, 0);
+  $("next").classList.add("hide"); setTimeout(() => { if (state === "over") $("end").classList.remove("hide"); }, 600);
+}
+function pause() { if (state !== "play" && state !== "bonus") return; pState = state; state = "pause"; $("pause").classList.remove("hide"); }
+let pState = "play";
+function resume() { if (state !== "pause") return; unlock(); state = pState; last = performance.now(); $("pause").classList.add("hide"); }
+function goHome() { if (EMBED) return embedClose(); state = "ready"; grid = null; ["pause", "end"].forEach(id => $(id).classList.add("hide")); refreshStart(); $("start").classList.remove("hide"); ctx.clearRect(0, 0, cv.width, cv.height); }
+function refreshStart() { $("go").textContent = `🧇 開始第 ${maxLevel} 關`; $("go1").classList.toggle("hide", maxLevel <= 1); }
+$("go").onclick = () => startLevel(maxLevel); $("go1").onclick = () => startLevel(1);
+$("next").onclick = () => startLevel(level + 1); $("retry").onclick = () => startLevel(level); $("home").onclick = goHome;
+$("pauseB").onclick = pause; $("resume").onclick = resume; $("restart").onclick = () => startLevel(level); $("quit").onclick = goHome;
+$("mute").textContent = muted ? "🔇" : "🔊";
+$("mute").onclick = () => { unlock(); muted = !muted; try { localStorage.setItem("match_mute", muted ? "1" : "0"); } catch (e) {} if (master) master.gain.value = muted ? 0 : .5; $("mute").textContent = muted ? "🔇" : "🔊"; };
+document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
+addEventListener("blur", pause);
+addEventListener("keydown", e => { if (e.code === "Escape" || e.code === "KeyP") state === "pause" ? resume() : pause(); });
+// ── 放進 App 樂園時（?embed=1&lv=關卡）：只玩指定的那一關，結束把結果交給 App ──
+const QS = new URLSearchParams(location.search), EMBED = QS.get("embed") === "1", ELV = Math.max(1, +QS.get("lv") || 1);
+let reported = false;
+function embedReport(win, st) { if (!EMBED || reported) return; reported = true; try { parent.postMessage({ rh: "game", type: "end", score: win ? level : 0, meta: { win, stars: st, level, points: score } }, "*"); } catch (e) {} }
+function embedClose() { try { parent.postMessage({ rh: "game", type: "close" }, "*"); } catch (e) {} }
+if (EMBED) {
+  maxLevel = ELV; $("go").onclick = () => startLevel(ELV);
+  ["next", "retry", "restart"].forEach(id => ($(id).style.display = "none"));
+  $("home").textContent = "✅ 完成，回樂園"; $("home").className = "go";
+  $("quit").textContent = "🚪 離開（回樂園，不計分）";
+}
+refreshStart(); if (EMBED) $("go1").classList.add("hide");
+
+// ── 觸控：滑動交換，或點一顆再點旁邊 ──
+let drag = null;
+function cellAt(e) { const r = cv.getBoundingClientRect(); return [Math.floor((e.clientY - r.top) / CS), Math.floor((e.clientX - r.left) / CS)]; }
+cv.addEventListener("pointerdown", e => {
+  unlock(); if (state !== "play" || phase !== "idle") return; const [r, c] = cellAt(e); if (!inB(r, c)) return;
+  if (sel && Math.abs(sel[0] - r) + Math.abs(sel[1] - c) === 1) { trySwap(sel, [r, c]); return; }
+  sel = [r, c]; sfx.pick(); drag = { r, c, x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId);
+});
+cv.addEventListener("pointermove", e => {
+  if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) > CS * .35) { const to = Math.abs(dx) > Math.abs(dy) ? [drag.r, drag.c + Math.sign(dx)] : [drag.r + Math.sign(dy), drag.c]; const from = [drag.r, drag.c]; drag = null; if (inB(...to)) trySwap(from, to); }
+});
+cv.addEventListener("pointerup", () => { drag = null; });
+
+layout(); requestAnimationFrame(loop);
+window.__match = { get state() { return state; }, get phase() { return phase; }, get moves() { return moves; }, get score() { return score; }, get orders() { return orders; }, get level() { return level; }, hasMove, trySwap, startLevel, get grid() { return grid; } };
+</script>
+</body>
+</html>
