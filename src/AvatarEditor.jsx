@@ -32,6 +32,7 @@ export function Doll({ cfg, size = 190 }) {
   if (hat === "g_helmet") hs.push(<rect key="h1" x="4.5" y={hy + 0.5} width="11" height="11" rx="3" fill="#bfe7ff" opacity=".45" stroke="#9fb3c8" strokeWidth=".4" />);
   if (hat === "g_ufo") hs.push(R(4, hy, 12, 1.2, "#9aa3ad", "h1"), R(7.5, hy - 1.8, 5, 2, "#8fd3ff", "h2"));
   if (hat === "party") hs.push(<polygon key="h1" points={`10,${hy - 5} 7,${hy + 1} 13,${hy + 1}`} fill="#ff6fa8" />);
+  if (hat === "og_cap") hs.push(R(5, hy, 10, 2, "#c0392b", "h1"), R(5, hy + 1.5, 12, 1, "#c0392b", "h2"), R(8, hy + 0.4, 4, 1.2, "#f1c40f", "h3"));
   if (hat === "crown") hs.push(R(6, hy, 8, 2, "#f1c40f", "h1"), R(6, hy - 2, 1.5, 2, "#f1c40f", "h2"), R(9.2, hy - 2, 1.6, 2, "#f1c40f", "h3"), R(12.5, hy - 2, 1.5, 2, "#f1c40f", "h4"));
 
   let body;
@@ -197,7 +198,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
 
         <Title>帽子・頭飾</Title>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {HATS.filter(h => h.kind !== "shop" || owned[h.id] || prices[h.id]).map(h => {
+          {HATS.filter(h => h.kind === "og" ? owned[h.id] : (h.kind !== "shop" || owned[h.id] || prices[h.id])).map(h => {
             const ok = hatUnlocked(h, today, granted, owned);
             return <Chip key={h.id} C={C} on={cfg.hat === h.id} locked={!ok} label={h.name}
               sub={h.kind === "free" ? null : ok ? "已解鎖" : hatLockText(h)}
@@ -209,7 +210,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
           <div key={k}>
             <Title>{title}</Title>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {list.filter(x => x.id === "none" || prices[x.id]).map(x => (
+              {list.filter(x => x.id === "none" || (prices[x.id] && (!/^og_/.test(x.id) || owned[x.id]))).map(x => (
                 <Chip key={x.id} C={C} on={cfg[k] === x.id} locked={lockedItem(x.id)} label={x.name}
                   sub={x.id !== "none" ? (lockedItem(x.id) ? lockText(x.id) : "已擁有") : null}
                   onClick={() => tryPick(k, x.id, x.name)} />))}

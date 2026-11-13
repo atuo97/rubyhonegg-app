@@ -31,6 +31,7 @@ const CSS = `
 .uo-title{font-size:9.5px;font-weight:700;color:#6b3d00;background:linear-gradient(#fff1b8,#ffd36b);padding:0 6px;border-radius:6px;white-space:nowrap}
 .uo-x_frame{background:#2f6fb0;border:1.5px solid #fff;box-shadow:0 0 6px #bfe3ff}
 .uo-c_frame{background:#b81d1d;border:1.5px solid #f1c40f;box-shadow:0 0 6px #f1c40f}
+.uo-og_frame{background:linear-gradient(90deg,#8a5a00,#f1c40f,#8a5a00);color:#2b1d14;border:1.5px solid #fff3b0;box-shadow:0 0 8px #f1c40f}
 `;
 
 // 節日(農曆日期每年要更新;週年日由後端「遊戲參數」提供)

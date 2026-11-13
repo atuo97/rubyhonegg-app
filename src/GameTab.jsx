@@ -379,7 +379,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
       <input value={adm.target} onChange={e => setAdm(a => ({ ...a, target: e.target.value }))} placeholder="夥伴員工編號（例：E003）" style={{ ...s.input, marginBottom: 8 }} />
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <select value={adm.badge} onChange={e => setAdm(a => ({ ...a, badge: e.target.value }))} style={{ ...s.input, flex: 1 }}>
-          <option value="">補發／扣回赤心幣</option><option value="mentor">頒發「好導師」徽章（+50）</option><option value="special">頒發「特別貢獻」徽章</option>
+          <option value="">補發／扣回赤心幣</option><option value="mentor">頒發「好導師」徽章（+50）</option><option value="special">頒發「特別貢獻」徽章</option><option value="debugger">頒發「除錯大師」徽章（+20，每人最多 5 次）</option>
         </select>
         <input type="number" value={adm.amount} onChange={e => setAdm(a => ({ ...a, amount: e.target.value }))} placeholder={adm.badge ? "加幣（選填）" : "數量（可負）"} style={{ ...s.input, width: 110 }} />
       </div>
