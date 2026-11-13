@@ -1,3 +1,4 @@
+// v3（部署端，11/14 02:15）：h36_me_、h36_recv_ 不再退回 p.empId（記錄模式下 empId 可冒用）
 // ═══════════════════════════════════════════════
 // v1.36 無敵8心（2026-11-14）
 // 貼在「設備檢查清單 v1.35 v2」之後、「路由 v1.36」之前。部署後執行一次 h36_setup()
@@ -186,7 +187,8 @@ function h36_view_(id, x, self) {
 
 // ── API ──
 function h36_me_(p) {
-  var vid = au_verifiedId_(), id = vid || String(p.empId || '').trim();     // 只讀自己的分數；記錄模式下沒通行證才用 empId
+  var vid = au_verifiedId_(); if (!vid) return { error: '請更新 App 後重新登入' };   // v3（部署端）：一律以通行證本人為準（耐心＝累計工時）
+  var id = vid;
   var me = gm_emp_(id); if (!me || me.resigned) return { error: '找不到夥伴資料' };
   var x;
   if (p.lite) x = h36_rowsMap_()[id] || { pts: {}, lv: {}, log: {} };       // 樂園卡片：只讀已存的，不重算（快）
@@ -224,7 +226,8 @@ function h36_rec_(p) {
 }
 // 收到的推薦（自己看）
 function h36_recv_(p) {
-  var vid = au_verifiedId_() || String(p.empId || '').trim(), emps = gm_emps_();
+  var vid = au_verifiedId_(); if (!vid) return { error: '請更新 App 後重新登入' };   // v3（部署端）：推薦原因只給本人看
+  var emps = gm_emps_();
   var data = gm_rows_('h36rec').filter(function (r) { return String(r[3]) === vid; }).slice(-30).reverse().map(function (r) {
     var f = emps[String(r[2])] || {}; return { at: String(r[0]).slice(0, 10), from: f.nick || f.name || '', heart: String(r[4]), reason: String(r[5]), pts: Number(r[6]) || 0, give: Number(r[7]) >= 3 };
   });
