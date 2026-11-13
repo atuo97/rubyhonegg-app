@@ -4,7 +4,7 @@ import { Flash } from "./TopToast.jsx";
 
 let PAGE_CACHE = null;   // 同一次開 App 只下載一次網頁
 
-export function QuotePage({ user, apiGet, apiPost, C, s }) {
+export function QuotePage({ user, apiGet, apiPost, C, s, onEquip }) {
   const [tab, setTab] = useState("make");
   const [page, setPage] = useState(PAGE_CACHE), [err, setErr] = useState("");
   const [list, setList] = useState(null), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
@@ -108,6 +108,7 @@ export function QuotePage({ user, apiGet, apiPost, C, s }) {
               <span style={{ fontSize: 12, color: C.muted }}>狀態</span>
               {(list.statuses || ["已報價", "成交", "取消"]).map(st => <button key={st} disabled={busy || q.status === st} onClick={() => setStatus(q, st)} style={{ ...chip(q.status === st), padding: "4px 10px", fontSize: 12 }}>{st}</button>)}
               {q.status === "成交" && <button disabled={busy} onClick={() => toCalendar(q)} style={{ ...chip(false), padding: "4px 10px", fontSize: 12 }}>📅 加進公司行事曆</button>}
+              {q.status === "成交" && onEquip && <button disabled={busy} onClick={() => onEquip(q)} style={{ ...chip(false), padding: "4px 10px", fontSize: 12 }}>🧰 建設備清單</button>}
             </div>
           </div>)))}
     </div>
