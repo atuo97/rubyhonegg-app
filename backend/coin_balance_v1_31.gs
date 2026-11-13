@@ -1,6 +1,7 @@
 // ═════════════════════════════════════════════════════════════
-// v1.31 赤心幣平衡（隊長 11/13 定案）
-// 本檔放在 Apps Script 專案「最後面」，會覆蓋前面同名的函式。
+// v1.31 赤心幣平衡（隊長 11/13 定案）｜v2：花幣動作加登入通行證本人檢查
+// 位置：第 33 版之後、路由之前（與部署端「權限修正 v2」、v1.32 夥伴權限保護沒有重疊的函式，前後皆可）。
+// 底版：後端第 33 版（部署交接 11/13 19:50）。
 //   1 升等不追溯：工時幣只計算「新增的工時」，用結算當下的等級；升等之後才開始用新倍率
 //   2 節日類（春節、國定假日、颱風、品牌週年）同一段工時只取最高的一個；每小時總倍率（含階層）上限預設 ×6
 //   3 小店：同一位買家對同一家店每天最多買 3 件；成交抽 20%，明細拆成租金／水電／清潔；
@@ -22,6 +23,11 @@ var C31_PARAMS = [
 var C31_HOLIDAY = { spring: 1, holiday: 1, typhoon: 1, brand: 1 };
 var C31_SET_HEAD = ['員工編號', '日期|櫃位', '已結算分鐘', '更新時間'];
 
+// 安全（部署交接第 3 節規則）：花幣的動作，若有登入通行證就必須是本人
+function c31_notMe_(emp) {
+  var v = typeof au_verifiedId_ === 'function' ? au_verifiedId_() : '';
+  return !!(v && v !== emp);
+}
 function c31_n_(k, d) { var v = Number(gm_param_(k)); return isFinite(v) && v > 0 ? v : d; }
 
 // 執行一次：補上新參數、對戰每日獎勵上限改成 4
@@ -127,6 +133,7 @@ function c31_feeSplit_(fee) {
 function sp_buy_(p) {
   var buyer = String(p.empId || '').trim(), owner = String(p.owner || '').trim(), item = String(p.item || ''), to = String(p.to || '').trim();
   if (!gm_emp_(buyer) || gm_isFrozen_(buyer)) return { error: '帳號無法使用' };
+  if (c31_notMe_(buyer)) return { error: '登入身分不符，請重新登入' };
   if (buyer === owner) return { error: '不能買自己店裡的東西' };
   var s = sp_shop_(owner); if (!s || gm_isFrozen_(owner)) return { error: '這家店目前沒有營業' };
   var it = sp_items_(s.type, s.prices).filter(function (x) { return x.id === item; })[0]; if (!it) return { error: '這家店沒有賣這個' };
@@ -181,6 +188,7 @@ function c31_mktCount_(emp, role) {   // 本月賣出（含掛賣中）／買進
 }
 function p28_list_(p) {
   var emp = String(p.empId || '').trim(), a = p28_alive_(emp), t = a.filter(function (x) { return x.id === String(p.pet); })[0];
+  if (c31_notMe_(emp)) return { error: '登入身分不符，請重新登入' };
   if (!t) return { error: '找不到這隻寵物' };
   if (t.status === '掛賣') return { error: '已經在市集上了' };
   if (a.filter(function (x) { return x.status !== '掛賣'; }).length <= 1) return { error: '至少要留 1 隻寵物在身邊' };
@@ -197,6 +205,7 @@ function p28_list_(p) {
 }
 function p28_buyMkt_(p) {
   var emp = String(p.empId || '').trim(), e = gm_emp_(emp); if (!e || gm_isFrozen_(emp)) return { error: '帳號無法使用' };
+  if (c31_notMe_(emp)) return { error: '登入身分不符，請重新登入' };
   p28_expire_();
   var m = p28_mkt_().filter(function (k) { return k.id === String(p.id) && k.status === '掛賣'; })[0];
   if (!m) return { error: '這隻已經被買走或收回了' };
