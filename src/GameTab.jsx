@@ -6,6 +6,8 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Coin, Heart } from "./Coin.jsx";
 import MiniGames from "./MiniGames.jsx";
 import { PetTeam, PetMarket } from "./PetTeam.jsx";
+import { Doll } from "./AvatarEditor.jsx";
+import { defaultCfg, sanitize } from "./universe/avatarCatalog.js";
 import { PetSprite, PET_TYPES, PET_TYPE_NAME, PET_FLAVORS, PET_STAGE_NAMES, PET_ATTR, PET_COUNTER, petLine } from "./pets/petSprites.jsx";
 
 const TABS = [["home", "總覽"], ["shop", "商店"], ["gacha", "扭蛋"], ["pet", "寵物"], ["play", "小遊戲"], ["badge", "徽章"], ["team", "團隊"]];
@@ -17,6 +19,55 @@ const ITEM_ICON = { haircolor: "💇", acc: "🎀", outfit: "👕", frame: "🏷
 
 export { Coin, Heart };
 
+// v1.33 試穿預覽：點商品就能看到穿在自己（或寵物）身上的樣子，買不起也能看
+const WEAR_FIELD = { haircolor: "hairColor", acc: "acc", outfit: "outfit", hat: "hat", frame: "frame" };
+const FRAME_STYLE = {
+  frame_wood: { background: "#8e5b3a", border: "1.5px solid #d4a373" },
+  frame_glow: { background: "#c0392b", border: "1.5px solid #ffe066", boxShadow: "0 0 8px #ffe066" },
+  x_frame: { background: "#2f6fb0", border: "1.5px solid #fff", boxShadow: "0 0 6px #bfe3ff" },
+  c_frame: { background: "#b81d1d", border: "1.5px solid #f1c40f", boxShadow: "0 0 6px #f1c40f" },
+  og_frame: { background: "linear-gradient(90deg,#8a5a00,#f1c40f,#8a5a00)", color: "#2b1d14", border: "1.5px solid #fff3b0", boxShadow: "0 0 8px #f1c40f" },
+};
+export function TryOn({ item, user, apiGet, pet, balance, frozen, busy, C, s, onBuy, onClose, onEditAvatar }) {
+  const [cfg, setCfg] = useState(null);
+  useEffect(() => { apiGet({ action: "getMyAvatar", empId: user.id }, 1).then(r => setCfg(sanitize(r && r.success && r.data ? r.data.cfg : null))).catch(() => setCfg(defaultCfg())); }, []);
+  const f = WEAR_FIELD[item.cat], short = Math.max(0, item.price - balance);
+  const tag = st => <span style={{ display: "inline-block", fontSize: 13, fontWeight: 700, color: "#fff", background: "rgba(0,0,0,.45)", padding: "2px 10px", borderRadius: 7, ...st }}>{user.name}</span>;
+  let body;
+  if (f && cfg) {
+    const now = cfg, after = { ...cfg, [f]: item.id };
+    body = <div style={{ display: "flex", justifyContent: "space-around", alignItems: "flex-end" }}>
+      <div style={{ textAlign: "center", opacity: .55 }}><Doll cfg={now} size={96} /><div style={{ fontSize: 11, color: C.muted }}>現在</div></div>
+      <div style={{ fontSize: 20, color: C.light, paddingBottom: 50 }}>→</div>
+      <div style={{ textAlign: "center" }}>
+        {f === "frame" && <div style={{ marginBottom: 6 }}>{tag(FRAME_STYLE[item.id] || {})}</div>}
+        <Doll cfg={after} size={150} /><div style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>穿上之後</div></div>
+    </div>;
+  } else if (item.cat === "petacc") {
+    body = pet && pet.stage ? <div style={{ display: "flex", justifyContent: "space-around", alignItems: "flex-end" }}>
+      <div style={{ textAlign: "center", opacity: .55 }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} acc={pet.acc} size={84} /><div style={{ fontSize: 11, color: C.muted }}>現在</div></div>
+      <div style={{ fontSize: 20, color: C.light, paddingBottom: 40 }}>→</div>
+      <div style={{ textAlign: "center" }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} acc={item.id} size={132} /><div style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>戴上之後</div></div>
+    </div> : <div style={{ textAlign: "center", color: C.muted, fontSize: 13, padding: 20 }}>先領養寵物，就能幫牠戴配件</div>;
+  } else if (f && !cfg) body = <div className="rh-skel" style={{ height: 180, borderRadius: 14 }} />;
+  else body = <div style={{ textAlign: "center", fontSize: 64, padding: "10px 0" }}>{ITEM_ICON[item.cat] || "🎁"}</div>;
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,14,10,.55)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: "18px 16px calc(18px + env(safe-area-inset-bottom))" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+          <div><div style={{ fontSize: 17, fontWeight: 700 }}>{item.name}</div>
+            <div style={{ fontSize: 12, color: TIER_COLOR[item.tier] || C.muted }}>{item.tier}・{CAT_NAME[item.cat] || item.cat}{item.note && !/^\p{Extended_Pictographic}/u.test(item.note) ? "・" + item.note : ""}</div></div>
+          <button onClick={onClose} style={{ border: "none", background: "transparent", fontSize: 20, color: C.light, cursor: "pointer" }}>✕</button>
+        </div>
+        <div style={{ background: C.warm, borderRadius: 16, padding: "14px 8px", marginBottom: 14 }}>{body}</div>
+        {item.owned ? <button onClick={() => { onClose(); onEditAvatar && f && onEditAvatar(); }} style={s.btn("secondary")}>✓ 已擁有{f && onEditAvatar ? "・去換裝穿上" : ""}</button>
+          : item.price > 0 ? <button disabled={busy || frozen || short > 0} onClick={onBuy} style={{ ...s.btn("primary"), opacity: short > 0 ? .5 : 1 }}>{short > 0 ? `還差 ${short} 枚・上班賺工時幣就能買` : <>買下 <Coin n={item.price} size={13} /></>}</button>
+          : <div style={{ textAlign: "center", fontSize: 12.5, color: C.muted }}>{item.where === "扭蛋" ? "扭蛋機限定，抽到就能戴" : item.where || "限定款，不在商店販售"}</div>}
+      </div>
+    </div>
+  );
+}
+
 // v1.19：這三個小元件原本寫在 GameTab 裡面，每次重畫都被當成新元件 → 裡面的輸入框一打字就失去焦點（一次只能打一個字）。
 // 改到外層定義，透過 context 拿樣式與忙碌狀態。
 const GCtx = createContext({});
@@ -24,7 +75,8 @@ function Card({ children, style }) { const { s } = useContext(GCtx); return <div
 function Title({ children, right }) { const { s } = useContext(GCtx); return <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div style={{ ...s.sectionTitle, marginBottom: 0 }}>{children}</div>{right}</div>; }
 function Btn({ children, onClick, disabled, kind = "primary", style }) { const { s, busy } = useContext(GCtx); return <button onClick={onClick} disabled={disabled || busy} style={{ ...s.btn(kind), padding: "9px 14px", fontSize: 13, opacity: disabled || busy ? .5 : 1, ...style }}>{children}</button>; }
 
-export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged, onlyTab, onNav }) {
+export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEditAvatar, onChanged, onlyTab, onNav, shopCats }) {
+  const [tryItem, setTryItem] = useState(null);   // v1.33 試穿預覽
   const [tab, setTab] = useState(onlyTab || initialTab || "home");
   const go = (k) => { if (onlyTab && onNav) onNav(k); else setTab(k); };
   const [me, setMe] = useState(null);
@@ -94,7 +146,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
 
   // ───── 商店 ─────
   const Shop = () => {
-    const items = me.catalog.filter(c => c.where === "商店");
+    const items = me.catalog.filter(c => c.where === "商店" && (!shopCats || shopCats.includes(c.cat)));
     const cats = [...new Set(items.map(i => i.cat))];
     return (
       <>
@@ -107,13 +159,13 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <Title>{CAT_NAME[cat] || cat}</Title>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {items.filter(i => i.cat === cat).map(i => (
-                <div key={i.id} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 10, background: i.owned ? C.warm : C.card }}>
-                  <div style={{ fontSize: 22 }}>{ITEM_ICON[i.cat] || "🎁"}</div>
+                <div key={i.id} onClick={() => setTryItem(i)} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 10, background: i.owned ? C.warm : C.card, cursor: "pointer" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 22 }}>{ITEM_ICON[i.cat] || "🎁"}</span><span style={{ fontSize: 10.5, color: C.accent }}>{WEAR_FIELD[i.cat] || i.cat === "petacc" ? "👀 試穿" : "看看"}</span></div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 4 }}>{i.name}</div>
                   <div style={{ fontSize: 11, color: TIER_COLOR[i.tier] }}>{i.tier}</div>
                   <div style={{ marginTop: 8 }}>
                     {i.owned ? <span style={{ fontSize: 12, color: C.green }}>✓ 已擁有</span>
-                      : <Btn disabled={me.balance < i.price || me.frozen} onClick={() => act({ action: "gmBuy", item: i.id }, `買到「${i.name}」了！到換裝頁穿上吧`)}><Coin n={i.price} size={12} /></Btn>}
+                      : <span onClick={e => e.stopPropagation()}><Btn disabled={me.balance < i.price || me.frozen} onClick={() => act({ action: "gmBuy", item: i.id }, `買到「${i.name}」了！到換裝頁穿上吧`)}><Coin n={i.price} size={12} /></Btn></span>}
                   </div>
                 </div>))}
             </div>
@@ -192,7 +244,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
 
         {petView === "main" && <>
           <Card style={{ textAlign: "center", padding: "20px 16px" }}>
-            <PetSprite type={pt.type} stage={pt.stage} flavor={pt.flavor} size={128} />
+            <PetSprite type={pt.type} stage={pt.stage} flavor={pt.flavor} acc={pt.acc} size={128} />
             {pt.stage >= 3 && petLine(pt, 0) && <div style={{ display: "inline-block", marginTop: 6, background: C.warm, borderRadius: 12, padding: "4px 12px", fontSize: 13 }}>「{petLine(pt)}」</div>}
             <div style={{ fontSize: 17, fontWeight: 600, marginTop: 10 }}>{pt.name}</div>
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 2 }}>{pt.flavor}{pt.type ? "・" + typeOf(pt.type) : ""}・第 {pt.stage} 階段「{pt.stageName}」</div>
@@ -399,6 +451,9 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
       {me.frozen && <Card style={{ background: C.goldBg, color: C.gold, fontSize: 13 }}>帳號已停用，赤心幣已凍結。</Card>}
       {tab === "home" && Home()}
       {tab === "shop" && Shop()}
+      {tryItem && me && <TryOn item={{ ...tryItem, owned: (me.catalog.find(c => c.id === tryItem.id) || tryItem).owned }} user={user} apiGet={apiGet} pet={me.pet} balance={me.balance} frozen={me.frozen} busy={busy} C={C} s={s}
+        onClose={() => setTryItem(null)} onEditAvatar={onEditAvatar}
+        onBuy={async () => { const ok = await act({ action: "gmBuy", item: tryItem.id }, `買到「${tryItem.name}」了！到換裝頁穿上吧`); if (ok) setTryItem(null); }} />}
       {tab === "gacha" && Gacha()}
       {tab === "pet" && Pet()}
       {tab === "play" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={() => { load(); onChanged && onChanged(); }} />}

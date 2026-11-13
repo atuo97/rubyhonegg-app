@@ -3,12 +3,14 @@
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
 import { Coin, Heart } from "./Coin.jsx";
+import { TryOn } from "./GameTab.jsx";   // v1.33 點商品看詳細
 
 const TYPE_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸" };
 const CAT_LABEL = { gift: "禮物（送同事）", petsnack: "寵物零食", decor: "收藏", weapon: "武器", armor: "防具", card: "對戰卡片" };
 const effectText = e => { const a = String(e || "").split(":"); if (a[0] === "petsnack") return `寵物成長 +${a[1]} 小時`; if (a[0] === "card") return { heal: "補血", power: "增強攻擊", shield: "護盾" }[a[1]] + " " + a[2]; if (a[0] === "gift" || a[0] === "decor") return a[1]; return String(e || "").replace(/atk/g, "攻").replace(/def/g, "防").replace(/hp/g, "血").replace(/spd/g, "速").replace(/:/g, "+"); };
 
 export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
+  const [peek, setPeek] = useState(null);
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState(null);       // 正在逛的店
@@ -41,12 +43,15 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
         </div>
         {shop.items.map(it => (
           <div key={it.id} style={{ ...s.card, display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ flex: 1 }}><div style={{ fontSize: 14, fontWeight: 600 }}>{it.name}</div><div style={{ fontSize: 11.5, color: C.muted }}>{CAT_LABEL[it.cat]}・{effectText(it.effect)}</div></div>
+            <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setPeek(it)}><div style={{ fontSize: 14, fontWeight: 600 }}>{it.name} <span style={{ fontSize: 10.5, color: C.accent, fontWeight: 500 }}>看看</span></div><div style={{ fontSize: 11.5, color: C.muted }}>{CAT_LABEL[it.cat]}・{effectText(it.effect)}</div></div>
             {it.cat === "gift" && <select value={giftTo} onChange={e => setGiftTo(e.target.value)} style={{ ...s.input, width: 100, padding: "7px 8px", fontSize: 12.5 }}>
               <option value="">送給…</option>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
             <button disabled={busy || shop.owner === user.id || (it.cat === "gift" && !giftTo)} onClick={() => post({ action: "spBuy", owner: shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！")}
               style={{ ...s.btn("primary"), width: "auto", padding: "7px 12px", fontSize: 12.5, opacity: busy || shop.owner === user.id || (it.cat === "gift" && !giftTo) ? .5 : 1 }}><Coin n={it.price} size={12} /></button>
           </div>))}
+        {peek && <TryOn item={{ ...peek, note: CAT_LABEL[peek.cat] + "・" + effectText(peek.effect), price: peek.cat === "gift" && !giftTo ? 0 : peek.price, where: peek.cat === "gift" && !giftTo ? "先在清單選「送給…」" : "" }}
+          user={user} apiGet={apiGet} balance={d.balance} busy={busy} C={C} s={s} onClose={() => setPeek(null)}
+          onBuy={async () => { const it = peek; setPeek(null); await post({ action: "spBuy", owner: shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！"); }} />}
         {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400 }}>{toast}</div>}
       </div>
     );

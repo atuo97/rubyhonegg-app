@@ -6,6 +6,7 @@ import BatterPage from "./BatterTab.jsx";
 import ReportPage from "./ReportTab.jsx";
 import { RulesPage, BoostAdmin, BrandPage, LoginSlogan } from "./Park27.jsx";
 import { SpendPage, EntryFxOnPunch } from "./Spend30.jsx";
+import CoinShop from "./CoinShop.jsx";
 import { QuotePage } from "./Quote30.jsx";
 import { CalendarPage } from "./Cal28.jsx";
 import { AcPage } from "./Ac29.jsx";
@@ -270,7 +271,7 @@ function MeBuddy({ cfg, pet, scale = 1 }) {
     <span style={{ display:"inline-flex", alignItems:"flex-end", gap:2, height:h, overflow:"hidden" }}>
       {cfg ? <span style={{ display:"block", height:h, lineHeight:0 }}><Doll cfg={cfg} size={Math.round(h / 1.5)} /></span>
            : <span style={{ color:C.accent, display:"flex" }}><Ic n="user" size={h * 0.8}/></span>}
-      {pet && pet.type ? <span style={{ display:"block", lineHeight:0 }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} size={Math.round(h * 0.9)} /></span> : null}
+      {pet && pet.type ? <span style={{ display:"block", lineHeight:0 }}><PetSprite type={pet.type} stage={pet.stage} flavor={pet.flavor} acc={pet.acc} size={Math.round(h * 0.9)} /></span> : null}
     </span>
   );
 }
@@ -466,6 +467,17 @@ function PetGreeting({ user, game }) {
       <div><div style={{ fontSize:11.5, color:C.muted }}>{g.pet.name}</div><div style={{ fontSize:14.5, fontWeight:600, color:C.text }}>{g.txt}</div></div>
     </div>
   );
+}
+
+// v1.33 生日顯示：〈夥伴資料〉生日填民國年（67/09/07），試算表會存成 1967 年 → 一律當民國年換算（和薪資引擎部署端修正相同規則）
+// 「67/09/07」「1967-09-07」「Thu Sep 07 1967 …」都會顯示成「67 年次（1978）・9/7」
+function rocBirthday(v) {
+  const t = String(v || "").trim(); if (!t) return "";
+  let y, m, d, mm = t.match(/^(\d{2,4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})/);
+  if (mm) { y = +mm[1]; m = +mm[2]; d = +mm[3]; }
+  else { const dt = new Date(t); if (isNaN(dt)) return t; y = dt.getFullYear(); m = dt.getMonth() + 1; d = dt.getDate(); }
+  const roc = y < 1912 ? y : y < 2000 ? y - 1900 : y - 1911;
+  return `${roc} 年次（${roc + 1911}）・${m}/${d}`;
 }
 
 // 首頁:每日一題、生日祝福、收到的互動
@@ -704,7 +716,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣花費", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -802,7 +814,7 @@ export default function App(){
               <GameTile title="夥伴商店街" sub="逛店・開店・扭蛋機" icon="home" onClick={()=>setTab("street")}/>
               <GameTile title="我的錢包" sub="赤心幣餘額與明細" icon="coin" onClick={()=>openGame("home")}/>
             </div>
-            <ListItem icon="coin" title="赤心幣花費" desc="我的座位・進場特效・稱號・寵物顏色・裝備強化・季節扭蛋・全員大魔王・和隊長吃飯" onClick={()=>setTab("spend")}/>
+            <ListItem icon="coin" title="赤心幣商店" desc="造型・寵物・座位・稱號特效・對戰裝備・扭蛋・大魔王・兌換，點商品可以先試穿" onClick={()=>setTab("spend")}/>
             <ListItem icon="book" title="赤心幣規則" desc="怎麼賺、加倍怎麼算、怎麼用、你現在套用中的加倍" onClick={()=>setTab("rules")}/>
           </div>
         )}
@@ -833,7 +845,7 @@ export default function App(){
           </div>
         )}
         {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="spend" && <SpendPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={() => game.refresh && game.refresh()} />}
+        {tab==="spend" && <CoinShop user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onChanged={() => game.refresh && game.refresh()} />}
         {tab==="rules" && <RulesPage user={user} apiGet={apiGet} C={C} s={s} loc={activeSeg?.location || ""} onOpenLedger={()=>openGame("home")} />}
         {tab==="boost" && user.role>=3 && <BoostAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} todayStr={todayStr} />}
         {tab==="about" && <BrandPage C={C} s={s} locations={locations} />}
@@ -1820,7 +1832,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
         <div>
           <div style={{ fontSize:18, fontWeight:600 }}>{user.name}</div>
           <div style={{ fontSize:12.5, color:C.muted, marginTop:2 }}>{user.position} · {user.id}</div>
-          <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>🎂 {user.birthday}</div>
+          <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>🎂 {rocBirthday(user.birthday)}</div>
         </div>
       </div>
 
