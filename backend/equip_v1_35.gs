@@ -1,3 +1,4 @@
+// v2（部署端，11/14 01:20）：eq_who_、eq_todo_ 不再退回 p.empId（登入驗證仍是「記錄」模式，empId 可冒用；清單含客戶個資）
 // ═══════════════════════════════════════════════
 // v1.35 設備檢查清單（2026-11-14）
 // 貼在「開店資格修正 v1.34」之後、「路由 v1.35」之前。部署後執行一次 eq_setup()（建〈設備模板〉〈設備清單〉，放入隊長給的 8 份模板）
@@ -49,9 +50,10 @@ function eq_admin_() {
   return me;
 }
 // 查看、勾選：有通行證用通行證本人；「記錄」模式下沒帶通行證才退回 empId（只能勾自己被排到的清單，Lv.2 以上可以勾全部）
-function eq_who_(p) {
+function eq_who_(p) {   // v2（部署端）：清單含客戶統編、聯絡人電話，讀取與打勾也一律以通行證本人為準，不退回 p.empId
   var tid = au_verifiedId_();
-  return ops_me_(tid || p.empId);
+  if (!tid) throw new Error('請更新 App 後重新登入');
+  return ops_me_(tid);
 }
 function eq_canSee_(me, L) { return me.role >= 2 || L.crew.indexOf(me.id) >= 0 || L.by === me.id; }
 
@@ -331,7 +333,8 @@ function eq_tplDel_(p) {
 function eq_todo_(empId) {
   var out = [];
   try {
-    var me = ops_me_(au_verifiedId_() || empId), t = eq_today_(), soon = eq_addDay_(t, 3), fixN = 0, fixCost = 0;
+    var tid = au_verifiedId_(); if (!tid) return out;   // v2（部署端）：沒有通行證不顯示設備提醒（含待補購金額）
+    var me = ops_me_(tid), t = eq_today_(), soon = eq_addDay_(t, 3), fixN = 0, fixCost = 0;
     eq_lists_().forEach(function (L) {
       var mine = L.crew.indexOf(me.id) >= 0 || L.by === me.id || (me.role >= 3 && !L.crew.length);
       var sc = eq_stageCount_(L); fixN += sc.fix; fixCost += sc.cost;
