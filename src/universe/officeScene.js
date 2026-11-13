@@ -1697,7 +1697,18 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   // ── 遊戲化資料(setGame 傳入)──
   let GAME = { pets: {}, worn: {}, birthdays: [], champion: "", fireworks: false, unlocks: [], holiday: "", weather: {} };
   const tagOpt = (p, av) => ({ frame: av.frame && av.frame !== "none" ? av.frame : "", icons: GAME.worn[String(p.id)] || [], saying: av.saying || "", rest: !!p.resting, title: (GAME.titles || {})[String(p.id)] || "" });
-  const sigOf = (p, av) => JSON.stringify(av) + (p.resting ? "R" : "") + ((GAME.titles || {})[String(p.id)] || "");
+  const sigOf = (p, av) => JSON.stringify(av) + (p.resting ? "R" : "") + ((GAME.titles || {})[String(p.id)] || "") + auraKind(p);
+  // v1.36 無敵8心：8 顆心都點亮 → 腳下粉紅光環；8 顆都到金 → 金色光環
+  function auraKind(p) { const h = (GAME.hearts || {})[String(p.id)]; return h && h.n >= 8 ? (h.g >= 8 ? "L" : "H") : ""; }
+  function addAura(c, p) {
+    const k = auraKind(p); if (!k) return;
+    const col = k === "L" ? 0xffd34d : 0xff6f9c, g = new THREE.Group();
+    const ring = new THREE.Mesh(new THREE.RingGeometry(0.5, 0.72, 40), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; g.add(ring);
+    const glow = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 2.2, 28, 1, true), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }));
+    glow.position.y = 1.1; g.add(glow);
+    c.g.add(g); c.aura = { ring, glow, t: Math.random() * 6 };
+  }
   function avatarOf(p) {
     const av = Object.assign({}, avatarFor(p));
     if (GAME.birthdays.some(b => String(b.id) === String(p.id)) && (!av.hat || av.hat === "none")) av.hat = "party";
@@ -1709,6 +1720,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     c.g.position.copy(old.g.position); c.g.rotation.y = old.g.rotation.y;
     c.path = old.path; c.onArrive = old.onArrive; c.anim = old.anim; c.sit = old.sit; c.t = old.t;
     scene.remove(old.g); old.bubble.remove(); old.tagEl && old.tagEl.remove();
+    addAura(c, m.p);
     nameTag(c, m.p.name, tagOpt(m.p, av)); m.c = c;
   }
   function setCrew(list) {
@@ -1731,6 +1743,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (!m) {
         const av = avatarOf(p);
         const c = buildChar(av);
+        addAura(c, p);
         nameTag(c, p.name, tagOpt(p, av));
         m = { p, c, sig: sigOf(p, av), scene: null, slot: null, clock: 4 + Math.random() * 6, talk: 2 + Math.random() * 6 };
         crew.set(id, m);
@@ -2256,6 +2269,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     FX.forEach(f => (f.on = false));
     for (const m of crew.values()) {
       const c = m.c; stepMove(c, dt); animChar(c, dt);
+      if (c.aura) { c.aura.t += dt; const a = 0.5 + Math.sin(c.aura.t * 2.4) * 0.5; c.aura.ring.material.opacity = 0.35 + a * 0.35; c.aura.ring.scale.setScalar(1 + a * 0.12); c.aura.glow.material.opacity = 0.05 + a * 0.08; }
       c.g.visible = Math.abs(c.g.position.x - camX) < 34; place(c);
       if (m.arrived && !m.leaving) {
         const s = slotPos(m.scene, m.slot); if (s.fx) s.fx.on = true;
@@ -2329,7 +2343,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       const prev = GAME; GAME = Object.assign({}, GAME, g || {});
       const ch = k => JSON.stringify(prev[k]) !== JSON.stringify(GAME[k]);
       if (ch("seats")) syncSeats();
-      if (ch("worn") || ch("birthdays") || ch("titles") || ch("seats")) setCrew(lastList);
+      if (ch("worn") || ch("birthdays") || ch("titles") || ch("seats") || ch("hearts")) setCrew(lastList);
       if (ch("fx")) for (const m of crew.values()) if (!m.fxDone && !m.arrived && !m.leaving && !m.p.resting && !m.p.isBoss && fresh(m.p)) playEntry(m);
       syncPets();
       if (ch("birthdays")) syncParty();

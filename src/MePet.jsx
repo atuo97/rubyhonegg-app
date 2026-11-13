@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import GameTab from "./GameTab.jsx";
+import { HeartsPage } from "./Hearts36.jsx";   // v1.36 無敵8心
 import CoinShop from "./CoinShop.jsx";   // v1.33 我和寵物的「商店」改成整合後的赤心幣商店
 import { PetSprite, PET_STAGE_NAMES, PET_TYPE_NAME } from "./pets/petSprites.jsx";
 import { defaultCfg, sanitize } from "./universe/avatarCatalog.js";
@@ -44,10 +45,11 @@ export default function MePet({ user, apiGet, apiPost, todayStr, C, s, initial, 
           </>}
         </div>
       </div>
-      <div style={{ display: "flex", background: C.warm, borderRadius: 12, padding: 3, gap: 2, marginBottom: 12, overflowX: "auto" }}>{seg("avatar", "👕 造型")}{seg("pet", "🐣 寵物")}{seg("shop", "🛍 商店")}{seg("play", "🎮 小遊戲")}{seg("badge", "🏅 徽章")}</div>
+      <div style={{ display: "flex", background: C.warm, borderRadius: 12, padding: 3, gap: 2, marginBottom: 12, overflowX: "auto" }}>{seg("avatar", "👕 造型")}{seg("pet", "🐣 寵物")}{seg("shop", "🛍 商店")}{seg("play", "🎮 小遊戲")}{seg("badge", "🏅 徽章")}{seg("hearts", "💗 8心")}</div>
       {view === "avatar" && <AvatarEditor user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onOpenShop={() => nav("shop")} />}
       {view === "shop" && <CoinShop key="shop" user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
-      {view !== "avatar" && view !== "shop" && <GameTab key={view} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab={view} onNav={nav} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
+      {view === "hearts" && <HeartsPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+      {view !== "avatar" && view !== "shop" && view !== "hearts" && <GameTab key={view} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab={view} onNav={nav} onEditAvatar={() => nav("avatar")} onChanged={() => { setVer(v => v + 1); onChanged && onChanged(); }} />}
     </div>
   );
 }
