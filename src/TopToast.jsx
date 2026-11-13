@@ -11,7 +11,8 @@ export function topToast(text, kind) {
   if (!text) return;
   window.dispatchEvent(new CustomEvent("rh-top-toast", { detail: { text: String(text), kind } }));
 }
-const kindOf = t => /^✅|成功|完成|已送出|已儲存|已存|買到|好了/.test(t) ? "ok" : /失敗|錯誤|無法|不能|不足|請先|請重新|⚠️|還差/.test(t) ? "bad" : "info";
+// v1.34 部署端：必填提醒（請填…／請選…／請輸入…）也算紅色
+const kindOf = t => /^✅|成功|完成|已送出|已儲存|已存|買到|好了/.test(t) ? "ok" : /失敗|錯誤|無法|不能|不足|請先|請重新|^請(填|選|輸入|寫|拍|完整)|⚠️|還差/.test(t) ? "bad" : "info";
 
 export function Flash({ text, kind }) {
   useEffect(() => { if (text) topToast(text, kind); }, [text]);

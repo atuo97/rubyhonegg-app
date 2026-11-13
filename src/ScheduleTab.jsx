@@ -233,6 +233,8 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
         </div>
       )}
 
+      {/* v1.34 部署端：發布結果也在頂端跳提醒 */}
+      <Flash text={publishing && (publishing.done ? "✅ " + publishing.done : publishing.error)} kind={publishing && publishing.done ? "ok" : "bad"} />
       {publishing && (
         <Sheet C={C} title={publishing.busy ? "發布中…" : publishing.done ? "發布完成" : "未發布"} onClose={() => !publishing.busy && setPublishing(null)}>
           {publishing.busy && <div style={{ color:C.muted, fontSize:13 }}>正在寫入班表,請稍候</div>}
