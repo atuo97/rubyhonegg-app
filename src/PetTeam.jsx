@@ -1,5 +1,6 @@
 // v1.28 寵物隊伍（最多 5 隻跟在身後）與寵物市集
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 import { PetSprite, PET_FLAVORS, PET_TYPE_NAME } from "./pets/petSprites.jsx";
 
 const FLAVORS = ["原味", "可可", "紅玉", "抹茶", "黑糖", "芝麻"];
@@ -63,7 +64,7 @@ export function PetTeam({ user, apiGet, apiPost, C, s, balance, onChanged }) {
           {balance < d.nextPrice ? `還差 ${d.nextPrice - balance} 枚` : `花 ${d.nextPrice} 枚領養`}</button>
         <div style={{ fontSize: 11.5, color: C.light, marginTop: 6 }}>第 2～5 隻：200／300／400／500 枚。孵化時隨機開出型態，依你之後的工時長大。</div>
       </div> : <div style={{ ...s.card, fontSize: 13, color: C.muted, textAlign: "center" }}>隊伍滿 {d.max} 隻了，想養新的可以先賣掉一隻</div>}
-      {msg && <div style={{ fontSize: 13, color: /✅/.test(msg) ? C.green : C.red, textAlign: "center", margin: "4px 0 10px" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, color: /✅/.test(msg) ? C.green : C.red, textAlign: "center", margin: "4px 0 10px" }}>{msg}</div>}
       <div style={{ fontSize: 11.5, color: C.light, lineHeight: 1.7, padding: "0 4px" }}>賣回系統：蛋 30・雛形 60・嬰兒 90・兒童 130・完全體 180。至少要留 1 隻；賣掉的寵物會留在你的圖鑑和相簿。</div>
     </div>
   );
@@ -92,7 +93,7 @@ export function PetMarket({ user, apiGet, apiPost, C, s, balance, onChanged }) {
         {x.mine ? <span style={{ fontSize: 12, color: C.muted }}>我的</span> :
           <button disabled={busy || balance < x.price} onClick={() => buy(x)} style={{ ...s.btn("primary"), width: "auto", padding: "8px 12px", fontSize: 13, opacity: busy || balance < x.price ? .5 : 1 }}>{x.price} 枚</button>}
       </div>)}
-      {msg && <div style={{ fontSize: 13, color: /✅/.test(msg) ? C.green : C.red, textAlign: "center" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, color: /✅/.test(msg) ? C.green : C.red, textAlign: "center" }}>{msg}</div>}
     </div>
   );
 }

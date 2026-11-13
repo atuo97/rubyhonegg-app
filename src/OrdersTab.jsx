@@ -4,6 +4,7 @@
 // 後端:getOrders / saveOrder / setOrderStatus
 // ─────────────────────────────────────────────
 import { useEffect, useMemo, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const STATUS = ["新訂單", "製作中", "已完成", "已交付"];
 const NEXT = { "新訂單": "開始製作", "製作中": "製作完成", "已完成": "已交付客人" };
@@ -113,7 +114,7 @@ export default function OrdersTab({ user, apiGet, apiPost, locations, defaultLoc
           <button onClick={() => setView(sel && form.id ? "detail" : "list")} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontFamily: "inherit", fontSize: 14 }}>‹ 取消</button>
           <div style={{ fontSize: 15, fontWeight: 600 }}>{form.id ? "修改訂單" : "新增訂單"}</div><span style={{ width: 40 }} />
         </div>
-        {msg && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13, padding: "10px 14px" }}>{msg}</div>}
+        <Flash text={msg} />{msg && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13, padding: "10px 14px" }}>{msg}</div>}
 
         <div style={s.card}>
           <div style={{ marginBottom: 12 }}>{lbl("櫃位", 1)}
@@ -188,7 +189,7 @@ export default function OrdersTab({ user, apiGet, apiPost, locations, defaultLoc
     return (
       <div>
         <button onClick={() => { setView("list"); setMsg(""); }} style={{ background: "none", border: "none", color: C.muted, cursor: "pointer", fontFamily: "inherit", fontSize: 14, marginBottom: 8 }}>‹ 回訂單清單</button>
-        {msg && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13, padding: "10px 14px" }}>{msg}</div>}
+        <Flash text={msg} />{msg && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13, padding: "10px 14px" }}>{msg}</div>}
         <div style={s.card}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 17, fontWeight: 600 }}>{o.date.slice(5)}（{weekday(o.date)}）{o.time}</div>
@@ -241,7 +242,7 @@ export default function OrdersTab({ user, apiGet, apiPost, locations, defaultLoc
         </div>
       </div>
 
-      {err && <div style={{ ...s.card, background: C.goldBg, color: C.gold, fontSize: 13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background: C.goldBg, color: C.gold, fontSize: 13 }}>{err}</div>}
       {overdueOpen.length > 0 && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13, padding: "10px 14px" }}>有 {overdueOpen.length} 筆過期但還沒交付的訂單：{overdueOpen.map(o => o.date.slice(5) + " " + o.cname).join("、")}</div>}
 
       {loading && <div className="rh-skel" style={{ height: 90, borderRadius: 18 }} />}

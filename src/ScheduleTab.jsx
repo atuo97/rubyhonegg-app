@@ -7,6 +7,7 @@
 // v1.20:已排的班可「改時間」;對帳頁加「待確認（影響薪資）」:核准加班、確認無打卡、核准臨時支援(新工時規則,2026-12 起)。
 // ═══════════════════════════════════════════════
 import { useState, useEffect, useMemo } from "react";
+import { Flash } from "./TopToast.jsx";
 import { createPortal } from "react-dom";
 
 const WD = ["日","一","二","三","四","五","六"];
@@ -213,7 +214,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
         )}
       </div>
 
-      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
       {!b && loading && <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>載入中…</div>}
 
       {b && view === "person" && <PersonView {...{ b, ym, eff, ops, hol, wage, role, managed, locColor, assign, removeShift, retime, C, s, today }}/>}
@@ -344,7 +345,7 @@ function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, re
               </button>;
             })}
           </div>
-          {msg && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{msg}</div>}
+          <Flash text={msg} />{msg && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{msg}</div>}
         </div>
 
         <div style={{ ...s.card, padding:10 }}>
@@ -474,7 +475,7 @@ function DaySheet({ C, s, b, emp, day, mine, hol, role, managed, locColor, assig
         )}
         {elsewhere.length > 0 && <div style={{ fontSize:12, color:C.gold, marginTop:10 }}>已排在 {shortLoc(elsewhere[0].loc)},此處為同日第二個櫃位(Lv.3),時間不能重疊。</div>}
       </>}
-      {err && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{err}</div>}
     </Sheet>
   );
 }
@@ -576,7 +577,7 @@ function LocDaySheet({ C, s, b, loc, day, eff, hol, role, managed, assign, remov
           </button>
         );
       })}
-      {err && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ marginTop:10, fontSize:12.5, color:C.red, background:C.redBg, borderRadius:10, padding:"7px 10px" }}>{err}</div>}
     </Sheet>
   );
 }

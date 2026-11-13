@@ -10,6 +10,7 @@
 //   PartnerHome     合作夥伴的首頁
 // ═══════════════════════════════════════════════
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 import { createPortal } from "react-dom";
 
 const pad = n => String(n).padStart(2, "0");
@@ -54,7 +55,7 @@ function MonthNav({ C, ym, setYm }) {
     </div>
   );
 }
-const Msg = ({ C, m }) => m ? <div style={{ fontSize:12.5, marginTop:8, padding:"7px 10px", borderRadius:10, background: m.ok ? "#e8f3ea" : C.redBg, color: m.ok ? C.green : C.red }}>{m.text}</div> : null;
+const Msg = ({ C, m }) => m ? <><Flash text={m.text} kind={m.ok ? "ok" : "bad"} /><div style={{ fontSize:12.5, marginTop:8, padding:"7px 10px", borderRadius:10, background: m.ok ? "#e8f3ea" : C.redBg, color: m.ok ? C.green : C.red }}>{m.text}</div></> : null;
 const Row = ({ C, l, v, sub, color, bold }) => (
   <div style={{ display:"flex", justifyContent:"space-between", gap:8, padding:"7px 0", borderBottom:`1px solid ${C.border}`, fontSize:13 }}>
     <span style={{ color:C.muted }}>{l}{sub && <div style={{ fontSize:11, color:C.light }}>{sub}</div>}</span>
@@ -282,7 +283,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
       <OnboardCard key={ver} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s}/>
       <button onClick={() => { setForm(blank); setMsg(null); }} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 新增夥伴</button>
       <Msg C={C} m={msg}/>
-      {err && <div style={{ ...s.card, color:C.red, fontSize:13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, color:C.red, fontSize:13 }}>{err}</div>}
       <div style={s.card}>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋姓名、編號、手機" style={{ ...s.input, marginBottom:8 }}/>
         {list && list[0] && list[0].idno !== undefined && <div style={{ fontSize:11.5, color:C.muted, marginBottom:4 }}>點夥伴可以改權限、職務、負責櫃位、帳號類型</div>}

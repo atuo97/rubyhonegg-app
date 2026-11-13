@@ -3,6 +3,7 @@
 // 入口:首頁「🗳️ 夥伴投票」卡片。user.role===3 為管理員。
 // ═══════════════════════════════════════════════
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
   const isAdmin = user.role === 3;
@@ -69,7 +70,7 @@ export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
         <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>投票為記名，管理員可查看投票內容</div>
       </div>
 
-      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>⚠️ {err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>⚠️ {err}</div>}
 
       {isAdmin && !creating && (
         <button onClick={()=>setCreating(true)} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 發起新投票</button>

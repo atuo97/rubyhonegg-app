@@ -1,6 +1,7 @@
 // 請總部處理（門市回報）v1.24：機器報修、水電場地、人力支援、客訴、金流、其他
 // 全員可回報（含桃機合作夥伴、加盟店）；分隊長（自己的櫃位）以上可接手、完成；費用只有總部（Lv.3）填
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const CAT_ICON = { "機器報修":"🔧", "水電場地":"⚡", "人力支援":"👥", "客訴與客人狀況":"😟", "金流":"💰", "其他":"📝" };
 const URG_COLOR = (C, u) => u === "現在就要" ? C.red : u === "今天要處理" ? C.gold : C.muted;
@@ -91,7 +92,7 @@ function NewReport({ user, apiPost, C, s, me, locations, meta, uploadPhoto, onDo
         {meta.urg.map(u => chip(urg === u, u === "現在就要" ? "🚨 現在就要" : u, () => setUrg(u), u === "現在就要" ? C.red : u === "今天要處理" ? C.gold : C.accent))}
       </div>
       <button disabled={busy} onClick={submit} style={{ ...s.btn("primary"), opacity:busy ? .6 : 1 }}>{busy ? "送出中…" : "送出給總部"}</button>
-      {msg && <div style={{ fontSize:12.5, color:C.red, marginTop:8, textAlign:"center" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize:12.5, color:C.red, marginTop:8, textAlign:"center" }}>{msg}</div>}
       <div style={{ fontSize:11.5, color:C.light, marginTop:10, lineHeight:1.6 }}>送出後會通知總部的 LINE 群組。要叫貨（麵糊、包材、器具…）請用「叫貨」。</div>
     </div>
   );

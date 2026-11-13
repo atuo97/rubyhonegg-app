@@ -1,6 +1,7 @@
 // 麵糊用量（v1.22）：各櫃位平日／假日暫定用量（原味、其他口味）、實際平均、還夠幾天＋建議叫貨、活動按日期預估
 // Lv.2 以上；Lv.2 只看到自己負責的櫃位
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const num = v => (v === null || v === undefined || v === "" ? "" : String(v));
 const daysTxt = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
@@ -26,7 +27,7 @@ export default function BatterPage({ user, apiGet, apiPost, C, s, todayStr }) {
         {p.from} 起會自動算出實際平均，可一鍵套用。活動櫃位改成按日期填預估用量。
       </div>
       {data === null && <div className="rh-skel" style={{ height:120 }}/>}
-      {err && <div style={{ ...s.card, color:C.red, fontSize:13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, color:C.red, fontSize:13 }}>{err}</div>}
       {data && !err && list.length === 0 && <div style={{ ...s.card, color:C.muted, fontSize:13, textAlign:"center" }}>沒有可設定的櫃位</div>}
       {list.map(x => (
         <LocCard key={x.code} x={x} open={open === x.code} onToggle={() => setOpen(open === x.code ? null : x.code)}
@@ -96,7 +97,7 @@ function LocCard({ x, open, onToggle, user, apiPost, C, s, todayStr, p, onSaved 
           </div>
           {x.plan && x.plan.by && <div style={{ fontSize:11, color:C.light, marginTop:8 }}>上次修改：{x.plan.by}・{String(x.plan.at).slice(0, 16)}</div>}
           <button disabled={busy} onClick={save} style={{ ...s.btn("primary"), marginTop:10, opacity:busy ? .6 : 1 }}>{busy ? "處理中…" : "儲存用量"}</button>
-          {msg && <div style={{ fontSize:12.5, color:/失敗|錯誤|權限/.test(msg) ? C.red : C.green, marginTop:6, textAlign:"center" }}>{msg}</div>}
+          <Flash text={msg} />{msg && <div style={{ fontSize:12.5, color:/失敗|錯誤|權限/.test(msg) ? C.red : C.green, marginTop:6, textAlign:"center" }}>{msg}</div>}
         </div>
       )}
       {open && x.event && <EventDates x={x} user={user} apiPost={apiPost} C={C} s={s} todayStr={todayStr} onSaved={onSaved}/>}
@@ -146,7 +147,7 @@ function EventDates({ x, user, apiPost, C, s, todayStr, onSaved }) {
         <div><label style={s.label}>其他口味（包）</label><input type="number" inputMode="decimal" min="0" step="0.5" value={ot} onChange={e => setOt(e.target.value)} style={s.input}/></div>
       </div>
       <button disabled={busy} onClick={add} style={{ ...s.btn("primary"), marginTop:10, opacity:busy ? .6 : 1 }}>{busy ? "儲存中…" : "儲存這天的預估"}</button>
-      {msg && <div style={{ fontSize:12.5, color:/失敗|請/.test(msg) ? C.red : C.green, marginTop:6, textAlign:"center" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize:12.5, color:/失敗|請/.test(msg) ? C.red : C.green, marginTop:6, textAlign:"center" }}>{msg}</div>}
     </div>
   );
 }

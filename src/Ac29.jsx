@@ -1,5 +1,6 @@
 // v1.29 內帳（只有大隊長）：損益看板、明細、記一筆、匯入／匯出營收總表 Excel
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const fmt = n => Math.round(Number(n) || 0).toLocaleString("zh-TW");
 const PERIODS = (() => { const out = [], now = new Date(Date.now() + 8 * 3600e3); let y = now.getUTCFullYear(), m = now.getUTCMonth() + 1; m = m % 2 ? m : m - 1;
@@ -145,7 +146,7 @@ function Editor({ meta, apiPost, C, s, uploadPhoto, todayStr, init, onDone, onCa
         {!init && <button disabled={busy || !amt} onClick={() => save(true)} style={{ ...s.btn("ghost"), flex: 1.4, opacity: busy || !amt ? .5 : 1 }}>存好再記一筆</button>}
         <button disabled={busy || !amt} onClick={() => save(false)} style={{ ...s.btn("primary"), flex: 1.4, opacity: busy || !amt ? .5 : 1 }}>儲存</button>
       </div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
     </div>
   );
 }
@@ -210,7 +211,7 @@ function ImportExport({ apiGet, apiPost, C, s }) {
         <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 8, lineHeight: 1.7 }}>選營收總表格式的 Excel（例如雲端「App程式碼／內帳／內帳匯入_115年01-10月」）。日期、收支、金額、單位、備註都一樣的會當作重複，自動跳過，重複匯入也不會多算。</div>
         <label style={{ ...s.btn("ghost"), cursor: busy ? "default" : "pointer", opacity: busy ? .6 : 1 }}>📂 選擇 Excel 檔<input type="file" accept=".xlsx,.xls" disabled={busy} onChange={e => imp(e.target.files[0])} style={{ display: "none" }} /></label>
       </div>
-      {msg && <div style={{ ...s.card, fontSize: 13, color: /✅/.test(msg) ? C.green : /失敗|不對|找不到/.test(msg) ? C.red : C.text }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ ...s.card, fontSize: 13, color: /✅/.test(msg) ? C.green : /失敗|不對|找不到/.test(msg) ? C.red : C.text }}>{msg}</div>}
     </div>
   );
 }

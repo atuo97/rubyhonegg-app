@@ -2,6 +2,7 @@
 // 夥伴小店(商店街)。累計工時達門檻可開店;收入店主 80%、系統 20%。後端:spList / spOpen / spUpdate / spBuy / spGiftRead
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
 import { TryOn } from "./GameTab.jsx";   // v1.33 點商品看詳細
 
@@ -52,7 +53,7 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
         {peek && <TryOn item={{ ...peek, note: CAT_LABEL[peek.cat] + "・" + effectText(peek.effect), price: peek.cat === "gift" && !giftTo ? 0 : peek.price, where: peek.cat === "gift" && !giftTo ? "先在清單選「送給…」" : "" }}
           user={user} apiGet={apiGet} balance={d.balance} busy={busy} C={C} s={s} onClose={() => setPeek(null)}
           onBuy={async () => { const it = peek; setPeek(null); await post({ action: "spBuy", owner: shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！"); }} />}
-        {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400 }}>{toast}</div>}
+        {toast && <Flash text={toast} />}
       </div>
     );
   }
@@ -107,7 +108,7 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
             <span style={{ color: C.light }}>›</span>
           </button>))}
       </div>
-      {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400 }}>{toast}</div>}
+      {toast && <Flash text={toast} />}
     </div>
   );
 }

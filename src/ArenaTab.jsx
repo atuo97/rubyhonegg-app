@@ -2,6 +2,7 @@
 // 對戰(PvP):裝備、自動切磋、即時對戰。後端:pvMe / pvEquip / pvDuel / pvLive*
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
 import { PET_ATTR, PET_COUNTER, PET_TYPE_NAME } from "./pets/petSprites.jsx";
 
@@ -196,7 +197,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
         <div style={s.sectionTitle}>我的戰績</div>
         {d.history.map((h, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "4px 0" }}><span>{h.mode}・vs {h.vsName}</span><span style={{ color: h.win ? C.green : C.muted }}>{h.win ? "勝" : "敗"}・{h.time.slice(5, 16)}</span></div>)}
       </div>}
-      {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400 }}>{toast}</div>}
+      {toast && <Flash text={toast} />}
     </div>
   );
 }

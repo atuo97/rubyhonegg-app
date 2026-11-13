@@ -3,6 +3,7 @@
 // 分頁:總覽、商店、扭蛋、寵物、徽章、團隊。資料來源:後端 gmMe(一次拿齊),各動作 gmBuy/gmGacha/…
 // ─────────────────────────────────────────────
 import { createContext, useContext, useEffect, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
 import MiniGames from "./MiniGames.jsx";
 import { PetTeam, PetMarket } from "./PetTeam.jsx";
@@ -52,8 +53,10 @@ export function TryOn({ item, user, apiGet, pet, balance, frozen, busy, C, s, on
   } else if (f && !cfg) body = <div className="rh-skel" style={{ height: 180, borderRadius: 14 }} />;
   else body = <div style={{ textAlign: "center", fontSize: 64, padding: "10px 0" }}>{ITEM_ICON[item.cat] || "🎁"}</div>;
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,14,10,.55)", zIndex: 500, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "20px 20px 0 0", padding: "18px 16px calc(18px + env(safe-area-inset-bottom))" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(20,14,10,.55)", zIndex: 500, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
+      {/* v1.34：試穿改從畫面頂端出現（原本從底部滑出，容易沒注意到） */}
+      <style>{`@keyframes rhDropIn{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "0 0 20px 20px", padding: "calc(16px + env(safe-area-inset-top)) 16px 18px", animation: "rhDropIn .25s ease-out", boxShadow: "0 10px 30px rgba(0,0,0,.2)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
           <div><div style={{ fontSize: 17, fontWeight: 700 }}>{item.name}</div>
             <div style={{ fontSize: 12, color: TIER_COLOR[item.tier] || C.muted }}>{item.tier}・{CAT_NAME[item.cat] || item.cat}{item.note && !/^\p{Extended_Pictographic}/u.test(item.note) ? "・" + item.note : ""}</div></div>
@@ -160,11 +163,11 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {items.filter(i => i.cat === cat).map(i => (
                 <div key={i.id} onClick={() => setTryItem(i)} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 10, background: i.owned ? C.warm : C.card, cursor: "pointer" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 22 }}>{ITEM_ICON[i.cat] || "🎁"}</span><span style={{ fontSize: 10.5, color: C.accent }}>{WEAR_FIELD[i.cat] || i.cat === "petacc" ? "👀 試穿" : "看看"}</span></div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 22 }}>{ITEM_ICON[i.cat] || "🎁"}</span>{i.owned ? <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", background: C.green, borderRadius: 999, padding: "1px 8px" }}>✓ 已擁有</span> : <span style={{ fontSize: 10.5, color: C.accent }}>{WEAR_FIELD[i.cat] || i.cat === "petacc" ? "👀 試穿" : "看看"}</span>}</div>
                   <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 4 }}>{i.name}</div>
                   <div style={{ fontSize: 11, color: TIER_COLOR[i.tier] }}>{i.tier}</div>
                   <div style={{ marginTop: 8 }}>
-                    {i.owned ? <span style={{ fontSize: 12, color: C.green }}>✓ 已擁有</span>
+                    {i.owned ? <span style={{ fontSize: 11.5, color: C.accent }}>{WEAR_FIELD[i.cat] || i.cat === "petacc" ? "👀 點一下試穿・換裝" : ""}</span>
                       : <span onClick={e => e.stopPropagation()}><Btn disabled={me.balance < i.price || me.frozen} onClick={() => act({ action: "gmBuy", item: i.id }, `買到「${i.name}」了！到換裝頁穿上吧`)}><Coin n={i.price} size={12} /></Btn></span>}
                   </div>
                 </div>))}
@@ -468,7 +471,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
               <div style={{ fontSize: 13, opacity: .85, marginTop: 6 }}>{PET_ATTR[hatch.pet.type]}</div>
               <div style={{ fontSize: 12, opacity: .6, marginTop: 18 }}>點一下繼續</div></>}
       </div>}
-      {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400, maxWidth: "86%", textAlign: "center" }}>{toast}</div>}
+      {toast && <Flash text={toast} />}
     </div></GCtx.Provider>
   );
 }

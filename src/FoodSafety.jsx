@@ -1,5 +1,6 @@
 // v1.26 食安稽查：冰箱溫度、儀容勾選、稽查資料、體檢表、食安管理、SOP 教學
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 let FS_META = null;
 export function useFsMeta(apiGet) {
@@ -138,7 +139,7 @@ export function HealthPage({ user, apiGet, apiPost, C, s, compressPhoto, todaySt
           <input type="file" accept="image/*" capture="environment" onChange={e => setFile(e.target.files[0] || null)} style={{ display: "none" }} />
         </label>
         <button disabled={busy} onClick={send} style={{ ...s.btn("primary"), opacity: busy ? .6 : 1 }}>送出</button>
-        {msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
+        <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
       </div>
       {d && d.list && d.list.length > 0 && <div style={s.card}>
         <div style={s.sectionTitle}>上傳紀錄</div>
@@ -212,7 +213,7 @@ function CertEditor({ user, apiGet, apiPost, C, s, uploadPhoto }) {
       {[["plPhoto", "產品責任險保單照片"], ["paPhoto", "公共意外險保單照片"]].map(([k, l]) => <label key={k} style={{ ...s.btn("ghost"), marginBottom: 8, cursor: "pointer", color: cur[k] ? C.green : C.muted }}>
         📷 {cur[k] ? l + "（已上傳，點一下更換）" : "上傳" + l}<input type="file" accept="image/*" onChange={e => photo(k, e.target.files[0])} style={{ display: "none" }} /></label>)}
       <div style={{ display: "flex", gap: 8 }}><button onClick={() => setCur(null)} style={{ ...s.btn("ghost"), flex: 1 }}>取消</button><button disabled={busy} onClick={save} style={{ ...s.btn("primary"), flex: 2, opacity: busy ? .6 : 1 }}>儲存</button></div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
     </div>
   );
   return (
@@ -222,7 +223,7 @@ function CertEditor({ user, apiGet, apiPost, C, s, uploadPhoto }) {
       {(list || []).map(x => <button key={x.loc} onClick={() => { setMsg(""); setCur({ ...x }); }} style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, padding: "10px 2px", border: "none", borderBottom: `1px solid ${C.border}`, background: "none", cursor: "pointer", fontFamily: "inherit", color: C.text, textAlign: "left" }}>
         <span style={{ flex: 1, fontSize: 14 }}>{x.loc}<span style={{ display: "block", fontSize: 11.5, color: C.muted }}>{x.reg || x.plNo ? [x.reg && "登錄字號 ✓", x.plNo && "產品責任險 ✓", x.plExp && "到 " + x.plExp].filter(Boolean).join("・") : x.loc === "總部" ? "還沒填" : "沿用總部"}</span></span>
         <span style={{ color: C.light }}>›</span></button>)}
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: C.green }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: C.green }}>{msg}</div>}
     </div>
   );
 }
@@ -294,7 +295,7 @@ export function SopPage({ user, apiGet, apiPost, C, s, uploadPhoto }) {
       </div>)}
       <button onClick={() => setEdit(e => ({ ...e, steps: [...e.steps, { title: "", desc: "", warn: "", img: "" }] }))} style={{ ...s.btn("ghost"), marginBottom: 8 }}>＋ 加一個步驟</button>
       <div style={{ display: "flex", gap: 8 }}><button onClick={() => setEdit(null)} style={{ ...s.btn("ghost"), flex: 1 }}>取消</button><button disabled={busy || !edit.type.trim()} onClick={save} style={{ ...s.btn("primary"), flex: 2, opacity: busy ? .6 : 1 }}>儲存</button></div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: C.red }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: C.red }}>{msg}</div>}
     </div>
   );
   return (
@@ -316,7 +317,7 @@ export function SopPage({ user, apiGet, apiPost, C, s, uploadPhoto }) {
         <button onClick={() => { setMsg(""); setEdit({ type, steps: steps.map(x => ({ ...x })) }); }} style={{ ...s.btn("ghost"), flex: 1 }}>✏️ 編輯這份</button>
         <button onClick={() => { setMsg(""); setEdit({ type: "", isNew: true, steps: [{ title: "", desc: "", warn: "", img: "" }] }); }} style={{ ...s.btn("ghost"), flex: 1 }}>＋ 新增 SOP</button>
       </div>}
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: C.green }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: C.green }}>{msg}</div>}
     </div>
   );
 }

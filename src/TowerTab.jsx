@@ -3,6 +3,7 @@
 // 本週積分＝營業額 1 元 1 分＋捐獻 1 枚 100 分；每週一結算，冠軍櫃位依時數分獎勵；累積總分每 50 萬分升 1 級
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const short = l => String(l || "").replace(/^\d+/, "").replace(/^(正櫃|快閃櫃)/, "");
 
@@ -117,7 +118,7 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
           {d.lastWeek.matches.map((m, i) => <button key={i} onClick={() => setRep(m)} style={{ border: `1px solid ${C.border}`, background: C.card, borderRadius: 999, padding: "5px 10px", fontSize: 11.5, cursor: "pointer", fontFamily: "inherit", color: C.text }}>▶ {short(m.a)} vs {short(m.b)}</button>)}
         </div>}
       </div>
-      {toast && <div style={{ position: "fixed", left: "50%", bottom: 96, transform: "translateX(-50%)", background: C.text, color: "#fff", fontSize: 13, padding: "9px 16px", borderRadius: 999, zIndex: 400, maxWidth: "86%", textAlign: "center" }}>{toast}</div>}
+      {toast && <Flash text={toast} />}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 // v1.30 赤心幣新花費：我的座位、進場特效、稱號、寵物進階、裝備強化、季節扭蛋＋扭蛋券、全員大魔王、和隊長吃飯
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 import { PetSprite, PET_SKINS } from "./pets/petSprites.jsx";
 
 const TABS = [["seat", "🪑 座位"], ["fx", "✨ 進場"], ["title", "🏷️ 稱號"], ["pet", "🐾 寵物"], ["enh", "⚔️ 強化"], ["gacha", "🎰 扭蛋"], ["boss", "👹 魔王"], ["meal", "🍽️ 吃飯"]];
@@ -34,10 +35,11 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, onl
   // 一格商品：已擁有 → 換上／使用中；沒有 → 買
   const Tile = ({ i, using, onUse, extra }) => (
     <div style={{ border: `1px solid ${using ? C.accent : C.border}`, borderRadius: 14, padding: 10, background: using ? C.accentBg : i.owned ? C.warm : C.card }}>
-      <div style={{ fontSize: 22 }}>{i.note && /\p{Extended_Pictographic}/u.test(i.note) ? i.note : FX_ICON[i.id] || ICON[i.cat] || "🎁"}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}><span style={{ fontSize: 22 }}>{i.note && /\p{Extended_Pictographic}/u.test(i.note) ? i.note : FX_ICON[i.id] || ICON[i.cat] || "🎁"}</span>
+        {i.owned && <span style={{ fontSize: 10.5, fontWeight: 700, color: "#fff", background: using ? C.accent : C.green, borderRadius: 999, padding: "1px 8px" }}>{using ? "✓ 使用中" : "✓ 已擁有"}</span>}</div>
       <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 4 }}>{i.name}</div>
       <div style={{ fontSize: 11, color: TIER[i.tier] }}>{i.tier}{extra ? " · " + extra : ""}</div>
-      <div style={{ marginTop: 8 }}>{i.owned ? (using ? <span style={{ fontSize: 12, color: C.accent, fontWeight: 600 }}>✓ 使用中</span> : onUse ? <button disabled={busy} onClick={onUse} style={small("secondary")}>換上</button> : <span style={{ fontSize: 12, color: C.green }}>✓ 已擁有</span>) : i.where === "工時" ? <span style={{ fontSize: 12, color: C.muted }}>累計 {i.need} 小時解鎖</span> : buyBtn(i)}</div>
+      <div style={{ marginTop: 8 }}>{i.owned ? (using ? null : onUse ? <button disabled={busy} onClick={onUse} style={small("secondary")}>換上</button> : null) : i.where === "工時" ? <span style={{ fontSize: 12, color: C.muted }}>累計 {i.need} 小時解鎖</span> : buyBtn(i)}</div>
     </div>);
   const Grid = ({ children }) => <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>{children}</div>;
   const Head = ({ t, sub }) => <div style={{ marginBottom: 10 }}><div style={{ fontSize: 15, fontWeight: 700 }}>{t}</div>{sub && <div style={{ fontSize: 12, color: C.muted, marginTop: 2, lineHeight: 1.6 }}>{sub}</div>}</div>;
@@ -99,10 +101,11 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, onl
   const Pet = () => <>
     <div style={s.card}>
       <Head t="寵物特殊顏色" sub="買一次，可以套在自己任何一隻寵物上，也可以隨時換回原本的顏色。" />
-      <Grid>{it("petskin").map(i => <div key={i.id} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 10, background: i.owned ? C.warm : C.card, textAlign: "center" }}>
+      <Grid>{it("petskin").map(i => <div key={i.id} style={{ border: `1px solid ${C.border}`, borderRadius: 14, padding: 10, background: i.owned ? C.warm : C.card, textAlign: "center", position: "relative" }}>
+        {i.owned && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10.5, fontWeight: 700, color: "#fff", background: C.green, borderRadius: 999, padding: "1px 8px" }}>✓ 已擁有</span>}
         <PetSprite type="trex" stage={4} flavor={i.note} size={52} />
         <div style={{ fontSize: 13.5, fontWeight: 600 }}>{i.name}</div><div style={{ fontSize: 11, color: TIER[i.tier] }}>{i.tier}</div>
-        <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>{i.owned ? <span style={{ fontSize: 12, color: C.green }}>✓ 已擁有</span> : buyBtn(i)}</div>
+        <div style={{ marginTop: 8, display: "flex", justifyContent: "center" }}>{i.owned ? null : buyBtn(i)}</div>
       </div>)}</Grid>
     </div>
     {d.pets.length > 0 && <div style={s.card}>
@@ -251,7 +254,7 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, onl
       {!only && <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 8, marginBottom: 4, scrollbarWidth: "none" }}>
         {TABS.map(([k, l]) => <button key={k} onClick={() => { setTab(k); setMsg(""); setGres(null); }} style={chip(tab === k)}>{l}</button>)}
       </div>}
-      {msg && <div style={{ ...s.card, padding: "10px 14px", fontSize: 13, color: /^✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ ...s.card, padding: "10px 14px", fontSize: 13, color: /^✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
       {body()}
     </div>
   );

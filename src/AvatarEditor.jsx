@@ -4,6 +4,7 @@
 // 存檔後,宇宙辦公室裡的小人就會換成這個造型。
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
+import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
 import {
   SKINS, HAIR_STYLES, HAIR_COLORS, TOPS, PANTS, FACES, HATS, MASCOTS, ACCS, OUTFITS, FRAMES,
@@ -166,7 +167,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
         <div style={{ fontSize: 12.5, color: C.muted, marginTop: 6 }}>這就是你在宇宙辦公室裡的樣子</div>
       </div>
 
-      {msg && <div style={{ ...s.card, background: C.goldBg, fontSize: 12.5, color: C.gold, padding: "10px 14px" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ ...s.card, background: C.goldBg, fontSize: 12.5, color: C.gold, padding: "10px 14px" }}>{msg}</div>}
 
       <div style={s.card}>
         <div style={s.sectionTitle}>頭頂的一句話</div>

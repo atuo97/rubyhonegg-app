@@ -1,5 +1,6 @@
 // v1.28 行事曆：公司「紅玉滿行事曆」（全員看，Lv.3 以上編輯）＋大隊長個人行事曆（只有大隊長看得到），與 Google 日曆雙向同步
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const CAT_COLOR = { "進撤櫃": "#b9381c", "快閃": "#d68a1a", "活動": "#3f7d4e", "會議": "#3d5a80", "其他": "#8a7e72" };
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
@@ -48,7 +49,7 @@ export function CalendarPage({ user, apiGet, apiPost, C, s, todayStr }) {
         <button onClick={() => setEdit(null)} style={{ ...s.btn("ghost"), flex: 1 }}>取消</button>
         <button disabled={busy || !edit.title.trim() || !edit.date} onClick={save} style={{ ...s.btn("primary"), flex: 2, opacity: busy || !edit.title.trim() ? .5 : 1 }}>儲存</button>
       </div>
-      {msg && <div style={{ fontSize: 13, marginTop: 8, color: C.red }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, marginTop: 8, color: C.red }}>{msg}</div>}
     </div>
   );
   const list = (d ? d.data : []).filter(x => show === "all" || x.src === show || x.cat === show);
@@ -87,7 +88,7 @@ export function CalendarPage({ user, apiGet, apiPost, C, s, todayStr }) {
         </div>;
       })}
       <div style={{ fontSize: 11.5, color: C.light, textAlign: "center", margin: "6px 0 12px" }}>和 Google 日曆「紅玉滿行事曆」同步；在 Google 日曆上改，這裡也會跟著變</div>
-      {msg && <div style={{ fontSize: 13, color: C.green, textAlign: "center" }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ fontSize: 13, color: C.green, textAlign: "center" }}>{msg}</div>}
     </div>
   );
 }

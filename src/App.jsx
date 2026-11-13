@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
+import { Flash, TopToastHost } from "./TopToast.jsx";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
 import VotesTab from "./VotesTab.jsx";
 import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
@@ -461,7 +462,7 @@ function PetGreeting({ user, game }) {
   }, [game.me, user]);
   if (!g) return null;
   return (
-    <div onClick={() => setG(null)} style={{ position:"fixed", left:"50%", bottom:"calc(96px + env(safe-area-inset-bottom))", transform:"translateX(-50%)", zIndex:450, display:"flex", alignItems:"center", gap:10, background:"#fffaf2", border:`1px solid ${C.border}`, borderRadius:18, padding:"8px 14px 8px 8px", boxShadow:"0 8px 24px rgba(0,0,0,.15)", maxWidth:"90%" }}>
+    <div onClick={() => setG(null)} style={{ position:"fixed", left:"50%", top:"calc(env(safe-area-inset-top) + 12px)", transform:"translateX(-50%)", zIndex:1900, display:"flex", alignItems:"center", gap:10, background:"#fffaf2", border:`1px solid ${C.border}`, borderRadius:18, padding:"8px 14px 8px 8px", boxShadow:"0 8px 24px rgba(0,0,0,.15)", maxWidth:"90%" }}>
       <style>{`@keyframes rhWob{0%,100%{transform:rotate(0)}25%{transform:rotate(-10deg)}75%{transform:rotate(10deg)}}`}</style>
       <div style={{ animation:"rhWob .6s 3" }}><PetSprite type={g.pet.type} stage={g.pet.stage} flavor={g.pet.flavor} size={56} /></div>
       <div><div style={{ fontSize:11.5, color:C.muted }}>{g.pet.name}</div><div style={{ fontSize:14.5, fontWeight:600, color:C.text }}>{g.txt}</div></div>
@@ -725,6 +726,7 @@ export default function App(){
   return (
     <div style={s.app}>
       <GlobalStyle/>
+      <TopToastHost C={C} />
       <PetGreeting user={user} game={game} />
       <EntryFxOnPunch apiGet={apiGet} />
       {!online && <OfflineBar/>}
@@ -1049,7 +1051,7 @@ function LoginScreen({ onLogin, notice }) {
             </div>
           </div>
           <div style={{ fontSize:11.5, color:C.muted, lineHeight:1.6, marginBottom:16 }}>🔐 登入後手機問「要儲存密碼嗎？」請按「儲存」，下次用 Face ID 或指紋就能自動帶入。這支手機會記住登入 30 天，常用就不會被登出。</div>
-          {err && <div style={{ color:C.red, fontSize:12.5, textAlign:"center", marginBottom:12 }}>{err}</div>}
+          <Flash text={err} />{err && <div style={{ color:C.red, fontSize:12.5, textAlign:"center", marginBottom:12 }}>{err}</div>}
           <button onClick={handleLogin} disabled={loading}
             style={{ ...s.btn("primary"), opacity:loading?.7:1 }}>
             {loading ? "驗證中…" : "登入"}
@@ -1388,11 +1390,11 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
       <TimeHeader sub={inSegment ? <>目前上班中：{activeSeg.location}</> : null} />
       <SopCard type="開店" />
 
-      {msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
+      <Flash text={msg} />{msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.greenBg, border:`1px solid ${C.green}44` }}>
         <div style={{ fontSize:13, color:C.green, fontWeight:700 }}>{msg}</div>
       </div>}
-      {err && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
+      <Flash text={err} />{err && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.redBg, border:`1px solid ${C.red}44` }}>
         <div style={{ fontSize:13, color:C.red }}>{err}</div>
       </div>}
@@ -1640,11 +1642,11 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       <TimeHeader sub={activeSeg ? <>準備下班：{activeSeg.location}{getVenue(user.id, activeSeg.location) ? `（${getVenue(user.id, activeSeg.location)}）` : ""}</> : null} />
       {activeSeg && <SopCard type="收店" />}
 
-      {msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
+      <Flash text={msg} />{msg && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.greenBg, border:`1px solid ${C.green}44` }}>
         <div style={{ fontSize:13, color:C.green, fontWeight:700 }}>{msg}</div>
       </div>}
-      {err && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
+      <Flash text={err} />{err && <div style={{ ...s.card, padding:"10px 14px", marginBottom:12,
                              background:C.redBg, border:`1px solid ${C.red}44` }}>
         <div style={{ fontSize:13, color:C.red }}>{err}</div>
       </div>}
@@ -1974,7 +1976,7 @@ function SalaryToDateCard({ user }) {
         <div style={s.sectionTitle}>本月薪資概況{d && d.asOf ? ` · 至 ${md(d.asOf)}` : ""}</div>
         <button onClick={toggleHide} aria-label={hide ? "顯示金額" : "隱藏金額"} style={{ border:"none", background:"transparent", fontSize:12, color:C.muted, cursor:"pointer", fontFamily:"inherit" }}>{hide ? "👁 顯示" : "🙈 隱藏"}</button>
       </div>
-      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>{err}</div>}
       {!d && !err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>計算中…</div>}
       {d && (
         <div>
@@ -2088,7 +2090,7 @@ function ViewAsCard({ onStart }) {
         <div style={{ fontSize:13, fontWeight:600, margin:"18px 0 6px" }}>夥伴視角</div>
         <div style={{ fontSize:11.5, color:C.muted, marginBottom:8 }}>選一位夥伴，看他實際看到的首頁、班表、薪資概況</div>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋姓名、職務或櫃位" style={{ ...s.input, marginBottom:8 }}/>
-        {err && <div style={{ fontSize:12.5, color:C.red, marginBottom:8 }}>{err}</div>}
+        <Flash text={err} />{err && <div style={{ fontSize:12.5, color:C.red, marginBottom:8 }}>{err}</div>}
         {people === null && <div className="rh-skel" style={{ height:60 }}/>}
         <div style={{ maxHeight:300, overflowY:"auto" }}>
           {list.map(p => (
@@ -2151,7 +2153,7 @@ function ChangePasswordCard({ user, onChanged, force }) {
   return (
     <div style={s.card}>
       <div style={s.sectionTitle}>帳號安全</div>
-      {ok && <div style={{ fontSize:13, color:C.green, fontWeight:700, marginBottom:10 }}>{ok}</div>}
+      <Flash text={ok} />{ok && <div style={{ fontSize:13, color:C.green, fontWeight:700, marginBottom:10 }}>{ok}</div>}
       {!open ? (
         <button onClick={()=>{ setOpen(true); setOk(""); }} style={s.btn("ghost")}>🔒 修改密碼</button>
       ) : (
@@ -2162,7 +2164,7 @@ function ChangePasswordCard({ user, onChanged, force }) {
           <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, color:C.muted, marginBottom:12 }}>
             <input type="checkbox" checked={show} onChange={e=>setShow(e.target.checked)}/> 顯示密碼
           </label>
-          {err && <div style={{ fontSize:13, color:C.red, marginBottom:10 }}>⚠️ {err}</div>}
+          <Flash text={err} />{err && <div style={{ fontSize:13, color:C.red, marginBottom:10 }}>⚠️ {err}</div>}
           <div style={{ display:"flex", gap:8 }}>
             {!force && <button onClick={()=>{ setOpen(false); setErr(""); setOldPw(""); setNewPw(""); setNewPw2(""); }}
               style={{ ...s.btn("ghost"), flex:1 }}>取消</button>}
@@ -2326,7 +2328,7 @@ function AdminTab({ user, onOpenBatter }) {
         {d && <div style={{ fontSize:12, color:C.muted }}>上月同期 {fmt(d.totalPrev)} &nbsp;<Pct v={d.totalPct}/></div>}
       </div>
 
-      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
 
       {d && d.today.length>0 && (
         <div style={s.card}>
@@ -2419,7 +2421,7 @@ function DailyReportPanel({ user }) {
         </div>
       </div>
       {!d && !err && <div className="rh-skel" style={{ height:80 }}/>}
-      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
       {d && <>
         <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:6, textAlign:"center", marginBottom:10 }}>
           {[["營業額", fmt(d.total.rev)], ["工時", d.total.hours + "h"], ["每小時產值", fmt(d.perHour)], ["訂單", d.total.orders]].map(x =>
@@ -2507,7 +2509,7 @@ function BatterStockPanel({ user, onOpen }) {
       </div>
       <div style={{ fontSize:11.5, color:C.muted, marginBottom:10 }}>依各店最近一次收店盤點；「還夠」依各櫃位平日／假日用量推算</div>
       {list === null && <div className="rh-skel" style={{ height:70 }}/>}
-      {err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:8 }}>{err}</div>}
       {list && !err && list.length === 0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無收店盤點資料</div>}
       {list && list.length > 0 && (
         <div style={{ display:"grid", gridTemplateColumns:"1fr repeat(6, 32px)", columnGap:3, rowGap:0, alignItems:"center" }}>
@@ -2709,7 +2711,7 @@ function ScheduleManagerTab({ user }) {
         ＋ 新增排班
       </button>
 
-      {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:13 }}>{err}</div>}
       {loading && <div style={{ textAlign:"center", color:C.muted, fontSize:13, padding:10 }}>載入中…</div>}
 
       {dates.map(d => (
@@ -2817,7 +2819,7 @@ function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved
           </button>
         </div>
 
-        {err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:12, padding:"8px 12px" }}>{err}</div>}
+        <Flash text={err} />{err && <div style={{ ...s.card, background:C.redBg, color:C.red, fontSize:12, padding:"8px 12px" }}>{err}</div>}
 
         <div style={{ display:"flex", gap:10 }}>
           <button onClick={onClose} style={{ ...s.btn("ghost"), flex:1 }}>取消</button>

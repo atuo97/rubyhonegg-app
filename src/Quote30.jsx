@@ -1,5 +1,6 @@
 // v1.30 報價單（Lv.3 以上）：打開雲端「紅玉滿赤心員工系統／報價單」裡的報價系統網頁，存到雲端（Word＋PDF）、報價紀錄
 import { useState, useEffect, useRef } from "react";
+import { Flash } from "./TopToast.jsx";
 
 let PAGE_CACHE = null;   // 同一次開 App 只下載一次網頁
 
@@ -66,7 +67,7 @@ export function QuotePage({ user, apiGet, apiPost, C, s }) {
         <button onClick={() => setTab("make")} style={chip(tab === "make")}>📝 製作報價單</button>
         <button onClick={() => { setTab("list"); loadList(); }} style={chip(tab === "list")}>📂 報價紀錄{list && list.data ? ` ${list.data.length}` : ""}</button>
       </div>
-      {msg && <div style={{ ...s.card, padding: "10px 14px", fontSize: 13, color: C.text, background: C.goldBg }}>{msg}</div>}
+      <Flash text={msg} />{msg && <div style={{ ...s.card, padding: "10px 14px", fontSize: 13, color: C.text, background: C.goldBg }}>{msg}</div>}
 
       <div style={{ display: tab === "make" ? "block" : "none" }}>
         {err ? <div style={{ ...s.card, color: C.red, fontSize: 13.5, lineHeight: 1.7 }}>{err}<br /><button onClick={() => loadPage(true)} style={{ ...s.btn("secondary"), marginTop: 10 }}>重新讀取</button></div>

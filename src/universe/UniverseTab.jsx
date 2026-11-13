@@ -4,6 +4,7 @@
 // v1.17:寵物、徽章、生日派對、冠軍旗＋煙火、天氣、節日、基金解鎖家具、夥伴互動
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
+import { Flash } from "../TopToast.jsx";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
 
@@ -452,7 +453,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         </div>
       )}
 
-      {err && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13 }}>{err}</div>}
+      <Flash text={err} />{err && <div style={{ ...s.card, background: C.redBg, color: C.red, fontSize: 13 }}>{err}</div>}
 
       <div style={s.card}>
         <div style={s.sectionTitle}>{demo ? "示範名單" : "目前在班"}（{shown.length} 人）</div>

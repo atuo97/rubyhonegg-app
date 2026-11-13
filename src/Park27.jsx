@@ -1,5 +1,6 @@
 // v1.27 樂園「赤心幣規則」、加倍活動管理、「關於紅玉滿」品牌頁、登入頁標語
 import { useState, useEffect } from "react";
+import { Flash } from "./TopToast.jsx";
 
 const short = l => String(l || "").replace(/^\d+/, "");
 
@@ -92,7 +93,7 @@ export function BoostAdmin({ user, apiGet, apiPost, C, s, locations, todayStr })
           <select value={f.mult} onChange={e => setF({ ...f, mult: e.target.value })} style={{ ...s.input, flex: 1 }}>{["1.2", "1.5", "2", "3"].map(m => <option key={m} value={m}>×{m}</option>)}</select>
         </div>
         <button onClick={save} disabled={!f.name.trim()} style={{ ...s.btn("primary"), opacity: f.name.trim() ? 1 : .5 }}>新增</button>
-        {msg && <div style={{ fontSize: 12.5, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
+        <Flash text={msg} />{msg && <div style={{ fontSize: 12.5, marginTop: 8, color: /✅/.test(msg) ? C.green : C.red }}>{msg}</div>}
       </div>
       <div style={s.card}>
         <div style={s.sectionTitle}>所有加倍活動</div>
