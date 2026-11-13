@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from "react";
 import { Flash } from "../TopToast.jsx";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
+import { HeartDots } from "../Hearts36.jsx";
+import { bgm, BgmAsk } from "../Bgm36.jsx";
 
 const CSS = `
 .uo-wrap{position:relative;border-radius:16px;overflow:hidden;background:#1d1b2e}
@@ -77,12 +79,14 @@ const QUICK_DEFAULT = ["原味麵糊", "口味麵糊", "紙袋", "紙盒", "竹�
 const batter2 = rem => { if (!rem) return null; let o = 0, any = false; Object.keys(rem).forEach(k => { if (k !== "原味" && rem[k] != null) { o += +rem[k] || 0; any = true; } }); return { 原味: rem["原味"] == null ? null : rem["原味"], 其他口味: any ? Math.round(o * 100) / 100 : null }; };
 const fcLow = f => !!(f && f.days !== null && f.days !== undefined && f.days < 2);
 const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
-export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials }) {
+export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials, onOpenHearts }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
   const [full, setFull] = useState(false);          // v1.21 全螢幕
   const [picked, setPicked] = useState(null);       // v1.21 點人拉近 → 名片
+  const bdayMusic = useRef(false);
+  useEffect(() => () => { if (bdayMusic.current) bgm.pop("birthday"); }, []);
   const [locNo, setLocNo] = useState({});           // 場景 → 〈櫃位設定〉編號(分頁排序用)
   // v1.20:分頁只顯示營運中的門市(依〈櫃位設定〉狀態);辦公室、工廠、商店街一直都在
   const [openScenes, setOpenScenes] = useState(null);
@@ -201,10 +205,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     if (!(r && r.success) || !engine.current) return;
     const d = r.data || {}, today = todayStr();
     setGame(d);
+    // v1.36 有人生日 → 背景音樂換成生日派對
+    if ((d.birthdays || []).length && !bdayMusic.current) { bdayMusic.current = true; bgm.push("birthday"); }
     // v1.19:互動動態＋寵物動態(孵化、交換、收進圖鑑)合併,依時間排序
     setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
-    engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
+    engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, hearts: d.hearts || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
     // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
     const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);
@@ -311,6 +317,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   return (
     <div>
       <style>{CSS}</style>
+      <BgmAsk C={C} s={s} />
       <div style={{ ...s.card, padding: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ fontWeight: 600, fontSize: 15 }}>紅玉滿宇宙辦公室 <span style={{ fontSize: 10, color: C.gold, fontWeight: 600 }}>測試版</span></div>
@@ -355,6 +362,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
                     {SCENES[sceneOf(pk.location)].icon} {pk.isBoss ? "辦公室" : pk.resting ? "休息中" : shortLoc(pk.location)}{pk.inTime ? ` · ${timeOf(pk.inTime)} 上班` : ""}
                   </div>
                   {game && game.pets && game.pets[pk.id] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>🐾 寵物：{game.pets[pk.id].name || "（未命名）"}</div>}
+                  {game && game.hearts && game.hearts[pk.id] && <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, cursor: onOpenHearts ? "pointer" : "default" }} onClick={() => onOpenHearts && onOpenHearts(pk.id)}><HeartDots lv={game.hearts[pk.id].lv} size={11} /><span style={{ fontSize: 10.5, color: "#b0466a" }}>{game.hearts[pk.id].n === 8 ? (game.hearts[pk.id].g === 8 ? "傳說・無敵8心" : "無敵8心") : `${game.hearts[pk.id].n}／8 心`}</span></div>}
                 </div>
                 {game && game.pets && game.pets[pk.id] && <PetSprite type={game.pets[pk.id].type} stage={game.pets[pk.id].stage} flavor={game.pets[pk.id].flavor} acc={game.pets[pk.id].acc} size={40} />}
                 <button onClick={() => engine.current && engine.current.resetView()} style={{ border: "none", background: "transparent", fontSize: 18, color: "#9a8a7c", cursor: "pointer", padding: 4 }}>✕</button>
