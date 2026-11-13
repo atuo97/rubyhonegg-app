@@ -8,14 +8,47 @@ import { spriteCanvas } from "./pets/petSprites.jsx";
 
 const FL = [["原味", "#f3c66b"], ["可可", "#7b4a2e"], ["紅玉", "#d9534f"], ["抹茶", "#8bbf6a"]];
 const PETC = { "原味": "#f3c66b", "可可": "#7b4a2e", "紅玉": "#d9534f", "抹茶": "#8bbf6a" };
-const ICON = { catch: "🧺", memory: "🃏", breakout: "🧱", oven: "🔥", runner: "🏃" };
+const ICON = { catch: "🧺", memory: "🃏", breakout: "🧱", oven: "🔥", runner: "🏃", match: "🧇", stack: "🍰", batter1: "⚔️", batter2: "⚔️", batter3: "⚔️" };
+// v1.38 樂園新遊戲：獨立的網頁遊戲（public/games），用全螢幕 iframe 開，結束時用 postMessage 把分數交回來
+const EXT = {
+  match: { file: "match", url: g => `lv=${Math.min(200, (g.best || 0) + 1)}` },
+  stack: { file: "stack", url: () => "" },
+  batter1: { file: "batter", url: () => "m=1", bgm: "battle" },
+  batter2: { file: "batter", url: () => "m=2", bgm: "battle" },
+  batter3: { file: "batter", url: () => "m=3", bgm: "battle" },
+};
+const GV = 38;   // 遊戲檔版本（改遊戲檔時加 1，避免手機用到舊的快取）
+function ExtGame({ id, g, onEnd, onClose }) {
+  const ref = useRef(null), ended = useRef(false);
+  useEffect(() => {
+    const h = e => {
+      const d = e.data; if (!d || d.rh !== "game" || !ref.current || e.source !== ref.current.contentWindow) return;
+      if (d.type === "end" && !ended.current) { ended.current = true; onEnd(Math.max(0, Math.round(Number(d.score) || 0)), d.meta || {}); }
+      if (d.type === "close") onClose();
+    };
+    window.addEventListener("message", h);
+    const bgm = EXT[id].bgm && window.rhBgm; if (bgm) try { window.rhBgm.push(EXT[id].bgm); } catch (e) {}
+    const ov = document.body.style.overflow; document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("message", h); if (bgm) try { window.rhBgm.pop(EXT[id].bgm); } catch (e) {} document.body.style.overflow = ov; };
+  }, []);
+  const q = EXT[id].url(g);
+  return <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#2b1a12" }}>
+    <iframe ref={ref} title={g.name} src={`/games/${EXT[id].file}.html?embed=1${q ? "&" + q : ""}&v=${GV}`} style={{ width: "100%", height: "100%", border: 0, display: "block" }} allow="autoplay; fullscreen" />
+  </div>;
+}
 const DESC = {
   catch: "左右拖動籃子，接住掉下來的雞蛋糕，金色加倍、燒焦的扣命",
   memory: "翻開兩張相同的牌就配對成功，越快、失誤越少分數越高",
   breakout: "寵物當球，用板子接住它，把麵糊磚塊全部打掉；金磚會讓板子變長",
   oven: "選口味倒麵糊 → 變黃時翻面 → 熟了收進托盤，湊齊客人的訂單就出餐",
   runner: "點畫面跳躍（可二段跳），躲過紙箱和烤爐，沿路收集赤心幣",
+  match: "交換相鄰的雞蛋糕連成 3 顆出爐；連 4 顆變烤槍、L 型變糖粉彈、連 5 顆叫出小暴龍。完成客人訂單就過關，一關一關往上挑戰",
+  stack: "掉下來的雞蛋糕排滿一排就出爐裝盒；小心底下冒出的燒焦塊，小暴龍集滿氣可以吃掉 2 排",
+  batter1: "第一人稱 3D！用麵糊水槍把燒焦怪黏回雞蛋糕，守住烤爐 90 秒",
+  batter2: "100 秒內把雞蛋糕送給 14 位客人，被燒焦怪撞到會掉盒子",
+  batter3: "四台烤爐輪流過熱，按住降溫救回 10 台，燒焦 3 台就失敗",
 };
+const CH_GAME = id => (/^batter/.test(id) ? "batter" : id);
 
 // v1.19:改用寵物像素圖(型態、階段、口味都跟寵物頁一樣)。x,y 是中心,s 是大小
 function drawPet(g, x, y, s, pet, t = 0) {
@@ -232,6 +265,39 @@ function Runner({ pet, lives0, onEnd, pr }) {
 const GAMES = { catch: Catch, memory: Memory, breakout: Breakout, oven: Oven, runner: Runner };
 const BASE_LIVES = { catch: 3, breakout: 3, runner: 1, oven: 0, memory: 0 };
 
+// v1.38 一次性挑戰：完成打勾，沒完成顯示獎勵
+function Chips({ list, C }) {
+  if (!list.length) return null;
+  return <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 8 }}>
+    {list.map(c => <span key={c.id} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 10, background: c.done ? "#e8f6ec" : "#fff3e0", color: c.done ? "#27ae60" : C.text || "#5a4636", textDecoration: c.done ? "line-through" : "none" }}>
+      {c.done ? "✓ " : "🏆 "}{c.name.replace(/^[^・]+・/, "")}{!c.done ? `${c.coins + (c.badgeCoins || 0) ? " +" + (c.coins + (c.badgeCoins || 0)) : ""}${c.tix ? " 🎰" + c.tix : ""}${c.badge ? " " + c.badge : ""}` : ""}
+    </span>)}
+  </div>;
+}
+// v1.38 麵糊大作戰：三個任務放同一張卡
+function BatterCard({ games, ch, start, C, s }) {
+  const g0 = games[0], ok = g0.unlocked;
+  return <div style={{ ...s.card, opacity: ok ? 1 : .6, background: ok ? "linear-gradient(135deg,#fff8ee,#ffe9d6)" : undefined }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <span style={{ fontSize: 30 }}>{ok ? "⚔️" : "🔒"}</span>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 14.5, fontWeight: 600 }}>麵糊大作戰 <span style={{ fontSize: 11, color: C.accent }}>3D</span></div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>{ok ? "第一人稱射擊！用麵糊水槍把燒焦怪黏回雞蛋糕，小暴龍會幫忙" : `寵物長到第 ${g0.stage} 階段解鎖`}</div>
+      </div>
+    </div>
+    {ok && games.map(g => <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px dashed #ead9c4" }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{g.name.replace("麵糊大作戰・", "")}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{DESC[g.id]}</div>
+        <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>個人最佳 {g.best}{g.top.length ? "・本週第一：" + g.top[0].name + " " + g.top[0].score : ""}</div>
+        <Chips list={ch.filter(c => c.game === g.id)} C={C} />
+      </div>
+      <button onClick={() => start(g.id)} style={{ ...s.btn("primary"), width: "auto", padding: "8px 14px", fontSize: 13 }}>開始</button>
+    </div>)}
+    {ok && <Chips list={ch.filter(c => c.game === "batter*")} C={C} />}
+  </div>;
+}
+
 export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
@@ -240,7 +306,7 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
   const [paused, setPaused] = useState(false);   // 暫停（店裡有客人時用）
   const pr = useRef(false); pr.current = paused;
   useEffect(() => {   // 切到別的 App 或關螢幕：自動暫停
-    if (!play) return;
+    if (!play || EXT[play.id]) return;
     const h = e => { if (document.hidden || e.type === "blur") setPaused(true); };
     document.addEventListener("visibilitychange", h); window.addEventListener("blur", h);
     return () => { document.removeEventListener("visibilitychange", h); window.removeEventListener("blur", h); };
@@ -251,8 +317,18 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
     const h = +new Date().toLocaleString("en-GB", { timeZone: "Asia/Taipei", hour: "2-digit", hour12: false });
     if (h >= 10 && h < 21 && !window.confirm("現在可能是上班時間，確定要玩嗎？工作優先喔！")) return;
     const r = await apiPost({ action: "gmGameStart", empId: user.id, game: id }, 0);
-    if (r && r.success) { setResult(null); setPaused(false); setPlay({ id, extra: r.data.extra }); } else alert((r && r.error) || "無法開始");
+    if (r && r.success) { setResult(null); setPaused(false); pend.current = null; pend.closed = false; setPlay({ id, extra: r.data.extra }); } else alert((r && r.error) || "無法開始");
   };
+  const pend = useRef(null);
+  const endExt = async (score, meta) => {   // 網頁遊戲結束：先送分數，等玩家按「回樂園」再顯示結果
+    const id = play.id;
+    pend.current = { id, score, meta, wait: true };
+    const r = await apiPost({ action: "gmGameScore", empId: user.id, game: id, score, meta }, 0);
+    pend.current = { id, score, meta, ...(r && r.success ? r.data : { error: (r && r.error) || "分數上傳失敗" }) };
+    if (pend.closed) showPend();
+  };
+  const showPend = () => { if (pend.current && !pend.current.wait) { setResult(pend.current); pend.current = null; load(); onChanged && onChanged(); } };
+  const closeExt = () => { setPlay(null); pend.closed = true; if (pend.current) showPend(); else load(); };
   const end = async score => {
     const id = play.id;
     const r = await apiPost({ action: "gmGameScore", empId: user.id, game: id, score }, 0);
@@ -261,7 +337,8 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
   };
   if (err) return <div style={{ ...s.card, textAlign: "center", color: C.muted }}>{err}</div>;
   if (!d) return <div className="rh-skel" style={{ height: 160, borderRadius: 18 }} />;
-  if (!d.pet) return <div style={{ ...s.card, textAlign: "center", color: C.muted, fontSize: 13.5, lineHeight: 1.7 }}>先到「寵物」免費領養一顆寵物蛋，就能解鎖小遊戲！<br />寵物越長越大，會依序解鎖 5 款遊戲。</div>;
+  if (!d.pet) return <div style={{ ...s.card, textAlign: "center", color: C.muted, fontSize: 13.5, lineHeight: 1.7 }}>先到「寵物」免費領養一顆寵物蛋，就能解鎖小遊戲！<br />寵物越長越大，會依序解鎖更多遊戲。</div>;
+  if (play && EXT[play.id]) return <ExtGame id={play.id} g={d.games.find(x => x.id === play.id)} onEnd={endExt} onClose={closeExt} />;
   if (play) {
     const G = GAMES[play.id], g = d.games.find(x => x.id === play.id);
     return <div style={s.card}>
@@ -288,15 +365,19 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
     <div>
       {result && <div style={{ ...s.card, textAlign: "center", background: result.newRecord ? "#fff6e8" : C.card }}>
         <div style={{ fontSize: 13, color: C.muted }}>{d.games.find(x => x.id === result.id).name}</div>
-        <div style={{ fontSize: 34, fontWeight: 600 }}>{result.score}</div>
+        <div style={{ fontSize: 34, fontWeight: 600 }}>{result.id === "match" ? (result.meta && result.meta.win ? `第 ${result.meta.level} 關過關` : "這關沒過，再試一次！") : result.score}</div>
+        {result.id === "match" && result.meta && result.meta.win ? <div style={{ fontSize: 12.5, color: C.muted }}>{"⭐".repeat(result.meta.stars || 0)}　{result.meta.points} 分</div> : null}
+        {result.challenges && result.challenges.length ? <div style={{ margin: "8px 0", padding: "8px 10px", borderRadius: 12, background: "#fff6e8", fontSize: 13, lineHeight: 1.7 }}>
+          {result.challenges.map(c => <div key={c.id}>🏆 挑戰達成：<b>{c.name}</b>{c.coins ? <> <Coin n={c.coins} plus size={12} /></> : null}{c.tix ? `　🎰 扭蛋券 ×${c.tix}` : ""}{c.badge ? `　${c.badge}` : ""}</div>)}
+        </div> : null}
         {result.error ? <div style={{ fontSize: 12.5, color: C.red }}>{result.error}</div> :
           <div style={{ fontSize: 13, color: result.newRecord ? C.accent : C.muted }}>{result.newRecord ? <>🎉 新紀錄！{result.reward ? <Coin n={result.reward} plus size={12} /> : "（今天的赤心幣已達上限）"}</> : `個人最佳 ${result.best}`}</div>}
-        <button onClick={() => start(result.id)} style={{ ...s.btn("primary"), marginTop: 10 }}>再玩一次</button>
+        <button onClick={() => start(result.id)} style={{ ...s.btn("primary"), marginTop: 10 }}>{result.id === "match" && result.meta && result.meta.win ? `挑戰第 ${result.meta.level + 1} 關` : "再玩一次"}</button>
       </div>}
       <div style={{ ...s.card, padding: "10px 14px", fontSize: 12.5, color: C.muted }}>
-        寵物「{d.pet.name}」第 {d.pet.stage} 階段・今天小遊戲已得 {d.todayGot}/{d.cap} 枚{d.extraLives ? `・寵物零食加命 ${d.extraLives} 次` : ""}<br />破個人紀錄才有赤心幣；寵物零食（小店購買）可在下一局多一條命
+        寵物「{d.pet.name}」第 {d.pet.stage} 階段・今天小遊戲已得 {d.todayGot}/{d.cap} 枚{d.extraLives ? `・寵物零食加命 ${d.extraLives} 次` : ""}<br />破個人紀錄才有赤心幣（每日合計上限）；🏆 挑戰每項可拿一次；每週各遊戲第一名{d.weekBonus ? <> 再加 <Coin n={d.weekBonus} plus size={11} /></> : null}<br />寵物零食（小店購買）可在下一局多一條命（接雞蛋糕、打磚塊、跑酷）
       </div>
-      {d.games.map(g => (
+      {d.games.filter(g => g.id !== "batter2" && g.id !== "batter3").map(g => g.id === "batter1" ? <BatterCard key="batter" games={d.games.filter(x => /^batter/.test(x.id))} ch={d.challenges || []} start={start} C={C} s={s} /> : (
         <div key={g.id} style={{ ...s.card, opacity: g.unlocked ? 1 : .6 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ fontSize: 30 }}>{g.unlocked ? ICON[g.id] : "🔒"}</span>
@@ -307,8 +388,9 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
             {g.unlocked && <button onClick={() => start(g.id)} style={{ ...s.btn("primary"), width: "auto", padding: "8px 14px", fontSize: 13 }}>開始</button>}
           </div>
           {g.unlocked && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>
-            個人最佳 {g.best}・破紀錄 <Coin n={g.reward} plus size={11} />{g.top.length ? "・本週排行：" + g.top.map((x, i) => `${i + 1}.${x.name} ${x.score}`).join("　") : ""}
+            {g.id === "match" ? `最高第 ${g.best} 關` : `個人最佳 ${g.best}`}・破紀錄 <Coin n={g.reward} plus size={11} />{g.top.length ? "・本週排行：" + g.top.map((x, i) => `${i + 1}.${x.name} ${g.id === "match" ? "第" + x.score + "關" : x.score}`).join("　") : ""}
           </div>}
+          <Chips list={(d.challenges || []).filter(c => c.game === g.id)} C={C} />
         </div>))}
     </div>
   );
