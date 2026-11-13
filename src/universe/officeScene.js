@@ -88,6 +88,10 @@ export function createOffice(container, opts) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   container.appendChild(renderer.domElement);
+  // v1.33 換場景時的淡入遮罩
+  const fadeEl = document.createElement("div");
+  fadeEl.style.cssText = "position:absolute;inset:0;background:#1d1b2e;opacity:0;pointer-events:none;z-index:2";
+  container.appendChild(fadeEl);
   renderer.domElement.style.display = "block";
   renderer.domElement.style.width = "100%";
   renderer.domElement.style.touchAction = "pan-y";
@@ -1840,6 +1844,26 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   };
   // 點人：用射線找被點到的夥伴
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  // ── v1.33 點自己 → 再點地面，小人走過去；停 60 秒後回到原本的位置 ──
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), gp = new THREE.Vector3();
+  const marker = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.34, 24), new THREE.MeshBasicMaterial({ color: 0xffe066, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
+  marker.rotation.x = -Math.PI / 2; marker.visible = false; scene.add(marker); let markerT = 0;
+  function moveSelf(cx, cy, r) {
+    const m = crew.get(String(opts.selfId)); if (!m || m.leaving) return;
+    ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    if (!ray.ray.intersectPlane(ground, gp)) return;
+    const sx = SCENES[m.scene].x, x = Math.max(sx - 7.4, Math.min(sx + 7.4, gp.x)), z = Math.max(-5.2, Math.min(5.2, gp.z));
+    const c = m.c, id = (m.manualId = (m.manualId || 0) + 1);
+    c.sit = false; c.anim = "walk"; m.arrived = false;
+    c.path = [{ x, z }];
+    c.onArrive = () => {
+      c.anim = "idle"; c.g.rotation.y = Math.atan2(sx + (SCENES[m.scene].focus ? SCENES[m.scene].focus.x || 0 : 0) - c.g.position.x, 6 - c.g.position.z);
+      setTimeout(() => { if (m.manualId === id && !m.leaving && crew.get(String(opts.selfId)) === m) route(m, m.scene, m.slot, () => settle(m)); }, 60000);
+    };
+    marker.position.set(x, 0.03, z); marker.visible = true; markerT = 1.2;
+    opts.onMove && opts.onMove();
+  }
   function pickAt(cx, cy) {
     const r = cv.getBoundingClientRect();
     ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
@@ -1855,6 +1879,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       hit = best;
     }
     if (hit) focusCrew(String(hit.p.id));
+    else if (follow && opts.selfId && follow === String(opts.selfId)) moveSelf(cx, cy, r);   // v1.33 選了自己 → 點地面走過去
     else if (follow) { follow = null; opts.onPick && opts.onPick(null); }
   }
   function focusCrew(id) {
@@ -2196,7 +2221,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const fc = SCENES[view].focus || { x: 0, z: 0, zoom: 1 };
-    if (view !== lastView) { lastView = view; azT = fc.az != null ? fc.az : Math.PI / 4; }
+    let cut = false;
+    if (view !== lastView) { cut = lastView !== null; lastView = view; azT = fc.az != null ? fc.az : Math.PI / 4; }
     if (azT != null) { az += (azT - az) * Math.min(1, dt * 4); if (Math.abs(azT - az) < 0.002) azT = null; }
     const kk = Math.min(1, dt * (ptrs.size ? 12 : 4));
     let tx = SCENES[view].x + fc.x + panX, tz = fc.z + panZ;
@@ -2206,6 +2232,12 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       else { tx = fm.c.g.position.x; tz = fm.c.g.position.z; }
     }
     const tzoom = fc.zoom * uz;
+    if (cut) {   // v1.33 換場景：直接切過去＋淡入，不再從別的場景前面滑過
+      camX = tx; camZ = tz; az = azT; azT = null; camera.zoom = tzoom; camera.updateProjectionMatrix();
+      fadeEl.style.transition = "none"; fadeEl.style.opacity = "1";
+      requestAnimationFrame(() => { fadeEl.style.transition = "opacity .35s"; fadeEl.style.opacity = "0"; });
+    }
+    if (markerT > 0) { markerT -= dt; marker.material.opacity = Math.max(0, Math.min(0.9, markerT)); marker.scale.setScalar(1 + (1.2 - markerT) * 0.4); if (markerT <= 0) marker.visible = false; }
     camX += (tx - camX) * kk; camZ += (tz - camZ) * kk;
     if (Math.abs(camera.zoom - tzoom) > 0.002) { camera.zoom += (tzoom - camera.zoom) * kk; camera.updateProjectionMatrix(); }
     camera.position.set(camX + Math.sin(az) * 30, 24, camZ + Math.cos(az) * 30); camera.lookAt(camX, 0.5, camZ);
@@ -2309,7 +2341,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       window.removeEventListener("resize", size);
       window.removeEventListener("pointerup", onUp); window.removeEventListener("pointercancel", onUp); window.removeEventListener("pointermove", onMove);
       ro && ro.disconnect();
-      renderer.dispose(); overlay.remove(); renderer.domElement.remove();
+      renderer.dispose(); overlay.remove(); fadeEl.remove(); renderer.domElement.remove();
     },
   };
 }

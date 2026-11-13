@@ -125,7 +125,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   };
 
   useEffect(() => {
-    engine.current = createOffice(boxRef.current, { onPick: p => setPicked(p ? { ...p } : null) });
+    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null) });
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
@@ -358,13 +358,16 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
                 {game && game.pets && game.pets[pk.id] && <PetSprite type={game.pets[pk.id].type} stage={game.pets[pk.id].stage} flavor={game.pets[pk.id].flavor} size={40} />}
                 <button onClick={() => engine.current && engine.current.resetView()} style={{ border: "none", background: "transparent", fontSize: 18, color: "#9a8a7c", cursor: "pointer", padding: 4 }}>✕</button>
               </div>
+              {String(pk.id) === String(user.id) && (
+                <div style={{ marginTop: 8, fontSize: 12, color: "#8a6a4a", background: "#fff3d6", borderRadius: 8, padding: "6px 9px" }}>🚶 點畫面上的地面，你的小人就會走過去（停 1 分鐘後回到工作位置）</div>
+              )}
               {!demo && String(pk.id) !== String(user.id) && (
                 <button onClick={() => { setTarget(pk); setImsg(""); }} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 互動・加油打氣</button>
               )}
             </div>
           )}
         </div>
-        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點夥伴拉近看名片 · ⛶ 全螢幕可單指拖曳移動</div>
+        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點夥伴拉近看名片 · 點自己再點地面可以走動 · ⛶ 全螢幕可單指拖曳移動</div>
       </div>
 
       {game && game.birthdays && game.birthdays.length > 0 && (
