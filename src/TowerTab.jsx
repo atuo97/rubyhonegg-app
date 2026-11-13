@@ -77,7 +77,7 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
           <div key={t.loc} style={{ padding: "9px 6px", borderBottom: `1px solid ${C.border}`, background: mine.includes(t.loc) ? C.accentBg : "transparent", borderRadius: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 26, fontSize: 16 }}>{["🥇", "🥈", "🥉"][i] || i + 1}</span>
-              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{short(t.loc)} <span style={{ fontSize: 11.5, color: C.gold, fontWeight: 700 }}>Lv.{t.level}</span></span>
+              <span style={{ flex: 1, fontSize: 14, fontWeight: 600 }}>{short(t.loc)} <span style={{ fontSize: 11.5, color: C.gold, fontWeight: 700 }}>Lv.{t.level}{t.title ? " " + t.title : ""}</span></span>
               <b style={{ fontSize: 15, color: C.accent }}>{fmt(t.score)}</b><span style={{ fontSize: 11, color: C.muted }}>分</span>
             </div>
             <div style={{ height: 6, background: C.border, borderRadius: 3, overflow: "hidden", margin: "6px 0 4px 34px", display: "flex" }}>

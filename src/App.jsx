@@ -5,6 +5,7 @@ import AvatarEditor, { Doll } from "./AvatarEditor.jsx";
 import BatterPage from "./BatterTab.jsx";
 import ReportPage from "./ReportTab.jsx";
 import { RulesPage, BoostAdmin, BrandPage, LoginSlogan } from "./Park27.jsx";
+import { CalendarPage } from "./Cal28.jsx";
 import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
@@ -672,7 +673,7 @@ export default function App(){
   // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
-    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", about:"info",
+    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", about:"info", calendar:"home",
     schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
@@ -693,7 +694,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", boost:"赤心幣加倍活動", about:"關於紅玉滿" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -774,6 +775,7 @@ export default function App(){
                                    viewAs={realUser.role>=5 && !preview ? <ViewAsCard onStart={startPreview} /> : null}
                                    links={<>
                                      <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
+                                     <ListItem icon="cal" title="行事曆" desc="進撤櫃、快閃、活動、會議" onClick={()=>setTab("calendar")}/>
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
                                      <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
@@ -796,6 +798,7 @@ export default function App(){
           <div>
             <div style={s.sectionTitle}>排班與營運</div>
             <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
+            <ListItem icon="cal" title="行事曆" desc={user.role>=3 ? "新增進撤櫃、快閃、活動、會議，同步 Google 日曆" : "進撤櫃、快閃、活動、會議"} onClick={()=>setTab("calendar")}/>
             <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
             <ListItem icon="order" title="麵糊用量" desc="平日／假日用量、還夠幾天、建議叫貨、活動預估" onClick={()=>setTab("batter")}/>
             <ListItem icon="tool" title="門市回報處理" desc="機器報修、水電場地、人力支援…" badge={rpCnt?.pending || null} badgeRed={rpCnt?.urgent > 0} onClick={()=>setTab("rp")}/>
@@ -815,6 +818,7 @@ export default function App(){
         {tab==="rules" && <RulesPage user={user} apiGet={apiGet} C={C} s={s} loc={activeSeg?.location || ""} onOpenLedger={()=>openGame("home")} />}
         {tab==="boost" && user.role>=3 && <BoostAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} locations={locations} todayStr={todayStr} />}
         {tab==="about" && <BrandPage C={C} s={s} locations={locations} />}
+        {tab==="calendar" && <CalendarPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="sop" && <SopPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} />}
         {tab==="audit" && <AuditPage user={user} apiGet={apiGet} C={C} s={s} locations={locations} defaultLoc={effLoc} />}
         {tab==="health" && <HealthPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}

@@ -1723,7 +1723,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   window.addEventListener("pointerup", onUp); window.addEventListener("pointercancel", onUp); window.addEventListener("pointermove", onMove);
 
   // ════════ 遊戲化圖層:寵物(v1.19:5 型態 × 5 階段、會說話、會互相玩)、派對、冠軍旗、煙火、天氣、節日、基金解鎖、互動 ════════
-  const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4] };
+  const PET_COL = { "原味": [0xe0a050, 0xb06a2c, 0xf5d29c], "可可": [0x8a5a3c, 0x5e3a24, 0xb8876a], "紅玉": [0xd9534f, 0xa8322e, 0xf08a80], "抹茶": [0x8bbf6a, 0x5f8f45, 0xbfe0a4], "黑糖": [0x7a4a2a, 0x4f2c16, 0xa9744f], "芝麻": [0x5b5550, 0x3a3532, 0x8d8680] };
   const EYE = 0x1e1e1e, WHITE = 0xffffff, CREAM = 0xf6e7c8;
   // 完全體模型(朝 +z 方向),高約 0.7~0.9;回傳頭頂高度
   function petModel(type, P, b, d, l) {
@@ -1803,13 +1803,37 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const bubble = bubbleEl("uo-bubble uo-petsay");
     return { g, body, stage: st, type: pt.type, sparks, t: Math.random() * 5, sig: JSON.stringify(pt), top: top * PS, bubble, info: pt, talk: 6 + Math.random() * 10, n: 0 };
   }
-  function removePet(m) { if (m.pet) { scene.remove(m.pet.g); m.pet.bubble.remove(); m.pet = null; } }
+  function removeTeam(m) { (m.team || []).forEach(f => { scene.remove(f.g); f.bubble.remove(); }); m.team = null; m.teamSig = ""; }
+  function removePet(m) { if (m.pet) { scene.remove(m.pet.g); m.pet.bubble.remove(); m.pet = null; } removeTeam(m); }
   function syncPets() {
     for (const [id, m] of crew) {
       const pt = GAME.pets[id], sig = pt ? JSON.stringify(pt) : "";
       if (m.pet && m.pet.sig !== sig) removePet(m);
       if (pt && !m.pet && !m.leaving) { m.pet = makePet(pt); m.pet.g.position.copy(m.c.g.position); }
+      // v1.28 寵物隊伍：主寵物以外的寵物排成一列跟在後面（最多 4 隻）
+      const team = ((GAME.teams || {})[id] || []).slice(0, 4), tsig = JSON.stringify(team);
+      if (m.teamSig !== tsig) { removeTeam(m); }
+      if (m.pet && !m.team && team.length && !m.leaving) {
+        m.team = team.map(tp => { const f = makePet(tp); f.g.scale.multiplyScalar(0.8); f.top *= 0.8; f.g.position.copy(m.c.g.position); return f; });
+        m.teamSig = tsig;
+      }
     }
+  }
+  function tickTeam(m, dt) {
+    if (!m.team || !m.pet) return;
+    let lead = m.pet.g.position;
+    m.team.forEach((f, i) => {
+      f.t += dt;
+      const p = f.g.position, dx = lead.x - p.x, dz = lead.z - p.z, d = Math.hypot(dx, dz), gap = 0.62;
+      if (d > 6) p.set(lead.x, 0, lead.z);
+      else if (d > gap) { const s = Math.min(d - gap, dt * 3.8); p.x += dx / d * s; p.z += dz / d * s; f.g.rotation.y = Math.atan2(dx, dz); }
+      const hop = f.stage === 1 ? 0.04 : f.stage <= 3 ? 0.06 : 0.1;
+      f.body.position.y = Math.abs(Math.sin(f.t * (d > gap + 0.05 ? 10 : 3) + i)) * hop;
+      if (f.stage === 1) f.body.rotation.z = Math.sin(f.t * 2 + i) * 0.15;
+      f.sparks.forEach((sp, k) => { const a = f.t * 2 + k * 2.1; sp.position.set(Math.cos(a) * 0.4, 0.5 + Math.sin(f.t * 3 + k) * 0.15, Math.sin(a) * 0.4); });
+      f.g.visible = m.c.g.visible; f.bubble.style.visibility = "hidden";
+      lead = p;
+    });
   }
   function petSay(pt, txt, ms = 2600) { if (!pt || !txt) return; pt.bubble.textContent = txt; pt.bubble.style.opacity = 1; clearTimeout(pt.sayT); pt.sayT = setTimeout(() => (pt.bubble.style.opacity = 0), ms); }
   const pv = new THREE.Vector3();
@@ -1992,7 +2016,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
 
   function tickGame(dt) {
-    for (const m of crew.values()) tickPet(m, dt);
+    for (const m of crew.values()) { tickPet(m, dt); tickTeam(m, dt); }
     tickPlay(dt);
     tickParty(dt); tickFireworks(dt); tickRain(dt);
   }

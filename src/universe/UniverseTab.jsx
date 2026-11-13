@@ -199,7 +199,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     // v1.19:互動動態＋寵物動態(孵化、交換、收進圖鑑)合併,依時間排序
     setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
-    engine.current.setGame({ pets: d.pets || {}, worn: d.worn || {}, boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
+    engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
     // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
     const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);

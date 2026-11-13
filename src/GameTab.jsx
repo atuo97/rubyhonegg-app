@@ -5,6 +5,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Coin, Heart } from "./Coin.jsx";
 import MiniGames from "./MiniGames.jsx";
+import { PetTeam, PetMarket } from "./PetTeam.jsx";
 import { PetSprite, PET_TYPES, PET_TYPE_NAME, PET_FLAVORS, PET_STAGE_NAMES, PET_ATTR, PET_COUNTER, petLine } from "./pets/petSprites.jsx";
 
 const TABS = [["home", "總覽"], ["shop", "商店"], ["gacha", "扭蛋"], ["pet", "寵物"], ["play", "小遊戲"], ["badge", "徽章"], ["team", "團隊"]];
@@ -181,7 +182,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
     const next = pt.nextAt, prevAt = [0, 40, 120, 300, 600][pt.stage - 1] || 0;
     const pct = next ? Math.min(100, Math.round((pt.hours - prevAt) / (next - prevAt) * 100)) : 100;
     const accs = me.catalog.filter(c => c.cat === "petacc");
-    const SUB = [["main", "我的寵物"], ["album", "相簿"], ["diary", "日記"], ["dex", "圖鑑"], ["trade", "交換"]];
+    const SUB = [["main", "我的寵物"], ["team", "隊伍"], ["market", "市集"], ["album", "相簿"], ["diary", "日記"], ["dex", "圖鑑"], ["trade", "交換"]];
     const incoming = (me.petTrades || []).filter(t => !t.mine), outgoing = (me.petTrades || []).filter(t => t.mine);
     return (
       <>
@@ -239,6 +240,8 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
           </Card>
         </>}
 
+        {petView === "team" && <PetTeam user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} balance={me.balance} onChanged={() => { load(); onChanged && onChanged(); }} />}
+        {petView === "market" && <PetMarket user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} balance={me.balance} onChanged={() => { load(); onChanged && onChanged(); }} />}
         {petView === "album" && <Card>
           <Title>{pt.name}的成長相簿</Title>
           {(me.petAlbum || []).map(a => (

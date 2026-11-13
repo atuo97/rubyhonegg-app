@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 
 export const PET_TYPES = [["chicken", "雞"], ["trex", "暴龍"], ["digger", "挖土機"], ["train", "火車"], ["trice", "三角龍"]];
 export const PET_TYPE_NAME = Object.fromEntries(PET_TYPES);
-export const PET_FLAVORS = { "原味": ["#e0a050", "#b06a2c", "#f5d29c"], "可可": ["#8a5a3c", "#5e3a24", "#b8876a"], "紅玉": ["#d9534f", "#a8322e", "#f08a80"], "抹茶": ["#8bbf6a", "#5f8f45", "#bfe0a4"] };
+export const PET_FLAVORS = { "原味": ["#e0a050", "#b06a2c", "#f5d29c"], "可可": ["#8a5a3c", "#5e3a24", "#b8876a"], "紅玉": ["#d9534f", "#a8322e", "#f08a80"], "抹茶": ["#8bbf6a", "#5f8f45", "#bfe0a4"], "黑糖": ["#7a4a2a", "#4f2c16", "#a9744f"], "芝麻": ["#5b5550", "#3a3532", "#8d8680"] };
 export const PET_STAGE_NAMES = ["蛋寶寶", "雛形期", "嬰兒期", "兒童期", "完全體"];
 // 對戰屬性與相剋（和後端 PV_PET_ATTR / PV_COUNTER 一致）
 export const PET_ATTR = { trex: "攻擊型・攻擊 +3", trice: "防禦型・防禦 +2", train: "速度型・速度 +2", digger: "體力型・體力 +15", chicken: "幸運型・爆擊率 +5%" };
