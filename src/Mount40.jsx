@@ -52,6 +52,7 @@ export function MountShop({ apiGet, apiPost, C, s, onChanged }) {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>{["bike", "scooter", "car", "suv", "truck", "sports"].map(tile)}</div>
       <div style={s.sectionTitle}>品牌款（每月上班時數前 5 名，期限一個月）</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 10 }}>{BRAND_RANK.map(tile)}</div>
+      <MountAcc apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={onChanged} />
       <div style={{ ...s.card, fontSize: 12.5, lineHeight: 1.7 }}>
         <b>本月得主</b>{al && al.winners && al.winners.length ? al.winners.map((w, i) => <div key={w.emp}>第 {i + 1} 名 {MOUNT_INFO[w.mount].icon} {w.name}（{al.from} 共 {w.hours} 小時）</div>) : <div style={{ color: C.muted }}>每月 1 日公布，依上個月上班時數排名</div>}
       </div>
@@ -75,6 +76,35 @@ export function MountGrant({ apiGet, apiPost, C, s }) {
         {Object.keys(MOUNT_INFO).map(k => <option key={k} value={k}>{MOUNT_INFO[k].icon} {MOUNT_INFO[k].name}{MOUNT_INFO[k].brand ? "（一個月）" : "（永久）"}</option>)}
       </select>
       <button disabled={busy || !target} onClick={send} style={{ ...s.btn("primary"), opacity: busy || !target ? .5 : 1 }}>發放</button>
+    </div>
+  );
+}
+
+// v1.44 v3 坐騎配件：在商店街「坐騎改裝店」買，這裡裝上（最多 3 個，換哪台坐騎都跟著）
+function MountAcc({ apiGet, apiPost, C, s, onChanged }) {
+  const [d, setD] = useState(null), [busy, setBusy] = useState(false), [msg, setMsg] = useState(null);
+  const load = () => apiGet({ action: "v44MaccMe" }, 0).then(r => setD(r && r.success ? r.data : null));
+  useEffect(() => { load(); }, []);
+  if (!d) return null;
+  const own = d.owned || [], on = d.on || [];
+  const toggle = async id => {
+    const next = on.includes(id) ? on.filter(x => x !== id) : [...on, id];
+    if (next.length > d.max) { setMsg({ ok: false, text: `最多同時裝 ${d.max} 個，先拆下一個`, t: Date.now() }); return; }
+    setBusy(true); const r = await apiPost({ action: "v44MaccSet", on: next }, 0); setBusy(false);
+    if (r && r.success) { setD({ ...d, on: r.data.on }); onChanged && onChanged(); } else setMsg({ ok: false, text: (r && r.error) || "失敗", t: Date.now() });
+  };
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {msg && <Flash key={msg.t} text={msg.text} kind={msg.ok ? "ok" : "bad"} />}
+      <div style={s.sectionTitle}>🔧 坐騎配件（裝上 {on.length}／{d.max}）</div>
+      <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>到「隊員商店街」的坐騎改裝店買配件，買到後在這裡點一下裝上或拆下；換騎哪一台都會跟著。</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+        {d.list.map(m => { const has = own.includes(m.id), u = on.includes(m.id); return (
+          <button key={m.id} disabled={!has || busy} onClick={() => toggle(m.id)} style={{ border: `1.5px solid ${u ? C.accent : C.border}`, background: u ? C.accentBg : has ? C.card : C.warm, borderRadius: 12, padding: "8px 2px", cursor: has ? "pointer" : "default", fontFamily: "inherit", opacity: has ? 1 : .5 }}>
+            <div style={{ fontSize: 22 }}>{m.icon}</div><div style={{ fontSize: 11, color: C.text }}>{m.name}</div>
+            <div style={{ fontSize: 10, color: u ? C.accent : C.muted }}>{u ? "✓ 裝上中" : has ? "點一下裝上" : "未擁有"}</div>
+          </button>); })}
+      </div>
     </div>
   );
 }

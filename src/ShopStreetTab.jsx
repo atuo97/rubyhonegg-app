@@ -7,9 +7,9 @@ import { Coin, Heart } from "./Coin.jsx";
 import { TryOn } from "./GameTab.jsx";   // v1.33 點商品看詳細
 
 const TYPE_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸",
-  "服飾店": "👕", "陀螺對戰店": "🌀", "寵物用品店": "🐾", "書店": "📚", "照相館": "📸", "家具行": "🛋️", "冰店": "🍧", "玩具店": "🧸" };   // v1.40 新店種
+  "服飾店": "👕", "陀螺對戰店": "🌀", "寵物用品店": "🐾", "書店": "📚", "照相館": "📸", "家具行": "🛋️", "冰店": "🍧", "玩具店": "🧸", "坐騎改裝店": "🔧" };   // v1.40 新店種
 const CAT_LABEL = { gift: "禮物（送同事）", petsnack: "寵物零食", decor: "收藏", weapon: "武器", armor: "防具", card: "對戰卡片", wear: "造型（買了就能穿）" };
-const effectText = e => { const a = String(e || "").split(":"); if (a[0] === "wear") return "到「我的造型」換上"; if (a[0] === "petsnack") return `寵物成長 +${a[1]} 小時`; if (a[0] === "card") return { heal: "補血", power: "增強攻擊", shield: "護盾" }[a[1]] + " " + a[2]; if (a[0] === "gift" || a[0] === "decor") return a[1]; return String(e || "").replace(/atk/g, "攻").replace(/def/g, "防").replace(/hp/g, "血").replace(/spd/g, "速").replace(/:/g, "+"); };
+const effectText = e => { const a = String(e || "").split(":"); if (a[0] === "wear") return /^macc_/.test(a[1]) ? "坐騎配件，到「赤心幣商店 → 坐騎」裝上" : "到「我的造型」換上"; if (a[0] === "petsnack") return `寵物成長 +${a[1]} 小時`; if (a[0] === "card") return { heal: "補血", power: "增強攻擊", shield: "護盾" }[a[1]] + " " + a[2]; if (a[0] === "gift" || a[0] === "decor") return a[1]; return String(e || "").replace(/atk/g, "攻").replace(/def/g, "防").replace(/hp/g, "血").replace(/spd/g, "速").replace(/:/g, "+"); };
 
 export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
   const [peek, setPeek] = useState(null);

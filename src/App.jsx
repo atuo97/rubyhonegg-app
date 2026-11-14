@@ -1,3 +1,4 @@
+import { AlbumPage } from "./Photo44.jsx";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { Flash, TopToastHost } from "./TopToast.jsx";
 const UniverseTab = lazy(() => import("./universe/UniverseTab.jsx"));
@@ -26,6 +27,7 @@ import ArenaTab from "./ArenaTab.jsx";
 import TowerTab from "./TowerTab.jsx";
 import ShopStreetTab, { ShopProposals } from "./ShopStreetTab.jsx";
 import BenefitPage, { BenefitAdmin } from "./Benefit42.jsx";
+import MoodCard from "./Mood44.jsx";
 import OrdersTab from "./OrdersTab.jsx";
 import ScheduleManager, { MyShifts } from "./ScheduleTab.jsx";
 import MePet from "./MePet.jsx";
@@ -587,6 +589,9 @@ export default function App(){
   // v1.25 記住登入（30 天）＋大隊長預覽（以等級檢視／隊員視角，只能看不能改）
   const [realUser, setRealUser] = useState(() => { const a = authLoad(); if (a) AUTH.token = a.token; return a ? a.user : null; });
   const [reloginMsg, setReloginMsg] = useState("");
+  // v1.44 v3：每次重新打開 App 都先到登入頁（帳號、密碼已帶好，按「登入」就進去）；切到別的 App 再回來不用
+  const [gate, setGate] = useState(() => { try { return !!authLoad() && !sessionStorage.getItem("rh_live"); } catch (e) { return false; } });
+  const passGate = () => { try { sessionStorage.setItem("rh_live", "1"); } catch (e) {} setGate(false); };
   const setUser = (u) => setRealUser(prev => { const n = typeof u === "function" ? u(prev) : u; if (n && n.token) { AUTH.token = n.token; authSave(n); } return n; });
   const [preview, setPreview] = useState(null);   // { mode:"role", role, type } | { mode:"as", user }
   const user = useMemo(() => !realUser ? null : !preview ? realUser
@@ -711,7 +716,9 @@ export default function App(){
     apiGet({ action: "getMyAvatar", empId: user.id }, 1).then(r => { if (r && r.success) setAvatarCfg(sanitizeAvatar(r.data && r.data.cfg)); }).catch(() => {});
   }, [user && user.id, inAvatar]);
   const openMePet = () => openMe("avatar");
-  if (!user) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen notice={reloginMsg} onLogin={u => { setReloginMsg(""); setUser(u); }} /></>;
+  if (!user || gate) return <><GlobalStyle/>{!online && <OfflineBar/>}<LoginScreen notice={reloginMsg} quick={user && gate ? (realUser.nick || realUser.name || "") : ""}
+    onQuick={passGate} onForget={() => { if (gate) { authClear(); setRealUser(null); setGate(false); } }}
+    onLogin={u => { setReloginMsg(""); setUser(u); passGate(); }} /></>;
   // v1.25 管理者（Lv.3 以上）密碼還是生日：先改密碼才能用
   if (!preview && realUser.weakPw && realUser.role < 3 && pwMust) return <><GlobalStyle/><ForcePwScreen user={realUser} reset onDone={() => { setPwMust(false); setUser(u => ({ ...u, weakPw:false })); }} onLogout={logout} /></>;
   if (!preview && realUser.role >= 3 && realUser.weakPw) return <><GlobalStyle/><ForcePwScreen user={realUser} onDone={() => setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} /></>;
@@ -742,7 +749,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", album:"我的相簿", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -804,6 +811,7 @@ export default function App(){
                                    onOpenVotes={()=>setTab("vote")} onOpenUniverse={()=>setTab("universe")} onOpenOrders={()=>setTab("orders")} orderInfo={ord} game={game} onOpenGame={openGame} onOpenInfo={()=>setTab("info")}
                                    onboard={<>
                                      <AnnInbox user={user} list={announcements} apiPost={apiPost} C={C} s={s} onChanged={loadAnn} />
+                                     <MoodCard user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />
                                      {!homeTodo && user.role>=2 && rpCnt?.pending > 0 && <button onClick={()=>setTab("rp")} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:10, cursor:"pointer", fontFamily:"inherit", textAlign:"left", color:C.text, border: rpCnt.urgent ? `1px solid ${C.red}` : s.card.border, background: rpCnt.urgent ? C.redBg : C.card }}><span style={{ fontSize:22 }}>{rpCnt.urgent ? "🚨" : "🔧"}</span><span style={{ flex:1 }}><b style={{ fontSize:14 }}>門市回報待處理 {rpCnt.pending} 件</b>{rpCnt.urgent ? <span style={{ display:"block", fontSize:12, color:C.red }}>其中 {rpCnt.urgent} 件緊急</span> : null}</span><Ic n="chev" size={18} color={C.light}/></button>}
                                      {user.role>=2 && <OnboardCard user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compact />}
                                    </>} />)}
@@ -835,6 +843,7 @@ export default function App(){
                                      {user.role<2 && <ListItem icon="tool" title="設備檢查清單" desc="出攤、設櫃、出國：打包、到場、點收打勾" onClick={()=>setTab("equip")}/>}
                                      <ListItem icon="shield" title="福利補助・意見箱" desc="運動、證照、比賽報名費補助申請；比賽公告；寫給隊長" onClick={()=>{ setBfTab("apply"); setTab("benefit"); }}/>
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
+                                     <ListItem icon="user" title="我的相簿" desc="遊戲室拍貼機拍的照片（只有你看得到）" onClick={()=>setTab("album")}/>
                                      <ListItem icon="vote" title="隊員投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
                                    </>} />}
@@ -909,6 +918,7 @@ export default function App(){
         {tab==="calendar" && <CalendarPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="sop" && <SopPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} />}
         {tab==="audit" && <AuditPage user={user} apiGet={apiGet} C={C} s={s} locations={locations} defaultLoc={effLoc} />}
+        {tab==="album" && <AlbumPage apiPost={apiPost} C={C} s={s} />}
         {tab==="health" && <HealthPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}
         {tab==="foodsafe" && user.role>=2 && <FoodSafetyAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} todayStr={todayStr} />}
         {tab==="guide" && <GuideTab />}
@@ -1043,21 +1053,23 @@ function InstallTip() {
   );
 }
 
-function LoginScreen({ onLogin, notice }) {
+function LoginScreen({ onLogin, notice, quick, onQuick, onForget }) {
   const [about, setAbout]   = useState(false);
   // v1.32：記住帳號（只記手機號碼，不記密碼；密碼交給手機的鑰匙圈／Google 密碼管理工具）
   const LAST_KEY = "rh_last_account";
   const [phone, setPhone]   = useState(() => { try { return localStorage.getItem(LAST_KEY) || ""; } catch (e) { return ""; } });
   const [remembered, setRemembered] = useState(() => { try { return !!localStorage.getItem(LAST_KEY); } catch (e) { return false; } });
-  const [pw, setPw]         = useState("");
+  const [pw, setPw]         = useState(quick ? "••••••••" : "");
+  const [fast, setFast]     = useState(!!quick);   // v1.44 v3 已記住登入：密碼欄先帶好，按登入直接進去
   const [showPw, setShowPw] = useState(false);
   const [err, setErr]       = useState(notice || "");
   const [loading, setLoading] = useState(false);
   const pwRef = useRef(null);
-  useEffect(() => { if (remembered && pwRef.current) pwRef.current.focus(); }, []);
-  const forget = () => { try { localStorage.removeItem(LAST_KEY); } catch (e) {} setPhone(""); setRemembered(false); setPw(""); };
+  useEffect(() => { if (remembered && !quick && pwRef.current) pwRef.current.focus(); }, []);
+  const forget = () => { try { localStorage.removeItem(LAST_KEY); } catch (e) {} setPhone(""); setRemembered(false); setPw(""); setFast(false); onForget && onForget(); };
 
   const handleLogin = async () => {
+    if (fast) { onQuick && onQuick(); return; }
     const acct = String(phone).replace(/[\s-]/g, "");   // 手機號碼裡的空白、橫線自動去掉
     if (!acct || !pw) { setErr(!acct ? "請填入帳號（手機號碼）" : "請填入密碼"); return; }
     setErr(""); setLoading(true);
@@ -1092,18 +1104,19 @@ function LoginScreen({ onLogin, notice }) {
           <div style={{ marginBottom:16 }}>
             <label style={{ ...s.label, display:"flex", justifyContent:"space-between" }}><span>帳號(預設為手機號碼)</span>
               {remembered && <button type="button" onClick={forget} style={{ border:"none", background:"none", color:C.accent, fontSize:11.5, cursor:"pointer", padding:0, fontFamily:"inherit" }}>不是你？換帳號</button>}</label>
-            <input value={phone} onChange={e=>{ setPhone(e.target.value); setRemembered(false); }} inputMode="tel" autoComplete="username" name="username"
+            <input value={phone} onChange={e=>{ setPhone(e.target.value); setRemembered(false); if (fast) { setFast(false); setPw(""); onForget && onForget(); } }} inputMode="tel" autoComplete="username" name="username"
               placeholder="請輸入帳號" style={s.input}/>
           </div>
           <div style={{ marginBottom:8 }}>
             <label style={s.label}>密碼(預設為隊員生日，如6月7日為0607)</label>
             <div style={{ position:"relative" }}>
-              <input ref={pwRef} type={showPw ? "text" : "password"} value={pw} onChange={e=>setPw(e.target.value)} autoComplete="current-password" name="password"
+              <input ref={pwRef} type={showPw && !fast ? "text" : "password"} value={pw} onFocus={() => { if (fast) { setFast(false); setPw(""); } }} onChange={e=>setPw(e.target.value)} autoComplete="current-password" name="password"
                 placeholder="請輸入密碼"
                 onKeyDown={e=>e.key==="Enter"&&handleLogin()} style={{ ...s.input, paddingRight:58 }}/>
               <button type="button" onClick={() => setShowPw(v => !v)} style={{ position:"absolute", right:6, top:"50%", transform:"translateY(-50%)", border:"none", background:"none", color:C.muted, fontSize:12.5, cursor:"pointer", padding:"6px 8px", fontFamily:"inherit" }}>{showPw ? "隱藏" : "顯示"}</button>
             </div>
           </div>
+          {fast && <div style={{ fontSize:12.5, color:C.green, fontWeight:600, marginBottom:8 }}>✓ {quick ? quick + "，" : ""}帳號密碼已記住，按「登入」就能進去</div>}
           <div style={{ fontSize:11.5, color:C.muted, lineHeight:1.6, marginBottom:16 }}>🔐 登入後手機問「要儲存密碼嗎？」請按「儲存」，下次用 Face ID 或指紋就能自動帶入。這支手機會記住登入 30 天，常用就不會被登出。</div>
           <Flash text={err} />{err && <div style={{ color:C.red, fontSize:12.5, textAlign:"center", marginBottom:12 }}>{err}</div>}
           <button onClick={handleLogin} disabled={loading}

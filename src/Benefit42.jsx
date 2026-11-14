@@ -177,16 +177,13 @@ function EventBoard({ user, apiPost, C, s, events, canDel, onChange }) {
 }
 
 function IdeaBox({ apiPost, C, s }) {
-  const [text, setText] = useState(""), [anon, setAnon] = useState(true), [msg, setMsg] = useState("");
-  const send = async () => { const r = await apiPost({ action: "v42Idea", text, anon }, 0); if (r && r.success) { setText(""); setMsg("✅ 已投進意見箱，謝謝你！"); } else setMsg((r && r.error) || "送出失敗"); };
+  const [text, setText] = useState(""), [msg, setMsg] = useState("");
+  const send = async () => { const r = await apiPost({ action: "v42Idea", text }, 0); if (r && r.success) { setText(""); setMsg("✅ 已投進意見箱，謝謝你！"); } else setMsg((r && r.error) || "送出失敗"); };
   return (
     <div style={s.card}>
       <div style={s.sectionTitle}>📮 意見箱（寫給隊長）</div>
-      <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 8 }}>任何建議、想法、煩惱都可以寫。只有大隊長看得到。</div>
+      <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 8 }}>任何建議、想法、煩惱都可以寫。只有大隊長看得到，會留下你的名字，隊長可以回覆你。</div>
       <textarea value={text} maxLength={300} onChange={e => setText(e.target.value)} rows={5} style={{ ...s.input, marginBottom: 8, resize: "vertical" }} placeholder="想對隊長說的話…" />
-      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, marginBottom: 10, cursor: "pointer" }}>
-        <input type="checkbox" checked={anon} onChange={e => setAnon(e.target.checked)} />匿名（不會留下你的名字，隊長也無法回覆你）
-      </label>
       <button disabled={text.trim().length < 2} onClick={send} style={{ ...s.btn("primary"), opacity: text.trim().length < 2 ? .5 : 1 }}>投進意見箱</button>
       {msg && <div style={{ fontSize: 13, marginTop: 8, color: msg.startsWith("✅") ? C.green : C.red }}>{msg}</div>}
     </div>

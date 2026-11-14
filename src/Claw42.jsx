@@ -1,12 +1,12 @@
 // ─────────────────────────────────────────────
-// v1.42 遊戲室：夾娃娃機（夾一次 1 枚赤心幣，不好夾；連續 15 次沒夾到，下一次必中）
+// v1.42 遊戲室：夾娃娃機（v1.44 v3 改版：約 3 次中 1 次，大多 1～10 枚赤心幣，桌面小配件是稀有驚喜；連續 6 次沒夾到，下一次必中）
 // 結果由後端決定（v42Claw），畫面只負責動畫；對準度會稍微提高機率。
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 const W = 320, H = 400, FLOOR = 330, TOP = 40, CHUTE = 46;
-const TOYS = [["🧸", 80], ["🦖", 125], ["🐣", 170], ["🤖", 215], ["🐧", 255], ["🥚", 105], ["🎁", 190], ["🐻", 238]];
+const TOYS = [["🪙", 80], ["🦖", 125], ["💰", 170], ["🧸", 215], ["🪙", 255], ["🪴", 105], ["🎟️", 190], ["🪙", 238]];
 
 export default function Claw42({ apiPost, C, s, onClose }) {
   const cv = useRef(null), st = useRef({ x: 160, y: TOP, phase: "idle", open: 1, carry: null, dir: 0, t: 0 });
@@ -60,10 +60,11 @@ export default function Claw42({ apiPost, C, s, onClose }) {
     S.win = d.win; S.toy = near && Math.abs(near.x - S.x) < 40 ? near : null;
     S.target = S.toy ? S.toy.y - 52 : FLOOR - 52; S.dropAt = TOP + 60 + Math.random() * 120;
     if (d.win && !S.toy) S.toy = near;
+    if (d.win && S.toy && d.emoji) S.toy.e = d.emoji;   // 夾起來的就是抽中的那個小配件
     S.phase = "down";
     S.done = () => {
       setBusy(false);
-      setMsg(d.win ? `🎉 夾到了！獲得 ${d.prize}` : d.miss >= d.pity - 3 ? `差一點！再 ${d.pity - d.miss} 次一定夾得到` : ["差一點點！", "滑掉了…再來一次？", "好可惜！"][Math.floor(Math.random() * 3)]);
+      setMsg(d.win ? `🎉 夾到了！${d.emoji || ""} ${d.prize}` : d.miss >= d.pity - 3 ? `差一點！再 ${d.pity - d.miss} 次一定夾得到` : ["差一點點！", "滑掉了…再來一次？", "好可惜！"][Math.floor(Math.random() * 3)]);
       if (d.win && toys.current.filter(t => t.alive).length < 3) toys.current = TOYS.map(([e, x], i) => ({ e, x, y: FLOOR - (i >= 5 ? 34 : 4), alive: true }));
     };
   };
@@ -80,7 +81,7 @@ export default function Claw42({ apiPost, C, s, onClose }) {
           <button style={{ ...btn, background: "#ffd1e3" }} onPointerDown={hold(1)} onPointerUp={release} onPointerLeave={release} onPointerCancel={release}>▶</button>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#9a7a8a", marginTop: 8 }}>
-          <span>{info ? `赤心幣 ${info.balance}` : "獎品：赤心幣、扭蛋券"}</span><span>{info ? `再 ${Math.max(0, info.pity - info.miss)} 次必中` : "連續 15 次沒夾到，下一次必中"}</span>
+          <span>{info ? `赤心幣 ${info.balance}` : "獎品：1～10 枚赤心幣、桌面小配件、扭蛋券"}</span><span>{info ? `再 ${Math.max(0, info.pity - info.miss)} 次必中` : "連續 6 次沒夾到，下一次必中"}</span>
         </div>
         <button onClick={onClose} disabled={busy} style={{ ...s.btn("ghost"), marginTop: 10 }}>離開</button>
       </div>
