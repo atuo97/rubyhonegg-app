@@ -160,13 +160,14 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   // v1.21 櫃位營運連動：麵糊（最近一次收店盤點）、今日待取貨訂單
   const [batter, setBatter] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [pickup, setPickup] = useState(null);
   const loadOps = async () => {
     const [b, o] = await Promise.all([
       apiGet({ action: "getBatterStock", empId: user.id }, 0),
       apiGet({ action: "getOrders", empId: user.id, from: todayStr(), to: todayStr() }, 0),
     ]);
     if (b && b.success) setBatter(b.data || []);
-    if (o && o.success) setOrders(o.data || []);
+    if (o && o.success) { setOrders(o.data || []); setPickup(o.pickup || null); }   // v1.48 待取貨只回筆數
   };
 
   useEffect(() => {
@@ -421,7 +422,8 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       if (!m.bDate || x.date >= m.bDate) { m.bDate = x.date; m.batter = batter2(x.rem); m.fc = x.fc && x.fc.setup ? x.fc : null; if (m.fc) { m.batterLow = !!m.fc.low; m.batterLowK = [fcLow(m.fc.orig), fcLow(m.fc.other)]; } }
       if (x.date === today && !count(k)) m.state = "closed";
     });
-    orders.forEach(o => {
+    if (pickup) Object.keys(pickup).forEach(loc => { const m = map[sceneOf(loc)]; if (m) m.pickup += Number(pickup[loc]) || 0; });   // v1.48 後端只回各櫃位筆數
+    else orders.forEach(o => {
       if (String(o.date) !== today || o.method === "外送" || o.status === "已交付" || o.status === "已取消") return;
       const m = map[sceneOf(o.loc)]; if (m) m.pickup++;
     });

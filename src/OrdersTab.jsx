@@ -44,11 +44,12 @@ export default function OrdersTab({ user, apiGet, apiPost, locations, defaultLoc
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const [tick, setTick] = useState(0);
+  const [others, setOthers] = useState([]);   // v1.48 看不到內容的其他櫃位，只有筆數
 
   const load = async () => {
     setErr("");
     const r = await apiGet({ action: "getOrders", empId: user.id, from: addDays(today, -1), to: addDays(today, 30) }, 1);
-    if (r && r.success) setOrders(r.data || []);
+    if (r && r.success) { setOrders(r.data || []); setOthers(r.others || []); }
     else setErr((r && r.error) || "訂單功能尚未開通或連線失敗");
     setLoading(false);
   };
@@ -225,6 +226,9 @@ export default function OrdersTab({ user, apiGet, apiPost, locations, defaultLoc
   return (
     <div>
       <button onClick={openNew} style={{ ...s.btn("primary"), marginBottom: 12 }}>＋ 新增訂單</button>
+      {others.length > 0 && <div style={{ ...s.card, padding: "9px 12px", fontSize: 12.5, color: C.muted }}>
+        其他櫃位進行中的訂單：{others.map(x => `${x.loc} ${x.n} 筆`).join("、")}<span style={{ display: "block", fontSize: 11.5, color: C.light, marginTop: 2 }}>只看得到你今天上班或負責櫃位的訂單內容（v1.48 保護客人資料）</span>
+      </div>}
 
       <div style={{ ...s.card, padding: "10px 12px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>

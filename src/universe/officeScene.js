@@ -1895,28 +1895,41 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     bldRoom(P, 16, 0x3b3456, 0x2c2440, 0x9b59b6, "door", [0x342d4d, 0x433a63]);
     put(P, textPlane("遊戲室 GAME ROOM", 5, 0.8, { bg: "#8e44ad", color: "#fff", size: 46 }), -4.5, 3.55, -5.95);
     REVB.rank = wallBoard(P, "rank", 4.4, 1.9, -6.0, 3.3, 2.27);
-    // v1.46 8 台搖桿桌機（老式坐著玩的電玩桌），一台對應一款小遊戲；點機台就開那款遊戲
-    const SCR = [], ARC = [["catch", "🧺 接雞蛋糕", 0xe74c3c], ["memory", "🃏 翻翻樂", 0x3498db], ["breakout", "🧱 打磚塊", 0xf39c12], ["oven", "🔥 烤爐挑戰", 0x9b59b6],
-      ["runner", "🏃 寵物跑酷", 0x27ae60], ["match", "🧇 消消樂", 0xe67e22], ["stack", "🍰 疊疊樂", 0xff6fa8], ["batter1", "⚔️ 麵糊大作戰", 0xc0392b]];
-    ARC.forEach(([gid, n, c], i) => {
-      const x = -6.6 + (i % 4) * 1.75, z = i < 4 ? -3.4 : -0.6;
-      box(0.95, 0.68, 0.78, c, x, 0.34, z, P);                                   // 機身
-      box(1.02, 0.06, 0.86, 0x1a1a22, x, 0.71, z, P);                            // 桌面框
-      const sc = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.62), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), x, 0.745, z, 0, -Math.PI / 2);
-      put(P, textPlane(n, 0.8, 0.3, { color: "#ffe066", size: 62 }), x, 0.75, z, 0, -Math.PI / 2);
-      const glass = glassBox(0.84, 0.02, 0.66, 0xbfe7ff, 0.18); glass.position.set(x, 0.76, z); P.add(glass);
-      [-1, 1].forEach(sd => {                                                    // 兩側操作台：搖桿＋按鈕
-        box(0.9, 0.1, 0.2, 0x2c2c34, x, 0.66, z + sd * 0.48, P);
-        box(0.03, 0.16, 0.03, 0x888888, x - 0.22, 0.79, z + sd * 0.5, P);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(0xe74c3c)); ball.position.set(x - 0.22, 0.88, z + sd * 0.5); P.add(ball);
-        [0.08, 0.24].forEach(dx => { const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 10), mat(dx > 0.1 ? 0x3498db : 0xf1c40f)); bt.position.set(x + dx, 0.73, z + sd * 0.5); P.add(bt); });
-        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 14), mat(0xc0392b)); st.position.set(x, 0.46, z + sd * 0.95); P.add(st);   // 圓凳
-        box(0.06, 0.42, 0.06, 0x555555, x, 0.21, z + sd * 0.95, P);
+    // v1.48 8 台日式坐式直立機台（原創外觀，不用原廠名稱與標誌）：白色流線機身、品牌紅斜飾條、黑框斜螢幕、
+    //   往前伸的操作台（兩支綠球搖桿、每邊 6 顆綠黃橘按鈕）、頂部燈箱寫遊戲名稱、前面一張紅色圓凳。一台對應一款小遊戲
+    const SCR = [], ARC = [["catch", "接雞蛋糕"], ["memory", "翻翻樂"], ["breakout", "打磚塊"], ["oven", "烤爐大挑戰"],
+      ["runner", "寵物跑酷"], ["match", "消消樂"], ["stack", "疊疊樂"], ["batter1", "麵糊大作戰"]];
+    const ARC_ROT = 0.45, ARC_POS = i => ({ x: -6.8 + (i % 4) * 1.45 + (i < 4 ? 0 : 0.72), z: i < 4 ? -5.0 : -1.5 });   // 兩排各 4 台，稍微轉向鏡頭
+    const WHITE = 0xf2f1ec, WHITE2 = 0xe2e1db;
+    ARC.forEach(([gid, n], i) => {
+      const { x, z } = ARC_POS(i), G = new THREE.Group(); G.position.set(x, 0, z); G.rotation.y = ARC_ROT; P.add(G);
+      box(0.86, 0.8, 0.7, WHITE2, 0, 0.4, -0.12, G);                             // 下半身（窄）
+      box(0.88, 0.06, 0.74, 0xd5d4cd, 0, 0.03, -0.12, G);
+      box(1.0, 1.25, 0.92, WHITE, 0, 1.42, -0.22, G);                            // 上半身（寬）
+      const bez = box(0.92, 0.82, 0.08, 0x111111, 0, 1.42, 0.26, G); bez.rotation.x = -0.32;   // 黑框，向後斜
+      const sc = new THREE.Mesh(new THREE.PlaneGeometry(0.74, 0.6), new THREE.MeshBasicMaterial({ color: 0x2a2f45 }));
+      sc.position.set(0, 1.43, 0.31); sc.rotation.x = -0.32; G.add(sc);
+      box(1.0, 0.1, 0.52, WHITE, 0, 0.93, 0.5, G);                               // 往前伸的操作台
+      const deck = box(0.94, 0.02, 0.44, 0x3a2a4a, 0, 0.99, 0.5, G);             // 操作面板
+      [-1, 1].forEach(sd => {                                                    // 左右各一組：搖桿＋6 顆按鈕
+        const jx = sd * 0.34 - 0.1;
+        box(0.03, 0.14, 0.03, 0x888888, jx, 1.07, 0.52, G);
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), mat(0x2ecc71)); ball.position.set(jx, 1.15, 0.52); G.add(ball);
+        [0, 1, 2].forEach(k => [0, 1].forEach(r => {
+          const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.03, 10), mat([0x2ecc71, 0xf1c40f, 0xf39c12][k]));
+          bt.position.set(jx + 0.1 + k * 0.065 * (sd > 0 ? -1 : 1) * -1, 1.01, 0.46 + r * 0.1); G.add(bt);
+        }));
       });
+      box(0.9, 0.05, 0.12, 0xdddddd, 0, 1.0, 0.18, G);                           // 螢幕下方小台
+      const lb = box(1.0, 0.3, 0.34, WHITE, 0, 2.2, -0.05, G);                   // 頂部燈箱
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.24), textPlane(n, 0.9, 0.24, { bg: "#c0392b", color: "#fff", size: 74 }).material);
+      sign.position.set(0, 2.2, 0.125); G.add(sign);
+      box(1.02, 0.08, 0.62, WHITE, 0, 2.38, -0.18, G);                           // 燈箱上方弧頂
+      [-1, 1].forEach(sd => { const st = box(0.015, 1.6, 0.07, 0xc0392b, sd * 0.505, 1.25, -0.3, G); st.rotation.x = 0.42; });   // 側面品牌紅斜飾條
+      const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.08, 14), mat(0xc0392b)); stool.position.set(0, 0.5, 1.05); G.add(stool);   // 紅色圓凳
+      box(0.06, 0.46, 0.06, 0x555555, 0, 0.23, 1.05, G); box(0.3, 0.03, 0.3, 0x555555, 0, 0.02, 1.05, G);
       const fx = { kind: "screen", mesh: sc, on: false }; FX.push(fx); SCR.push(fx);
-      const sign = put(P, textPlane(n, 1.3, 0.3, { bg: "#" + c.toString(16).padStart(6, "0"), color: "#fff", size: 58 }), x, 1.12, z - 0.3, Math.PI / 4);   // 遊戲名牌（朝鏡頭）
-      box(0.04, 0.36, 0.04, 0x555555, x, 0.92, z - 0.3, P);
-      BOARD_HIT.push({ mesh: sc, key: "arcade:" + gid }, { mesh: sign, key: "arcade:" + gid });
+      BOARD_HIT.push({ mesh: sc, key: "arcade:" + gid }, { mesh: sign, key: "arcade:" + gid }, { mesh: lb, key: "arcade:" + gid }, { mesh: bez, key: "arcade:" + gid });
     });
     // 夾娃娃機
     box(1.6, 1.0, 1.6, 0xff6fa8, 0.8, 0.5, -4.6, P);
@@ -1946,7 +1959,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 8), mat(0xe74c3c)); top.position.set(3.4, 0.62, 0.5); top.rotation.x = Math.PI; P.add(top); FX.push({ kind: "spin", obj: top, on: true, always: true });
     plant(P, 7.2, 2.6);
     SLOTS.gameroom = [
-      ...ARC.map((a, i) => ({ x: -6.6 + (i % 4) * 1.75, z: (i < 4 ? -3.4 : -0.6) - 0.95, rotY: 0, sit: true, anim: "type", fx: SCR[i] })),   // 坐在桌機北側、臉朝鏡頭
+      ...[4, 5, 6, 7, 0, 1, 2, 3].map(i => { const { x, z } = ARC_POS(i); return { x: x + Math.sin(ARC_ROT) * 1.05, z: z + Math.cos(ARC_ROT) * 1.05, rotY: ARC_ROT + Math.PI, sit: true, anim: "type", fx: SCR[i] }; }),   // v1.48 坐在機台前的紅凳上
       { x: 0.8, z: -3.3, rotY: Math.PI, anim: "type" }, { x: 2.6, z: -4.0, rotY: Math.PI, anim: "serve" },
       { x: -0.2, z: 2.7, rotY: Math.PI / 2, anim: "cheer" }, { x: 2.6, z: 2.7, rotY: -Math.PI / 2, anim: "talk" },
       { x: 3.6, z: 2.0, rotY: Math.PI, anim: "cheer" }, { x: 5.4, z: -3.8, rotY: Math.PI, anim: "stand" },
