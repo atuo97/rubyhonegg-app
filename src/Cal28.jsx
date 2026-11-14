@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Flash } from "./TopToast.jsx";
 
-const CAT_COLOR = { "進撤櫃": "#b9381c", "快閃": "#d68a1a", "活動": "#3f7d4e", "會議": "#3d5a80", "其他": "#8a7e72" };
+const CAT_COLOR = { "進撤櫃": "#b9381c", "快閃": "#d68a1a", "活動": "#3f7d4e", "會議": "#3d5a80", "其他": "#8a7e72", "全公司活動": "#c0392b" };   // v1.49 加盟、合作品牌只看得到「全公司活動」
 const WD = ["日", "一", "二", "三", "四", "五", "六"];
 const addDays = (d, n) => { const x = new Date(d + "T00:00:00+08:00"); x.setDate(x.getDate() + n); return new Date(x.getTime() + 8 * 3600e3).toISOString().slice(0, 10); };
 

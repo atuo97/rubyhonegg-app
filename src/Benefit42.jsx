@@ -89,8 +89,8 @@ export function BenefitForm({ user, apiPost, compressPhoto, C, s, todayStr, cats
 }
 
 // 大廳服務台：福利補助｜比賽公告｜意見箱
-export default function BenefitPage({ user, apiGet, apiPost, C, s, compressPhoto, todayStr, initTab }) {
-  const [tab, setTab] = useState(initTab || "apply");
+export default function BenefitPage({ user, apiGet, apiPost, C, s, compressPhoto, todayStr, initTab, ideaOnly }) {   // v1.49 ideaOnly：加盟店、合作品牌只有意見箱
+  const [tab, setTab] = useState(ideaOnly ? "idea" : (initTab || "apply"));
   const [d, setD] = useState(null), [msg, setMsg] = useState(null);
   const load = () => apiGet({ action: "bfMe" }, 0).then(r => setD(r && r.success ? r.data : { error: (r && r.error) || "讀取失敗（後端更新到 v1.42 後才能用）" }));
   useEffect(() => { load(); }, []);
@@ -102,10 +102,10 @@ export default function BenefitPage({ user, apiGet, apiPost, C, s, compressPhoto
     <div>
       {msg && <Flash text={msg.text} kind={msg.ok ? "ok" : "bad"} />}
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        <Tab k="apply">🎁 福利補助</Tab><Tab k="events">🏃 比賽公告</Tab><Tab k="idea">📮 意見箱</Tab>
+        {!ideaOnly && <><Tab k="apply">🎁 福利補助</Tab><Tab k="events">🏃 比賽公告</Tab></>}<Tab k="idea">📮 意見箱</Tab>
       </div>
-      {d && d.error && <div style={{ ...s.card, color: C.red }}>{d.error}</div>}
-      {!d && <div style={{ ...s.card, color: C.muted }}>讀取中…</div>}
+      {!ideaOnly && d && d.error && <div style={{ ...s.card, color: C.red }}>{d.error}</div>}
+      {!ideaOnly && !d && <div style={{ ...s.card, color: C.muted }}>讀取中…</div>}
 
       {d && !d.error && tab === "apply" && <>
         <div style={s.card}>

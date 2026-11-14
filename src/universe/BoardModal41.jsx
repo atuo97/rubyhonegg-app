@@ -7,7 +7,7 @@ import { SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
 
 const ST = { open: ["營業中", "#1e8449"], before: ["準備中", "#b9770e"], closed: ["已打烊", "#7f8c8d"] };
 
-export default function BoardModal41({ k, onClose, onGo, C, s, liveRev = [], opsMap = {}, short = [], game, onDuty = [], user = {}, apiPost, onChanged }) {
+export default function BoardModal41({ k, onClose, onGo, C, s, liveRev = [], opsMap = {}, short = [], game, onDuty = [], user = {}, apiPost, onChanged, own }) {
   const [form, setForm] = useState(null), [fmsg, setFmsg] = useState("");   // v1.44 貼客人讚美、改菜單
   const post = async (payload, ok) => { const r = await apiPost(payload, 0); if (r && r.success) { setFmsg(ok); setForm(null); onChanged && onChanged(); } else setFmsg((r && r.error) || "失敗了"); };
   const stores = SCENE_KEYS.filter(x => SCENES[x].store && opsMap[x] && (opsMap[x].state === "open" || liveRev.some(r => sceneOf(r.loc) === x) || short.some(y => y.scene === x)));
@@ -25,7 +25,10 @@ export default function BoardModal41({ k, onClose, onGo, C, s, liveRev = [], ops
   const empty = t => <div style={{ fontSize: 16, color: C.muted, padding: "24px 4px", textAlign: "center" }}>{t}</div>;
 
   let title = "", color = "#c0392b", body = null, go = null;
-  if (cur === "rev") {
+  if (cur === "rev" && own) {   // v1.49 加盟、合作品牌：只看本店，不顯示名次
+    title = "⚡ 本店今日營業額";
+    body = liveRev.length ? liveRev.map(x => <Row key={x.loc} l={shortLoc(x.loc)} sub={`${x.time} 回報・${x.by || ""}`} v={"$" + Number(x.amount).toLocaleString()} />) : empty("今天還沒有回報");
+  } else if (cur === "rev") {
     title = "⚡ 今日即時營業額 PK";
     body = liveRev.length ? liveRev.map((x, n) => <Row key={x.loc} l={`${["🥇", "🥈", "🥉"][n] || n + 1 + "."} ${shortLoc(x.loc)}`} sub={`${x.time} 回報・${x.by || ""}`} v={"$" + Number(x.amount).toLocaleString()} c={n === 0 ? "#c0392b" : null} />) : empty("今天還沒有櫃位回報");
   } else if (cur === "status") {

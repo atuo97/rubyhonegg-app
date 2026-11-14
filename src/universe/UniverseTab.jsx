@@ -286,7 +286,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
     engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, hearts: d.hearts || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary),
-      mounts: d.mounts || {}, macc: d.macc || {}, boards: d.boards || null, thanks: d.thanks || [], bfWall: d.bfWall || null, events: d.events || [], lobby: d.lobby || null, rank: d.rank || [], canteen: d.canteen || null, praise: d.praise || [] });
+      mounts: d.mounts || {}, macc: d.macc || {}, scope: d.scope || "",  boards: d.boards || null, thanks: d.thanks || [], bfWall: d.bfWall || null, events: d.events || [], lobby: d.lobby || null, rank: d.rank || [], canteen: d.canteen || null, praise: d.praise || [] });
     engine.current.setRev && engine.current.setRev(d.liveRev || []);
     // v1.40 營業額里程碑：沒看過的就放一次煙火
     try {
@@ -386,7 +386,8 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const info = k => { const ns = Object.keys(locInfo).filter(n => sceneOf(n) === k && (!locInfo[n].status || locInfo[n].status === "營運中")); const n0 = ns[0] || ""; return { kind: (locInfo[n0] || {}).kind || "", name: n0 }; };
     const grp = k => { const { kind, name } = info(k); if (k === "event" || /活動/.test(kind)) return 0; if (/加盟/.test(kind)) return 3; if (/合作/.test(kind)) return 4; return /快閃|展覽/.test(name) || /快閃/.test(kind) ? 2 : 1; };
     const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
-    return stores.map(k => ({ k, g: grp(k) })).sort((a, b) => a.g - b.g || n(a.k) - n(b.k));
+    const own = game && game.scope === "own" ? (game.ownLocs || []).map(sceneOf) : null;   // v1.49 加盟、合作品牌：第二列只列自己的櫃位
+    return stores.filter(k => !own || own.includes(k)).map(k => ({ k, g: grp(k) })).sort((a, b) => a.g - b.g || n(a.k) - n(b.k));
   })();
   const GLABEL = ["活動", "正櫃", "快閃", "加盟", "合作品牌"];
   const tabBtn = (k, on, label, onClick, dark) => (
@@ -692,7 +693,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           </div>
         </div>, document.body
       )}
-      {board && <BoardModal41 k={board} onClose={() => setBoard(null)} C={C} s={s} liveRev={liveRev} opsMap={opsMap} short={short} game={game} onDuty={onDuty} user={user} apiPost={apiPost} onChanged={loadGame}
+      {board && <BoardModal41 k={board} onClose={() => setBoard(null)} C={C} s={s} liveRev={liveRev} opsMap={opsMap} short={short} game={game} onDuty={onDuty} user={user} apiPost={apiPost} onChanged={loadGame} own={game && game.scope === "own"}
         onGo={k => { setBoard(null); setView(tabOf(k)); }} />}
 
       {goOpen && createPortal(

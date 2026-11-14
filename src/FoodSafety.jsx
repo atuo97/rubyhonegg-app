@@ -111,7 +111,7 @@ function ImgViewer({ id, apiGet, C, onClose }) {
     {src ? <img src={src} alt="體檢表" style={{ maxWidth: "100%", maxHeight: "90vh", borderRadius: 8 }} /> : <div style={{ color: "#fff" }}>{err || "讀取中…"}</div>}
   </div>;
 }
-export function HealthPage({ user, apiGet, apiPost, C, s, compressPhoto, todayStr }) {
+export function HealthPage({ user, apiGet, apiPost, C, s, compressPhoto, todayStr, noBenefit }) {   // v1.49 noBenefit：加盟店、合作品牌不顯示體檢費申請
   const [d, setD] = useState(null), [file, setFile] = useState(null), [date, setDate] = useState(""), [msg, setMsg] = useState(""), [busy, setBusy] = useState(false), [view, setView] = useState("");
   const load = () => apiGet({ action: "fsHealthMine" }, 1).then(r => setD(r && r.success ? r : { error: (r && r.error) || "讀取失敗" }));
   useEffect(() => { load(); }, []);
@@ -136,10 +136,10 @@ export function HealthPage({ user, apiGet, apiPost, C, s, compressPhoto, todaySt
         <div style={{ fontSize: 12, color: C.light, marginTop: 8 }}>🔒 體檢表只有你自己和管理者看得到，稽查時同事只會看到「有效／過期」</div>
       </div>
       {/* v1.42 體檢費：另外報帳，和福利補助共用同一張報帳清單 */}
-      <div style={s.card}>
+      {!noBenefit && <div style={s.card}>
         <div style={s.sectionTitle}>🧾 申請體檢費</div>
         <BenefitForm user={user} apiPost={apiPost} compressPhoto={compressPhoto} C={C} s={s} todayStr={todayStr} cats={[]} fixedCat="checkup" />
-      </div>
+      </div>}
       <div style={s.card}>
         <div style={s.sectionTitle}>上傳新的體檢表</div>
         <label style={s.label}>體檢日期</label>

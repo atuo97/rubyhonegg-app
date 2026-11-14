@@ -757,11 +757,13 @@ export default function App(){
     schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage", voice:"manage", album:"info", bag:"info", notif:"home" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
+  const ext = !!opsMe && user.role < 3 && (opsMe.type === "合作夥伴" || opsMe.type === "加盟店夥伴");   // v1.49 外部帳號：看不到總部營業額、爭霸戰、福利補助
   const franchiseOwner = user.role < 3 && !!(opsMe && opsMe.franchiseLocs && opsMe.franchiseLocs.length);
   const navItems = partner ? [
     { id:"home",  icon:"home",  label:"首頁" },
     { id:"mat",   icon:"order", label:"叫貨" },
     { id:"rp",    icon:"tool",  label:"回報" },
+    { id:"park",  icon:"park",  label:"樂園" },   // v1.49 合作品牌加入樂園
     { id:"info",  icon:"user",  label:"我的" },
   ] : [
     { id:"home",   icon:"home",  label:"首頁" },
@@ -772,7 +774,7 @@ export default function App(){
   ];
   if (!SUB.includes(tab)) lastMain.current = tab;
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
-  const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
+  const navActive = partner ? (navItems.some(n => n.id === tab) ? tab : PARENT[tab] === "park" ? "park" : lastMain.current) : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => {
     if (backTo && backTo.tab !== tab) { const b = backTo; setBackTo(null); if (b.tab === "universe") setUni({ room: b.room || null, auto: null, key: Date.now() }); setTab(b.tab); return; }
     setBackTo(null); setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
@@ -810,10 +812,10 @@ export default function App(){
         </div>
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           {loading && <div style={{ fontSize:11, color:C.muted }}>同步中…</div>}
-          {game.me && !partner && avatarCfg && <button onClick={openMePet} aria-label="我和寵物" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"0 8px", height:30, cursor:"pointer", display:"flex", alignItems:"center", overflow:"hidden" }}><MeBuddy cfg={avatarCfg} pet={game.me.pet} scale={1} /></button>}
-          {game.me && !partner && <button onClick={()=>openGame("home")} aria-label="我的錢包" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
-          {!partner && <BellButton C={C} n={notifs.unread} onClick={()=>nav({ tab:"notif", back: tab !== "notif" ? { tab } : null })} />}
-          {!partner && <BgmToggle C={C} onLong={()=>setBgmOpen(true)} />}
+          {game.me && avatarCfg && <button onClick={openMePet} aria-label="我和寵物" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"0 8px", height:30, cursor:"pointer", display:"flex", alignItems:"center", overflow:"hidden" }}><MeBuddy cfg={avatarCfg} pet={game.me.pet} scale={1} /></button>}
+          {game.me && <button onClick={()=>openGame("home")} aria-label="我的錢包" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
+          {<BellButton C={C} n={notifs.unread} onClick={()=>nav({ tab:"notif", back: tab !== "notif" ? { tab } : null })} />}
+          {<BgmToggle C={C} onLong={()=>setBgmOpen(true)} />}
           <div style={{ width:38, height:38, borderRadius:19, background:C.accentBg, color:C.accent,
                         border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center",
                         fontSize:15, fontWeight:600 }}>{user.avatar}</div>
@@ -830,7 +832,7 @@ export default function App(){
 
       {/* CONTENT */}
       <div key={tab} className="rh-page" style={{ padding:"14px 14px 96px" }}>
-        {SUB.includes(tab) && !partner && <SubHeader title={subTitle} onBack={goBack} />}
+        {SUB.includes(tab) && !(partner && navItems.some(n => n.id === tab)) && <SubHeader title={subTitle} onBack={goBack} />}
         {partner && tab==="home" && <PartnerHome user={user} me={opsMe} announcements={announcements} C={C} s={s} apiGet={apiGet} apiPost={apiPost} onAnnChanged={loadAnn} onOpenMaterials={()=>setTab("mat")} onOpenReport={()=>setTab("rp")} />}
         {partner && tab==="info" && <PartnerInfo user={user} onPwChanged={()=>setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} />}
         {tab==="rp" && <ReportPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} me={opsMe} locations={locations} todayStr={todayStr} uploadPhoto={uploadPhoto} onChanged={loadRp} />}
@@ -877,7 +879,8 @@ export default function App(){
                                      {user.role<2 && <ListItem icon="tool" title="設備檢查清單" desc="出攤、設櫃、出國：打包、到場、點收打勾" onClick={()=>setTab("equip")}/>}
                                    </>}
                                    bfLinks={<>
-                                     <ListItem icon="shield" title="福利補助・意見箱" desc="運動、證照、比賽報名費補助申請；比賽公告；寫給隊長" onClick={()=>{ setBfTab("apply"); setTab("benefit"); }}/>
+                                     {ext ? <ListItem icon="shield" title="意見箱" desc="寫給隊長" onClick={()=>{ setBfTab("idea"); setTab("benefit"); }}/>
+                                       : <ListItem icon="shield" title="福利補助・意見箱" desc="運動、證照、比賽報名費補助申請；比賽公告；寫給隊長" onClick={()=>{ setBfTab("apply"); setTab("benefit"); }}/>}
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
                                      <ListItem icon="vote" title="隊員投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
@@ -888,7 +891,7 @@ export default function App(){
                                      <ListItem icon="game" title="我的背包" desc="造型、寵物、坐騎與配件、座位擺飾、扭蛋券，在這裡直接裝上" onClick={()=>{ setBagTab(null); setTab("bag"); }}/>
                                    </>}
                                    setLinks={<BgmSettings C={C} s={s} />} />}
-        {!partner && tab==="park" && (
+        {tab==="park" && (
           <div>
             {/* v1.39：無敵8心放樂園最上方；選單標題與說明照隊長 11/14；小遊戲獨立一格，我的錢包移到下面 */}
             <HeartsCard apiGet={apiGet} C={C} s={s} onOpen={()=>{ setHeartsWho(null); setTab("hearts"); }} />
@@ -897,7 +900,7 @@ export default function App(){
               <GameTile title="我和寵物的更衣間" sub="造型・寵物・商店・小遊戲・徽章" art={<MeBuddy cfg={avatarCfg} pet={game.me && game.me.pet} scale={1.25} />} onClick={openMePet}/>
               <GameTile title="宇宙辦公室" sub="在浩瀚宇宙遇見好夥伴" icon="cube" onClick={()=>setTab("universe")}/>
               <GameTile title="切磋對戰" sub="你或許可以一次打 10 個！" icon="sword" onClick={()=>setTab("arena")}/>
-              <GameTile title="櫃位爭霸戰" sub="最強櫃位包括營業以及不斷升級" icon="tower" onClick={()=>setTab("tower")}/>
+              {!ext && <GameTile title="櫃位爭霸戰" sub="最強櫃位包括營業以及不斷升級" icon="tower" onClick={()=>setTab("tower")}/>}
               <GameTile title="隊員商店街" sub="逛逛隊員的店換你當 Boss" icon="home" onClick={()=>setTab("street")}/>
               <GameTile title="小遊戲" sub="心體技合一，逐步學習「赤心流」之最高奧義" icon="game" onClick={()=>setTab("minigame")}/>
             </div>
@@ -954,7 +957,7 @@ export default function App(){
         )}
         {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} autoStart={mgAuto} onAutoDone={()=>setMgAuto(null)} />}
         {tab==="shopprop" && user.role>=3 && <ShopProposals apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
-        {tab==="benefit" && <BenefitPage key={bfTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} initTab={bfTab} />}
+        {tab==="benefit" && <BenefitPage ideaOnly={ext} key={bfTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} initTab={bfTab} />}
         {tab==="bfadmin" && user.role>=4 && <BenefitAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="grant" && user.role>=3 && <GrantPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEquip={q => { setEqQuote(q); setTab("equip"); }} />}
@@ -973,7 +976,7 @@ export default function App(){
         {tab==="bag" && <BagPage key={"bag" + (bagTab || "")} initial={bagTab} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onChanged={() => game.refresh && game.refresh()} onOpenShop={() => nav({ tab:"spend", back:{ tab:"bag" } })} />}
         {tab==="voice" && user.role>=3 && <VoicePage key={voiceTab || "v"} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={voiceTab} />}
         {quick && <QuickModal k={quick} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onClose={() => setQuick(null)} onChanged={() => game.refresh && game.refresh()} />}
-        {tab==="health" && <HealthPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}
+        {tab==="health" && <HealthPage noBenefit={ext} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}
         {tab==="foodsafe" && user.role>=2 && <FoodSafetyAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} uploadPhoto={uploadPhoto} todayStr={todayStr} />}
         {tab==="guide" && <GuideTab />}
         {tab==="admin" && user.role>=2 && <AdminTab user={user} onOpenBatter={()=>setTab("batter")} />}

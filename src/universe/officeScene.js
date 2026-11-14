@@ -669,13 +669,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const g = b.canvas.getContext("2d"), W = 512, H = 352;
     g.fillStyle = "#fbfaf5"; g.fillRect(0, 0, W, H);
     g.fillStyle = "#c0392b"; g.fillRect(0, 0, W, 64);
-    g.fillStyle = "#fff"; g.font = FONT(34); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("⚡ 今日即時營業額 PK", W / 2, 33);
+    g.fillStyle = "#fff"; g.font = FONT(34); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(GAME.scope === "own" ? "⚡ 本店今日營業額" : "⚡ 今日即時營業額 PK", W / 2, 33);
     g.textAlign = "left";
     if (!list.length) { g.fillStyle = "#8a7a68"; g.font = FONT(32); g.fillText("今天還沒有櫃位回報", 40, 190); }
     list.slice(0, 6).forEach((x, i) => {
       const y = 100 + i * 46;
       g.fillStyle = i === 0 ? "#fff3cd" : i % 2 ? "#f6efe3" : "#fbfaf5"; g.fillRect(8, y - 21, W - 16, 42);
-      g.fillStyle = "#3a2a1a"; g.font = FONT(28); g.fillText((["🥇", "🥈", "🥉"][i] || (i + 1) + ".") + " " + shortLoc(x.loc).slice(0, 7), 16, y);
+      g.fillStyle = "#3a2a1a"; g.font = FONT(28); g.fillText((GAME.scope === "own" ? "" : (["🥇", "🥈", "🥉"][i] || (i + 1) + ".") + " ") + shortLoc(x.loc).slice(0, 7), 16, y);   // v1.49 本店不顯示名次
       g.fillStyle = "#8a7a68"; g.font = FONT(22); g.fillText(x.time, 268, y);
       g.fillStyle = i === 0 ? "#c0392b" : "#3a2a1a"; g.font = FONT(30); g.textAlign = "right"; g.fillText("$" + Number(x.amount).toLocaleString(), W - 16, y); g.textAlign = "left";
     });

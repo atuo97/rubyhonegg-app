@@ -262,6 +262,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
   };
   const load = () => apiGet({ action:"opsStaffList", empId:user.id, token:user.token || "" }, 1).then(r => { if (r && r.success) setList(r.data); else { setList([]); setErr((r && r.error) || "讀取失敗"); } });
   useEffect(() => { load(); }, []);
+  const [showId, setShowId] = useState({});   // v1.49 身分證預設遮蔽，點「顯示」才完整
   const blank = { name:"", nick:"", sex:"", phone:"", bday:"", hire:new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), role:1, pos:"隊員", type:"員工", managed:"", idno:"", addr:"", addr1:"" };
   const up = (k, v) => setForm({ ...form, [k]:v });
   const save = async () => {
@@ -299,7 +300,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
             <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>
               {x.pos}{x.type !== "員工" ? `・${x.type}` : ""}{x.managed ? `・負責 ${x.managed}` : ""}{x.hire ? `・到職 ${x.hire}` : ""}{x.onboard === false ? "・到職檢查未完成" : ""}
             </div>
-            {x.idno !== undefined && <div style={{ fontSize:11.5, color:C.light, marginTop:2 }}>{x.phone}・{x.idno ? x.idno.slice(0, 3) + "＊＊＊＊" + x.idno.slice(-3) : "未填身分證"}{x.addr2 ? `・${x.addr2}` : ""}</div>}
+            {x.idno !== undefined && <div style={{ fontSize:11.5, color:C.light, marginTop:2 }}>{x.phone}・{x.idno ? (showId[x.id] ? x.idno : x.idno.slice(0, 3) + "＊＊＊＊" + x.idno.slice(-3)) : "未填身分證"}{x.idno && <button onClick={e => { e.stopPropagation(); setShowId(m => ({ ...m, [x.id]: !m[x.id] })); }} style={{ border:"none", background:"none", color:C.accent, fontSize:11.5, cursor:"pointer", padding:"0 4px", fontFamily:"inherit" }}>{showId[x.id] ? "隱藏" : "顯示"}</button>}{x.addr2 ? `・${x.addr2}` : ""}</div>}
           </div>
         ))}
       </div>
