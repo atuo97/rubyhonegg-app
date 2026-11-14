@@ -13,17 +13,18 @@ import { EquipPage } from "./Equip35.jsx";
 import { HeartsPage, HeartsCard } from "./Hearts36.jsx";
 import { bgm, BGM_OF_TAB, BgmAsk, BgmSettings, BgmToggle } from "./Bgm36.jsx";
 import MiniGames from "./MiniGames.jsx";
+import { useUniverseNotes, NoteSettings } from "./Notes40.jsx";
 import { GrantPage } from "./People39.jsx";
 import { CalendarPage } from "./Cal28.jsx";
 import { AcPage } from "./Ac29.jsx";
-import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
+import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, setNoFridgeLocs, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
 import { sanitize as sanitizeAvatar } from "./universe/avatarCatalog.js";
 import GameTab from "./GameTab.jsx";
 import { Coin } from "./Coin.jsx";
 import { PetSprite } from "./pets/petSprites.jsx";
 import ArenaTab from "./ArenaTab.jsx";
 import TowerTab from "./TowerTab.jsx";
-import ShopStreetTab from "./ShopStreetTab.jsx";
+import ShopStreetTab, { ShopProposals } from "./ShopStreetTab.jsx";
 import OrdersTab from "./OrdersTab.jsx";
 import ScheduleManager, { MyShifts } from "./ScheduleTab.jsx";
 import MePet from "./MePet.jsx";
@@ -216,6 +217,7 @@ const GLOBAL_CSS = `
 html,body{background:#efe9e0;margin:0}
 *{-webkit-tap-highlight-color:transparent}
 @keyframes rhDropIn{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
+@keyframes rhTicker{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @keyframes rhFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes rhShimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
 .rh-page{animation:rhFade .28s ease both}
@@ -478,7 +480,7 @@ function PetGreeting({ user, game }) {
   );
 }
 
-// v1.33 生日顯示：〈夥伴資料〉生日填民國年（67/09/07），試算表會存成 1967 年 → 一律當民國年換算（和薪資引擎部署端修正相同規則）
+// v1.33 生日顯示：〈隊員資料〉生日填民國年（67/09/07），試算表會存成 1967 年 → 一律當民國年換算（和薪資引擎部署端修正相同規則）
 // 「67/09/07」「1967-09-07」「Thu Sep 07 1967 …」都會顯示成「67 年次（1978）・9/7」
 function rocBirthday(v) {
   const t = String(v || "").trim(); if (!t) return "";
@@ -517,12 +519,12 @@ function GameHomeCards({ user, game, onOpenGame }) {
         <div key={b.id} style={{ ...s.card, background:"#fff0f6", border:"1px solid #f8c8dc", textAlign:"center" }}>
           <div style={{ fontSize:28 }}>🎂🎉</div>
           <div style={{ fontSize:16, fontWeight:600, marginTop:4 }}>生日快樂，{b.name}！</div>
-          <div style={{ fontSize:12.5, color:C.muted, marginTop:4 }}>宇宙辦公室正在幫你開派對{b.from.length ? `・${b.from.length} 位夥伴送上祝福：${b.from.join("、")}` : ""}</div>
+          <div style={{ fontSize:12.5, color:C.muted, marginTop:4 }}>宇宙辦公室正在幫你開派對{b.from.length ? `・${b.from.length} 位隊員送上祝福：${b.from.join("、")}` : ""}</div>
         </div>
       ) : (
         <div key={b.id} style={{ ...s.card, display:"flex", alignItems:"center", gap:12, background:"#fff0f6", border:"1px solid #f8c8dc" }}>
           <span style={{ fontSize:26 }}>🎂</span>
-          <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:600 }}>今天是 {b.name} 的生日！</div><div style={{ fontSize:11.5, color:C.muted }}>已有 {b.wishes} 位夥伴送上祝福</div></div>
+          <div style={{ flex:1 }}><div style={{ fontSize:14, fontWeight:600 }}>今天是 {b.name} 的生日！</div><div style={{ fontSize:11.5, color:C.muted }}>已有 {b.wishes} 位隊員送上祝福</div></div>
           <button disabled={b.wished} onClick={()=>post({ action:"gmWish", to:b.id }, `已祝 ${b.name} 生日快樂！`)} style={{ border:"none", borderRadius:999, padding:"7px 12px", fontSize:12.5, background:b.wished ? C.warm : "#ff6fa8", color:b.wished ? C.muted : "#fff", cursor:b.wished ? "default" : "pointer", fontFamily:"inherit" }}>{b.wished ? "已祝福" : "送祝福"}</button>
         </div>
       ))}
@@ -581,7 +583,7 @@ function GameHomeCards({ user, game, onOpenGame }) {
 // APP ROOT
 // ─────────────────────────────────────────────
 export default function App(){
-  // v1.25 記住登入（30 天）＋大隊長預覽（以等級檢視／夥伴視角，只能看不能改）
+  // v1.25 記住登入（30 天）＋大隊長預覽（以等級檢視／隊員視角，只能看不能改）
   const [realUser, setRealUser] = useState(() => { const a = authLoad(); if (a) AUTH.token = a.token; return a ? a.user : null; });
   const [reloginMsg, setReloginMsg] = useState("");
   const setUser = (u) => setRealUser(prev => { const n = typeof u === "function" ? u(prev) : u; if (n && n.token) { AUTH.token = n.token; authSave(n); } return n; });
@@ -650,6 +652,8 @@ export default function App(){
     if (r && r.success) { setAnnouncements(r.data || []); cacheSet("ann", r.data || []); return; }
     return apiGet({ action:"getAnnouncements" }).then(r2 => { if (r2 && r2.success) { const d = r2.data || []; setAnnouncements(d); cacheSet("ann", d); } });
   });
+  // v1.40：辦公室、工廠、倉庫、活動不用填冰箱溫度
+  if (locations) setNoFridgeLocs(Object.keys(locations).filter(n => /內部|活動/.test((locations[n] || {}).kind || "")));
   // v1.39：在辦公室、工廠、倉庫上班不用開店盤點，視為已完成
   useEffect(() => {
     if (activeSeg && locations && (locations[activeSeg.location] || {}).kind === "內部" && !checklistDone.open) setChecklistDone(p => ({ ...p, open:true }));
@@ -677,6 +681,7 @@ export default function App(){
 
   const online = useOnline();
   const ord = useOrderAlerts(user);
+  useUniverseNotes(user, apiGet);   // v1.40 宇宙提醒（視察、超車、里程碑、咖啡、坐騎）
   const game = useGameMe(user);
   const lastMain = useRef("home");   // v1.26 子頁返回到哪一個底部分頁
   const [gameTab, setGameTab] = useState("home");
@@ -692,7 +697,7 @@ export default function App(){
     setGameTab("home"); setTab("game");
   };
   const [avatarCfg, setAvatarCfg] = useState(null);
-  // v1.30 管理者重設過密碼的夥伴：登入後一定要先改密碼
+  // v1.30 管理者重設過密碼的隊員：登入後一定要先改密碼
   const [pwMust, setPwMust] = useState(false);
   useEffect(() => {
     if (!realUser || !realUser.weakPw || realUser.role >= 3) { setPwMust(false); return; }
@@ -708,14 +713,14 @@ export default function App(){
   // v1.25 管理者（Lv.3 以上）密碼還是生日：先改密碼才能用
   if (!preview && realUser.weakPw && realUser.role < 3 && pwMust) return <><GlobalStyle/><ForcePwScreen user={realUser} reset onDone={() => { setPwMust(false); setUser(u => ({ ...u, weakPw:false })); }} onLogout={logout} /></>;
   if (!preview && realUser.role >= 3 && realUser.weakPw) return <><GlobalStyle/><ForcePwScreen user={realUser} onDone={() => setUser(u => ({ ...u, weakPw:false }))} onLogout={logout} /></>;
-  const roleName = r => r>=5?"大隊長":r===4?"總經理":r===3?"管理者":r===2?"分隊長":"夥伴";
+  const roleName = r => r>=5?"大隊長":r===4?"總經理":r===3?"管理者":r===2?"分隊長":"隊員";
   const previewLabel = !preview ? "" : preview.mode === "role" ? `Lv.${preview.role} ${roleName(preview.role)}${preview.type && preview.type !== "員工" ? "（" + preview.type + "）" : ""}` : `${user.name}（Lv.${user.role} ${roleName(user.role)}）`;
 
   // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
     universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"home", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
-    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park" };
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
   const franchiseOwner = user.role < 3 && !!(opsMe && opsMe.franchiseLocs && opsMe.franchiseLocs.length);
@@ -735,7 +740,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "夥伴的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -816,7 +821,7 @@ export default function App(){
           <ListItem icon="order" title="叫貨（物料需求）" desc="原物料、包材、製作器具、清潔用品…" onClick={()=>setTab("mat")}/>
           <ListItem icon="tool" title="請總部處理" desc="機器報修、水電場地、人力支援、客訴、金流…" badge={(user.role>=2 ? null : rpCnt?.mineOpen) || null} onClick={()=>setTab("rp")}/>
           <ListItem icon="book" title="SOP 教學" desc="開店、收店、攪拌麵糊、烤雞蛋糕" onClick={()=>setTab("sop")}/>
-          <ListItem icon="shield" title="稽查資料" desc="食品業者登錄字號、保險、在班夥伴體檢狀態" onClick={()=>setTab("audit")}/>
+          <ListItem icon="shield" title="稽查資料" desc="食品業者登錄字號、保險、在班隊員體檢狀態" onClick={()=>setTab("audit")}/>
         </div>}
         {!partner && tab==="info"  && <InfoTab user={user} staffInfo={staffInfo} salary={salary}
                                    schedule={schedule} announcements={announcements} onRefresh={loadAllData}
@@ -827,7 +832,7 @@ export default function App(){
                                      <ListItem icon="cal" title="行事曆" desc="進撤櫃、快閃、活動、會議" onClick={()=>setTab("calendar")}/>
                                      {user.role<2 && <ListItem icon="tool" title="設備檢查清單" desc="出攤、設櫃、出國：打包、到場、點收打勾" onClick={()=>setTab("equip")}/>}
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
-                                     <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
+                                     <ListItem icon="vote" title="隊員投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
                                    </>} />}
         {!partner && tab==="park" && (
@@ -840,7 +845,7 @@ export default function App(){
               <GameTile title="宇宙辦公室" sub="在浩瀚宇宙遇見好夥伴" icon="cube" onClick={()=>setTab("universe")}/>
               <GameTile title="切磋對戰" sub="你或許可以一次打 10 個！" icon="sword" onClick={()=>setTab("arena")}/>
               <GameTile title="櫃位爭霸戰" sub="最強櫃位包括營業以及不斷升級" icon="tower" onClick={()=>setTab("tower")}/>
-              <GameTile title="夥伴商店街" sub="逛逛夥伴的店換你當 Boss" icon="home" onClick={()=>setTab("street")}/>
+              <GameTile title="隊員商店街" sub="逛逛隊員的店換你當 Boss" icon="home" onClick={()=>setTab("street")}/>
               <GameTile title="小遊戲" sub="心體技合一，逐步學習「赤心流」之最高奧義" icon="game" onClick={()=>setTab("minigame")}/>
             </div>
             <ListItem icon="coin" title="赤心幣商店" desc="造型・寵物・座位・稱號特效・對戰裝備・扭蛋・大魔王・兌換，點商品可以先試穿" onClick={()=>setTab("spend")}/>
@@ -854,8 +859,9 @@ export default function App(){
             <div style={s.sectionTitle}>公司</div>
             <ListItem icon="cal" title="行事曆" desc={user.role>=3 ? "新增進撤櫃、快閃、活動、會議，同步 Google 日曆" : "進撤櫃、快閃、活動、會議"} onClick={()=>setTab("calendar")}/>
             {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
-            <ListItem icon="chart" title="管理儀表板" desc="今日即時、各櫃位累積、夥伴出勤" onClick={()=>setTab("admin")}/>
+            <ListItem icon="chart" title="管理儀表板" desc="今日即時、各櫃位累積、隊員出勤" onClick={()=>setTab("admin")}/>
             {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
+            {user.role>=3 && <ListItem icon="home" title="隊員商店街提案" desc="隊員想開的新店種，規劃後上架" onClick={()=>setTab("shopprop")}/>}
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>櫃位</div>
             <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
@@ -868,9 +874,9 @@ export default function App(){
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>人員</div>
             <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
-            {user.role>=3 && <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>}
-            {user.role>=3 && <ListItem icon="user" title="無敵8心頒發" desc="看夥伴的 8 心、頒發愛心與善心" onClick={()=>{ setHeartsWho(null); setTab("hearts"); }}/>}
-            {user.role>=3 && user.role<5 && <ListItem icon="coin" title="發放限定造型" desc="直接選夥伴、合作品牌或加盟店" onClick={()=>setTab("grant")}/>}
+            {user.role>=3 && <ListItem icon="user" title="隊員資料" desc="新增隊員、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>}
+            {user.role>=3 && <ListItem icon="user" title="無敵8心頒發" desc="看隊員的 8 心、頒發愛心與善心" onClick={()=>{ setHeartsWho(null); setTab("hearts"); }}/>}
+            {user.role>=3 && user.role<5 && <ListItem icon="coin" title="發放限定造型" desc="直接選隊員、合作品牌或加盟店" onClick={()=>setTab("grant")}/>}
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>活動</div>
             {user.role>=3 && <ListItem icon="order" title="報價單" desc="活動報價、存成 Word＋PDF 到雲端、報價紀錄" onClick={()=>setTab("quote")}/>}
@@ -884,6 +890,7 @@ export default function App(){
           </div>
         )}
         {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} />}
+        {tab==="shopprop" && user.role>=3 && <ShopProposals apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="grant" && user.role>=3 && <GrantPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEquip={q => { setEqQuote(q); setTab("equip"); }} />}
         {tab==="hearts" && <HeartsPage key={heartsWho || "me"} who={heartsWho} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
@@ -1008,8 +1015,8 @@ function InstallTip() {
   if (standalone) return null;
   const install = async () => { if (!RH_INSTALL_EVT) return; RH_INSTALL_EVT.prompt(); try { await RH_INSTALL_EVT.userChoice; } catch (e) {} RH_INSTALL_EVT = null; setCanOne(false); };
   const step = (n, t) => <div style={{ display:"flex", gap:8, alignItems:"flex-start", margin:"5px 0" }}><span style={{ flexShrink:0, width:18, height:18, borderRadius:9, background:C.accent, color:"#fff", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1 }}>{n}</span><span>{t}</span></div>;
-  const IOS = <div><div style={{ fontWeight:600, marginBottom:2 }}>🍎 iPhone（請用 Safari 打開）</div>{step(1, <>點畫面下方的「分享」按鈕 <b>⬆︎</b>（方框加向上箭頭）</>)}{step(2, <>往下滑，點「<b>加入主畫面</b>」</>)}{step(3, <>右上角按「<b>加入</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
-  const AND = <div><div style={{ fontWeight:600, marginBottom:2 }}>🤖 Android（請用 Chrome 打開）</div>{step(1, <>點右上角的 <b>⋮</b></>)}{step(2, <>點「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」</>)}{step(3, <>按「<b>安裝</b>」或「<b>新增</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
+  const IOS = <div><div style={{ fontWeight:600, marginBottom:2 }}>🍎 iPhone（請用 Safari 打開）</div>{step(1, <>點畫面下方的「分享」按鈕 <b>⬆︎</b>（方框加向上箭頭）</>)}{step(2, <>往下滑，點「<b>加入主畫面</b>」</>)}{step(3, <>右上角按「<b>加入</b>」，桌面就會出現「紅玉滿隊員」</>)}</div>;
+  const AND = <div><div style={{ fontWeight:600, marginBottom:2 }}>🤖 Android（請用 Chrome 打開）</div>{step(1, <>點右上角的 <b>⋮</b></>)}{step(2, <>點「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」</>)}{step(3, <>按「<b>安裝</b>」或「<b>新增</b>」，桌面就會出現「紅玉滿隊員」</>)}</div>;
   const INAPP = <div style={{ background:C.goldBg, borderRadius:10, padding:"8px 10px", marginBottom:8 }}>你現在是在 {line ? "LINE" : "社群軟體"} 裡面打開的，要先換到瀏覽器：點右上角（或右下角）的 <b>⋯</b>，選「<b>用預設瀏覽器開啟</b>」或「<b>在 {ios ? "Safari" : "Chrome"} 中開啟</b>」。</div>;
   return (
     <div style={{ ...s.card, marginTop:16, padding:"12px 16px", borderRadius:16 }}>
@@ -1071,7 +1078,7 @@ function LoginScreen({ onLogin, notice }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", padding:"28px 28px 36px" }}>
         <div style={{ textAlign:"center", marginBottom:34 }}>
           <img src="/logo_ink.png" alt="紅玉滿赤心雞蛋糕" style={{ width:"74%", maxWidth:300, marginBottom:14 }}/>
-          <div style={{ fontSize:12, color:C.muted, letterSpacing:4 }}>夥伴系統</div>
+          <div style={{ fontSize:12, color:C.muted, letterSpacing:4 }}>隊員系統</div>
           <LoginSlogan C={C} />
         </div>
 
@@ -1083,7 +1090,7 @@ function LoginScreen({ onLogin, notice }) {
               placeholder="請輸入帳號" style={s.input}/>
           </div>
           <div style={{ marginBottom:8 }}>
-            <label style={s.label}>密碼(預設為夥伴生日，如6月7日為0607)</label>
+            <label style={s.label}>密碼(預設為隊員生日，如6月7日為0607)</label>
             <div style={{ position:"relative" }}>
               <input ref={pwRef} type={showPw ? "text" : "password"} value={pw} onChange={e=>setPw(e.target.value)} autoComplete="current-password" name="password"
                 placeholder="請輸入密碼"
@@ -1187,7 +1194,7 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
               </div>
               <div style={{ fontSize:12, color:C.muted, marginTop:2 }}>
                 {mine
-                  ? (others.length ? `今天也是 ${others.join("、")} 的生日` : "紅玉滿全體夥伴祝你有個甜甜的一天")
+                  ? (others.length ? `今天也是 ${others.join("、")} 的生日` : "紅玉滿全體隊員祝你有個甜甜的一天")
                   : `${others.join("、")} 今天生日，記得送上祝福`}
               </div>
             </div>
@@ -1237,19 +1244,19 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
           <span style={{ color:C.accent, display:"flex" }}><Ic n="cube"/></span>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:14, fontWeight:600 }}>紅玉滿宇宙辦公室</div>
-            <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>看看夥伴們現在在哪個櫃位上班</div>
+            <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>看看隊員們現在在哪個櫃位上班</div>
           </div>
           <Ic n="chev" size={18} color={C.light}/>
         </button>
       )}
 
-      {/* 夥伴投票入口 */}
+      {/* 隊員投票入口 */}
       {onOpenVotes && (
         <button onClick={onOpenVotes} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:12,
           cursor:"pointer", textAlign:"left", fontFamily:"inherit", padding:"12px 14px" }}>
           <span style={{ color:C.accent, display:"flex" }}><Ic n="vote"/></span>
           <div style={{ flex:1 }}>
-            <div style={{ fontSize:14, fontWeight:600, color:C.text }}>夥伴投票</div>
+            <div style={{ fontSize:14, fontWeight:600, color:C.text }}>隊員投票</div>
             <div style={{ fontSize:11, color:C.muted, marginTop:2 }}>查看進行中的投票、送出你的選擇</div>
           </div>
           <Ic n="chev" size={18} color={C.light}/>
@@ -1728,7 +1735,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
       {activeSeg && !isInner && checklistDone.open && isLast === false && (
         <>
           <div style={{ ...s.card, marginBottom:12, background:C.blueBg }}>
-            <div style={{ fontSize:13, color:C.blue, fontWeight:700 }}>還有其他夥伴在班上</div>
+            <div style={{ fontSize:13, color:C.blue, fontWeight:700 }}>還有其他隊員在班上</div>
             <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>您不需回報營業額與盤點，只需交接零用金即可下班</div>
           </div>
           <div style={{ ...s.card, marginBottom:12 }}>
@@ -1981,6 +1988,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
         ))}
       </div>
 
+      <NoteSettings C={C} s={s} />
       <ChangePasswordCard user={user} onChanged={onPwChanged} />
 
       {onLogout && <button onClick={() => { if (confirm("登出後，下次要重新輸入帳號密碼。確定登出？")) onLogout(); }} style={{ ...s.btn("ghost"), marginTop:4 }}>登出</button>}
@@ -2106,7 +2114,7 @@ function ForcePwScreen({ user, onDone, onLogout, reset }) {
         <div style={{ fontSize:18, fontWeight:600, marginTop:6 }}>{user.name}，請先改一組新密碼</div>
         <div style={{ fontSize:12.5, color:C.muted, marginTop:8, lineHeight:1.7 }}>
           {reset ? <>管理者剛幫你把密碼重設成生日，<br/>請改一組只有你知道的新密碼，改好就能繼續使用。</>
-            : <>你的帳號可以看到夥伴資料、薪資與營運數字，<br/>密碼還是生日很容易被猜到。改好就能繼續使用。</>}
+            : <>你的帳號可以看到隊員資料、薪資與營運數字，<br/>密碼還是生日很容易被猜到。改好就能繼續使用。</>}
         </div>
       </div>
       <ChangePasswordCard user={user} onChanged={onDone} force />
@@ -2115,7 +2123,7 @@ function ForcePwScreen({ user, onDone, onLogout, reset }) {
   );
 }
 
-// v1.25 大隊長預覽：以等級檢視（看各等級的畫面）／夥伴視角（看某位夥伴實際看到的畫面）。都只能看，不能改。
+// v1.25 大隊長預覽：以等級檢視（看各等級的畫面）／隊員視角（看某位隊員實際看到的畫面）。都只能看，不能改。
 function ViewAsCard({ onStart }) {
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState(1);
@@ -2126,7 +2134,7 @@ function ViewAsCard({ onStart }) {
   const [busy, setBusy] = useState("");
   useEffect(() => {
     if (!open || people) return;
-    apiGet({ action:"auPeople" }, 1).then(r => { if (r && r.success) setPeople(r.data || []); else { setPeople([]); setErr(r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.25 後才能用夥伴視角" : (r && r.error) || "讀不到夥伴清單"); } });
+    apiGet({ action:"auPeople" }, 1).then(r => { if (r && r.success) setPeople(r.data || []); else { setPeople([]); setErr(r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.25 後才能用隊員視角" : (r && r.error) || "讀不到隊員清單"); } });
   }, [open]);
   const pick = async (p) => {
     setBusy(p.id); setErr("");
@@ -2134,7 +2142,7 @@ function ViewAsCard({ onStart }) {
     setBusy("");
     if (r && r.success && r.user) onStart({ mode:"as", user:r.user }); else setErr((r && r.error) || "讀取失敗");
   };
-  const roles = [[1,"夥伴"],[2,"分隊長"],[3,"管理者"],[4,"總經理"]];
+  const roles = [[1,"隊員"],[2,"分隊長"],[3,"管理者"],[4,"總經理"]];
   const types = ["員工","加盟店夥伴","合作夥伴"];
   const chip = (on) => ({ border:`1px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, color: on ? C.accent : C.text, borderRadius:999, padding:"6px 12px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit" });
   const list = (people || []).filter(p => !q || (p.name + p.id + p.pos + p.locs).includes(q.trim()));
@@ -2142,7 +2150,7 @@ function ViewAsCard({ onStart }) {
     <div style={{ ...s.card, borderLeft:`4px solid ${C.accent}` }}>
       <button onClick={() => setOpen(o => !o)} style={{ display:"flex", width:"100%", alignItems:"center", gap:10, border:"none", background:"none", padding:0, cursor:"pointer", fontFamily:"inherit", color:C.text, textAlign:"left" }}>
         <span style={{ fontSize:22 }}>👀</span>
-        <span style={{ flex:1 }}><b style={{ fontSize:14 }}>以等級檢視／夥伴視角</b><span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>看看夥伴的畫面長什麼樣子（只能看，不能改）</span></span>
+        <span style={{ flex:1 }}><b style={{ fontSize:14 }}>以等級檢視／隊員視角</b><span style={{ display:"block", fontSize:12, color:C.muted, marginTop:2 }}>看看隊員的畫面長什麼樣子（只能看，不能改）</span></span>
         <span style={{ color:C.muted }}>{open ? "▴" : "▾"}</span>
       </button>
       {open && <div style={{ marginTop:12 }}>
@@ -2156,8 +2164,8 @@ function ViewAsCard({ onStart }) {
         </div>
         <button onClick={() => onStart({ mode:"role", role, type })} style={s.btn("primary")}>開始預覽 Lv.{role}{type !== "員工" ? "・" + type : ""}</button>
 
-        <div style={{ fontSize:13, fontWeight:600, margin:"18px 0 6px" }}>夥伴視角</div>
-        <div style={{ fontSize:11.5, color:C.muted, marginBottom:8 }}>選一位夥伴，看他實際看到的首頁、班表、薪資概況</div>
+        <div style={{ fontSize:13, fontWeight:600, margin:"18px 0 6px" }}>隊員視角</div>
+        <div style={{ fontSize:11.5, color:C.muted, marginBottom:8 }}>選一位隊員，看他實際看到的首頁、班表、薪資概況</div>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋姓名、職務或櫃位" style={{ ...s.input, marginBottom:8 }}/>
         <Flash text={err} />{err && <div style={{ fontSize:12.5, color:C.red, marginBottom:8 }}>{err}</div>}
         {people === null && <div className="rh-skel" style={{ height:60 }}/>}
@@ -2173,7 +2181,7 @@ function ViewAsCard({ onStart }) {
               <span style={{ fontSize:12, color:C.accent }}>{busy === p.id ? "讀取中…" : "看他的畫面"}</span>
             </button>
           ))}
-          {people && people.length > 0 && list.length === 0 && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>找不到符合的夥伴</div>}
+          {people && people.length > 0 && list.length === 0 && <div style={{ fontSize:12.5, color:C.muted, textAlign:"center", padding:10 }}>找不到符合的隊員</div>}
         </div>
       </div>}
     </div>
@@ -2181,7 +2189,7 @@ function ViewAsCard({ onStart }) {
 }
 
 // ─────────────────────────────────────────────
-// 修改密碼(夥伴自行修改;走 POST,密碼不會出現在網址列)
+// 修改密碼(隊員自行修改;走 POST,密碼不會出現在網址列)
 // ─────────────────────────────────────────────
 function ChangePasswordCard({ user, onChanged, force }) {
   const [open, setOpen] = useState(!!force);
@@ -2438,7 +2446,7 @@ function AdminTab({ user, onOpenBatter }) {
 
       {d && (
         <div style={s.card}>
-          <div style={s.sectionTitle}>夥伴出勤時數({ym})</div>
+          <div style={s.sectionTitle}>隊員出勤時數({ym})</div>
           {d.staff.length===0 && <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:10 }}>尚無出勤資料</div>}
           {d.staff.map(p=>{
             const pct=Math.min(100,Math.round(p.hours/p.target*100)); const ok=p.hours>=p.target;
@@ -2829,7 +2837,7 @@ function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved
 
   const handleSave = async () => {
     const emp = staffList.find(s => s.id === empId);
-    if (!empId || !location || !date) { setErr("請完整填寫日期、地點、夥伴"); return; }
+    if (!empId || !location || !date) { setErr("請完整填寫日期、地點、隊員"); return; }
     setSaving(true); setErr("");
     const res = await apiPost({
       action: "saveSchedule", managerId: user.id, row: initial.row || "",
@@ -2853,9 +2861,9 @@ function ScheduleEditModal({ user, managed, staffList, initial, onClose, onSaved
         <label style={s.label}>日期</label>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={{...s.input, marginBottom:12}}/>
 
-        <label style={s.label}>夥伴</label>
+        <label style={s.label}>隊員</label>
         <select value={empId} onChange={e=>setEmpId(e.target.value)} style={{...s.input, marginBottom:12}}>
-          <option value="">請選擇夥伴</option>
+          <option value="">請選擇隊員</option>
           {staffList.map(st=><option key={st.id} value={st.id}>{st.name}</option>)}
         </select>
 

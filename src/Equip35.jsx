@@ -1,6 +1,6 @@
 // v1.35 設備檢查清單：活動出攤／百貨快閃／設櫃／出國（各國）
 // 一張清單三關：① 出發前打包 → ② 到場確認 → ③ 收攤點收（少了、壞了 → 待補購）
-// Lv.3 以上：建立、修改清單與模板（可匯入／匯出 Excel）；夥伴：勾自己被排進的清單
+// Lv.3 以上：建立、修改清單與模板（可匯入／匯出 Excel）；隊員：勾自己被排進的清單
 import { useState, useEffect, useRef } from "react";
 import { topToast } from "./TopToast.jsx";
 
@@ -330,7 +330,7 @@ function Create({ apiGet, apiPost, C, s, chip, meta, setMsg, todayStr, quote, on
         {T.volt && <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>⚡ 當地電壓 {T.volt}（烤爐、轉接頭請對應）</div>}
       </div>}
       {T && (meta.people || []).length > 0 && <div style={s.card}>
-        <div style={s.label}>出勤夥伴（會收到首頁提醒、可以打勾）</div>
+        <div style={s.label}>出勤隊員（會收到首頁提醒、可以打勾）</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{meta.people.map(p => <button key={p.id} onClick={() => setCrew(c => c.includes(p.id) ? c.filter(x => x !== p.id) : [...c, p.id])} style={{ ...chip(crew.includes(p.id)), padding: "5px 10px", fontSize: 12.5 }}>{p.name}</button>)}</div>
         <div style={{ fontSize: 11.5, color: C.light, marginTop: 6 }}>Lv.2 以上本來就看得到所有清單。</div>
       </div>}
@@ -376,7 +376,7 @@ function EditList({ L, apiPost, C, s, chip, meta, setMsg, onDone }) {
           {dlist.length > 0 && <><label style={lbl}>每天預計顆數</label><div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>{dlist.map(d => <div key={d}><div style={{ fontSize: 11.5, color: C.muted }}>{md(d)}</div><input type="number" value={days[d] || ""} onChange={e => setDays(p => ({ ...p, [d]: e.target.value }))} style={inp} /></div>)}</div></>}</>
           : <><label style={lbl}>預計總顆數</label><input type="number" value={f.cakes} onChange={e => set("cakes", e.target.value)} style={s.input} /></>}
       </div>
-      {(meta && meta.people || []).length > 0 && <div style={s.card}><div style={s.label}>出勤夥伴</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{meta.people.map(p => <button key={p.id} onClick={() => setCrew(c => c.includes(p.id) ? c.filter(x => x !== p.id) : [...c, p.id])} style={{ ...chip(crew.includes(p.id)), padding: "5px 10px", fontSize: 12.5 }}>{p.name}</button>)}</div></div>}
+      {(meta && meta.people || []).length > 0 && <div style={s.card}><div style={s.label}>出勤隊員</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{meta.people.map(p => <button key={p.id} onClick={() => setCrew(c => c.includes(p.id) ? c.filter(x => x !== p.id) : [...c, p.id])} style={{ ...chip(crew.includes(p.id)), padding: "5px 10px", fontSize: 12.5 }}>{p.name}</button>)}</div></div>}
       {Object.keys(info).length > 0 || ((meta && meta.tpls) || []).some(t => t.name === L.tpl) ? <div style={s.card}>
         <div style={s.label}>資訊</div>
         {[...new Set([...(((meta && meta.tpls) || []).find(t => t.name === L.tpl) || {}).info || [], ...Object.keys(info)])].map(k => <div key={k} style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 6, alignItems: "center", marginBottom: 6 }}><span style={{ fontSize: 12, color: C.muted }}>{k}</span><input value={info[k] || ""} onChange={e => setInfo(p => ({ ...p, [k]: e.target.value }))} style={inp} /></div>)}

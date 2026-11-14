@@ -11,13 +11,17 @@ export function useFsMeta(apiGet) {
   }, []);
   return meta;
 }
-const fridgesOf = (meta, loc) => (meta && meta.fridges && meta.fridges[loc]) || ["冰箱"];
+// v1.40 辦公室、工廠、倉庫（場所性質＝內部）和活動，上下班不用填冰箱溫度
+let NO_FRIDGE = new Set();
+export function setNoFridgeLocs(list) { NO_FRIDGE = new Set(list || []); }
+const fridgesOf = (meta, loc) => NO_FRIDGE.has(loc) ? [] : (meta && meta.fridges && meta.fridges[loc]) || ["冰箱"];
 const outOf = (meta, v) => { if (v === "" || v == null || !meta) return false; const n = Number(v); return n < meta.range.min || n > meta.range.max; };
 
 // 冰箱溫度：每台都要填（上班、下班）
 export function FridgeInputs({ meta, loc, values, setValues, C, s }) {
   if (!loc) return null;
   const list = fridgesOf(meta, loc), rg = meta ? meta.range : { min: 0, max: 7 };
+  if (!list.length) return null;
   const bad = list.filter(n => outOf(meta, values[n]));
   return (
     <div style={{ ...s.card, marginBottom: 12 }}>
@@ -57,7 +61,7 @@ export function GroomChecks({ checked, setChecked, C }) {
   );
 }
 
-// 稽查資料：證照＋今天在班夥伴的體檢狀態
+// 稽查資料：證照＋今天在班隊員的體檢狀態
 const ST_COLOR = (C, st) => st === "有效" ? C.green : st === "即將到期" ? C.gold : C.red;
 export function AuditPage({ user, apiGet, C, s, locations, defaultLoc }) {
   const locs = Object.keys(locations || {});
@@ -88,7 +92,7 @@ export function AuditPage({ user, apiGet, C, s, locations, defaultLoc }) {
         {!c.reg && !c.plNo && <div style={{ fontSize: 12.5, color: C.gold, marginTop: 8 }}>總部還沒填這個櫃位的證照資料</div>}
       </div>}
       {d && d.crew && <div style={s.card}>
-        <div style={s.sectionTitle}>🩺 今天在班夥伴的健康檢查</div>
+        <div style={s.sectionTitle}>🩺 今天在班隊員的健康檢查</div>
         {d.crew.length === 0 && <div style={{ fontSize: 13, color: C.muted }}>目前沒有人在這個櫃位上班</div>}
         {d.crew.map((p, i) => <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}`, fontSize: 14 }}>
           <span>{p.name}</span><span style={{ color: ST_COLOR(C, p.status), fontWeight: 600 }}>{p.status}{p.exp ? `（到 ${p.exp}）` : ""}</span></div>)}
@@ -173,7 +177,7 @@ function TempLog({ user, apiGet, C, s, todayStr }) {
   useEffect(() => { setD(null); apiGet({ action: "fsTemps", ym, loc }, 1).then(r => setD(r && r.success ? r : { error: (r && r.error) || "讀取失敗", data: [] })); }, [ym, loc]);
   const locs = d && d.data ? [...new Set(d.data.map(x => x.loc))] : [];
   const csv = () => {
-    const rows = [["日期", "時間", "櫃位", "上下班", "夥伴", "冰箱", "溫度", "異常"]];
+    const rows = [["日期", "時間", "櫃位", "上下班", "隊員", "冰箱", "溫度", "異常"]];
     (d.data || []).slice().reverse().forEach(x => x.temps.forEach(t => rows.push([x.date, x.at.slice(11, 16), x.loc, x.type, x.name, t.name, t.t, (t.t < d.range.min || t.t > d.range.max) ? "是" : ""])));
     const blob = new Blob(["﻿" + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `冰箱溫度紀錄表_${ym}${loc ? "_" + loc : ""}.csv`; a.click();
@@ -232,7 +236,7 @@ function HealthAdmin({ user, apiGet, apiPost, C, s }) {
   const load = () => apiGet({ action: "fsHealthList" }, 1).then(r => setD(r && r.success ? r : { error: (r && r.error) || "讀取失敗" }));
   useEffect(() => { load(); }, []);
   const decide = async (x, ok) => {
-    const note = ok ? "" : (prompt("退回原因（夥伴會看到）", "看不清楚，請重拍") || "看不清楚，請重拍");
+    const note = ok ? "" : (prompt("退回原因（隊員會看到）", "看不清楚，請重拍") || "看不清楚，請重拍");
     const r = await apiPost({ action: "fsHealthDecide", id: x.id, ok, exp: exp[x.id] || "", note }, 0);
     if (r && r.success) load(); else alert((r && r.error) || "失敗");
   };
@@ -256,7 +260,7 @@ function HealthAdmin({ user, apiGet, apiPost, C, s }) {
         </div>)}
       </div>
       <div style={s.card}>
-        <div style={s.sectionTitle}>全體夥伴</div>
+        <div style={s.sectionTitle}>全體隊員</div>
         {d.people.map(p => <div key={p.id} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13.5 }}>
           <span>{p.name}</span><span style={{ color: ST_COLOR(C, p.status), fontWeight: 600 }}>{p.status}{p.exp ? `（${p.exp}）` : ""}</span></div>)}
       </div>

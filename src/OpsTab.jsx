@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════
 // 營運管理畫面（v1.20，2026-11-12）
 //   MaterialsPage   物料需求（合作櫃位、加盟店、各櫃位叫貨；總部改狀態；月底結算）
-//   OnboardCard     新進夥伴到職檢查（Lv.2 以上首頁提示）
-//   StaffManager    夥伴資料：新增夥伴、到職檢查（Lv.3）
+//   OnboardCard     新進隊員到職檢查（Lv.2 以上首頁提示）
+//   StaffManager    隊員資料：新增隊員、到職檢查（Lv.3）
 //   LocManager      櫃位管理：新增、改資料、開關、停用（Lv.3）
 //   AnnouncePage    發公告＋推播 LINE 群組、群組管理、本月則數（Lv.3）
 //   PnlPage         加盟店損益（加盟主＝該店分隊長、總部 Lv.3）
@@ -207,7 +207,7 @@ export function MaterialsPage({ user, apiGet, apiPost, C, s, locations, me, toda
   );
 }
 
-// ═══════════ 到職檢查（首頁卡片＋夥伴管理頁共用）═══════════
+// ═══════════ 到職檢查（首頁卡片＋隊員管理頁共用）═══════════
 export function OnboardCard({ user, apiGet, apiPost, C, s, compact }) {
   const [d, setD] = useState(null);
   const load = () => apiGet({ action:"opsOnboard", empId:user.id }, 0).then(r => setD(r && r.success ? r : null));
@@ -221,7 +221,7 @@ export function OnboardCard({ user, apiGet, apiPost, C, s, compact }) {
   };
   return (
     <div style={{ ...s.card, borderLeft:`4px solid ${C.gold}` }}>
-      <div style={{ fontSize:14, fontWeight:600, marginBottom:6 }}>🧾 新進夥伴到職檢查（{d.data.length}）</div>
+      <div style={{ fontSize:14, fontWeight:600, marginBottom:6 }}>🧾 新進隊員到職檢查（{d.data.length}）</div>
       {d.data.map(x => (
         <div key={x.id} style={{ padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
           <div style={{ fontSize:13.5, fontWeight:600 }}>{x.name} <span style={{ fontSize:11.5, color:C.muted, fontWeight:400 }}>{x.id}・{String(x.created).slice(0, 10)} 建檔</span></div>
@@ -239,9 +239,9 @@ export function OnboardCard({ user, apiGet, apiPost, C, s, compact }) {
   );
 }
 
-// ═══════════ 夥伴資料（新增夥伴）═══════════
-const ROLE_NAME = { 1:"夥伴", 2:"分隊長", 3:"管理者", 4:"總經理", 5:"大隊長" };
-// v1.30：大隊長的資料只有大隊長本人能改；其他人只能改權限比自己低的夥伴（後端也會檢查）
+// ═══════════ 隊員資料（新增隊員）═══════════
+const ROLE_NAME = { 1:"隊員", 2:"分隊長", 3:"管理者", 4:"總經理", 5:"大隊長" };
+// v1.30：大隊長的資料只有大隊長本人能改；其他人只能改權限比自己低的隊員（後端也會檢查）
 const isBossP = o => !!o && (Number(o.role) >= 5 || (o.pos || o.position) === "大隊長");
 const canEditStaff = (me, x) => isBossP(x) ? isBossP(me) && String(me.id) === String(x.id) || (isBossP(me) && String(me.id) !== String(x.id))
   : isBossP(me) ? true : String(me.id) !== String(x.id) && Number(x.role) < Number(me.role);
@@ -262,7 +262,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
   };
   const load = () => apiGet({ action:"opsStaffList", empId:user.id, token:user.token || "" }, 1).then(r => { if (r && r.success) setList(r.data); else { setList([]); setErr((r && r.error) || "讀取失敗"); } });
   useEffect(() => { load(); }, []);
-  const blank = { name:"", nick:"", sex:"", phone:"", bday:"", hire:new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), role:1, pos:"夥伴", type:"員工", managed:"", idno:"", addr:"", addr1:"" };
+  const blank = { name:"", nick:"", sex:"", phone:"", bday:"", hire:new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10), role:1, pos:"隊員", type:"員工", managed:"", idno:"", addr:"", addr1:"" };
   const up = (k, v) => setForm({ ...form, [k]:v });
   const save = async () => {
     setBusy(true); setMsg(null);
@@ -281,12 +281,12 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
   return (
     <div>
       <OnboardCard key={ver} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s}/>
-      <button onClick={() => { setForm(blank); setMsg(null); }} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 新增夥伴</button>
+      <button onClick={() => { setForm(blank); setMsg(null); }} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 新增隊員</button>
       <Msg C={C} m={msg}/>
       <Flash text={err} />{err && <div style={{ ...s.card, color:C.red, fontSize:13 }}>{err}</div>}
       <div style={s.card}>
         <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋姓名、編號、手機" style={{ ...s.input, marginBottom:8 }}/>
-        {list && list[0] && list[0].idno !== undefined && <div style={{ fontSize:11.5, color:C.muted, marginBottom:4 }}>點夥伴可以改權限、職務、負責櫃位、帳號類型</div>}
+        {list && list[0] && list[0].idno !== undefined && <div style={{ fontSize:11.5, color:C.muted, marginBottom:4 }}>點隊員可以改權限、職務、負責櫃位、帳號類型</div>}
         {list === null && <div style={{ color:C.muted, fontSize:13 }}>載入中…</div>}
         {shown.map(x => (
           <div key={x.id} onClick={() => x.idno !== undefined && setEdit({ id:x.id, name:x.name, role:x.role, pos:x.pos, type:x.type, left:x.leftDate || "",
@@ -306,7 +306,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
       {edit && (
         <Sheet C={C} title={`修改 ${edit.name}（${edit.id}）`} onClose={() => !busy && setEdit(null)}>
           {!canEditStaff(user, edit) ? <div style={{ fontSize:13.5, color:C.muted, lineHeight:1.8, padding:"6px 0 10px" }}>
-            🔒 {isBossP(edit) ? "大隊長的資料只有大隊長本人可以修改。" : String(edit.id) === String(user.id) ? "不能修改自己的權限，請找大隊長。" : "只能修改權限比你低的夥伴。"}
+            🔒 {isBossP(edit) ? "大隊長的資料只有大隊長本人可以修改。" : String(edit.id) === String(user.id) ? "不能修改自己的權限，請找大隊長。" : "只能修改權限比你低的隊員。"}
           </div> : <>
           <div style={{ display:"flex", gap:8, marginBottom:10 }}>
             <div style={{ flex:1 }}><label style={s.label}>權限等級</label>
@@ -329,7 +329,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
           <button disabled={busy} onClick={saveEdit} style={{ ...s.btn("primary"), opacity:busy ? .6 : 1 }}>{busy ? "儲存中…" : "儲存"}</button>
           {user.role >= 3 && edit.id !== user.id && (isBossP(user) || (edit.role < user.role && !isBossP(edit))) && !edit.left && (
             <div style={{ marginTop:14, paddingTop:12, borderTop:`1px solid ${C.border}` }}>
-              <div style={{ fontSize:12.5, color:C.muted, lineHeight:1.6, marginBottom:8 }}>夥伴忘記密碼時：重設成生日 4 碼，他下次登入一定要先改一組新密碼。</div>
+              <div style={{ fontSize:12.5, color:C.muted, lineHeight:1.6, marginBottom:8 }}>隊員忘記密碼時：重設成生日 4 碼，他下次登入一定要先改一組新密碼。</div>
               <button disabled={busy} onClick={async () => {
                 if (!confirm(`把 ${edit.name} 的密碼重設成生日 4 碼？`)) return;
                 setBusy(true); const r = await apiPost({ action:"s30PwReset", empId:user.id, token:user.token || "", target:edit.id }, 0); setBusy(false);
@@ -341,7 +341,7 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
         </Sheet>
       )}
       {form && (
-        <Sheet C={C} title="新增夥伴" onClose={() => !busy && setForm(null)}>
+        <Sheet C={C} title="新增隊員" onClose={() => !busy && setForm(null)}>
           {F("name", "姓名 *")}{F("nick", "暱稱 *（App 和宇宙辦公室顯示用）")}
           {F("phone", "手機 *（登入帳號）", { inputMode:"tel", placeholder:"09xxxxxxxx" })}
           {F("bday", "生日 *（第一次登入的密碼＝月日 4 碼）", { type:"date" })}
@@ -357,14 +357,14 @@ export function StaffManager({ user, apiGet, apiPost, C, s, locations }) {
           </div>
           <div style={{ display:"flex", gap:8, marginBottom:10 }}>
             <div style={{ flex:1 }}><label style={s.label}>權限等級 *</label>
-              <select value={form.role} onChange={e => { const v = +e.target.value; setForm({ ...form, role:v, pos: v === 2 ? "分隊長" : v === 1 ? "夥伴" : form.pos }); }} style={s.input}>
+              <select value={form.role} onChange={e => { const v = +e.target.value; setForm({ ...form, role:v, pos: v === 2 ? "分隊長" : v === 1 ? "隊員" : form.pos }); }} style={s.input}>
                 {[1,2,3,4,5].filter(n => n <= (user.role || 3)).map(n => <option key={n} value={n}>Lv.{n} {ROLE_NAME[n]}</option>)}
               </select></div>
             <div style={{ flex:1 }}><label style={s.label}>職務 *</label><input value={form.pos} onChange={e => up("pos", e.target.value)} style={s.input}/></div>
           </div>
           {(form.role === 2 || form.type !== "員工") && (
             <div style={{ marginBottom:10 }}>
-              <label style={s.label}>負責櫃位{form.role === 2 ? " *" : "（合作／加盟夥伴請選所屬櫃位）"}</label>
+              <label style={s.label}>負責櫃位{form.role === 2 ? " *" : "（合作／加盟隊員請選所屬櫃位）"}</label>
               <select value={form.managed} onChange={e => up("managed", e.target.value)} style={s.input}>
                 <option value="">請選擇</option>{Object.keys(locations || {}).map(l => <option key={l} value={l}>{l}</option>)}
               </select>
@@ -566,10 +566,10 @@ export function AnnouncePage({ user, apiGet, apiPost, C, s }) {
               <input type="checkbox" checked={f.target.includes(l)} onChange={() => tog("target", l)}/>{l}
             </label>
           ))}
-          {!isTop && <div style={{ fontSize:11.5, color:C.muted, marginBottom:4 }}>分隊長只能發給自己負責的櫃位；那些櫃位的夥伴（負責或近 60 天有排班）才看得到。</div>}
+          {!isTop && <div style={{ fontSize:11.5, color:C.muted, marginBottom:4 }}>分隊長只能發給自己負責的櫃位；那些櫃位的隊員（負責或近 60 天有排班）才看得到。</div>}
           <div style={{ marginTop:10 }}>
             <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13.5, marginBottom:8 }}>
-              <input type="checkbox" checked={f.ack} onChange={e => setF({ ...f, ack:e.target.checked })}/>要夥伴按「我知道了」（重要規定、制度變更）
+              <input type="checkbox" checked={f.ack} onChange={e => setF({ ...f, ack:e.target.checked })}/>要隊員按「我知道了」（重要規定、制度變更）
             </label>
             <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13.5, marginBottom:12 }}>
               <input type="checkbox" checked={f.urgent} onChange={e => setF({ ...f, urgent:e.target.checked })}/>緊急（首頁置頂紅框、LINE 標「緊急公告」）
@@ -606,7 +606,7 @@ export function AnnouncePage({ user, apiGet, apiPost, C, s }) {
               const r = await apiPost({ action:"annStop", ...tk, id:a.id, on }, 0);
               if (!(r && r.success)) { setMsg({ text:(r && r.error) || "下架失敗，請再試一次" }); return; }
               setList(list.map(x => x.id === a.id ? { ...x, status: on ? "發布" : "停用" } : x));
-              setMsg({ ok:true, text: on ? "✅ 已恢復公告" : "✅ 已下架，夥伴那邊不會再看到" });
+              setMsg({ ok:true, text: on ? "✅ 已恢復公告" : "✅ 已下架，隊員那邊不會再看到" });
               window.dispatchEvent(new Event("rh-ann-changed"));
             }}
               style={{ ...s.btn("ghost"), width:"auto", padding:"5px 10px", fontSize:12 }}>{a.status === "停用" ? "恢復" : "下架"}</button>
@@ -714,7 +714,7 @@ export function PnlPage({ user, apiGet, apiPost, C, s, todayStr }) {
           {p.vat > 0 && <Row C={C} l="營業稅 5%" v={money(p.vat)} sub="收入 ÷ 1.05 × 5%"/>}
           <Row C={C} l="麵糊" v={p.batterPrice === null ? "待填單價" : money(p.batterCost)} sub={`收店用量 ${p.batterUse} 包${p.batterPrice !== null ? ` × $${p.batterPrice}` : ""}`}/>
           {Object.keys(p.materials).map(k => <Row key={k} C={C} l={k} v={money(p.materials[k])} sub="物料需求單出貨"/>)}
-          <Row C={C} l="夥伴薪資" v={money(p.labor.staff)} sub={p.labor.list.map(x => `${x.name} ${x.hours}h`).join("、") || "系統依總部制度代算"}/>
+          <Row C={C} l="隊員薪資" v={money(p.labor.staff)} sub={p.labor.list.map(x => `${x.name} ${x.hours}h`).join("、") || "系統依總部制度代算"}/>
           {Object.keys(p.costs).map(k => <Row key={k} C={C} l={k} v={money(p.costs[k])} sub={p.fixedApplied.includes(k) ? "固定費用自動帶入" : ""}/>)}
           <Row C={C} l={`品牌權利金 ${Math.round(p.royaltyRate * 1000) / 10}%`} v={money(p.royalty)} sub="營業額 × 比率"/>
           <Row C={C} l="成本合計" v={money(p.totalCost)} bold/>

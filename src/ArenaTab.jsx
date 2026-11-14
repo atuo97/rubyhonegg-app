@@ -178,7 +178,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
           <div style={{ ...s.sectionTitle, marginBottom: 0 }}>選擇對手</div><span style={{ fontSize: 12, color: C.muted }}>今天還能自動切磋 {d.left} 次</span>
         </div>
         {notice && <div style={{ fontSize: 12.5, color: C.red, background: "#fdeceb", borderRadius: 10, padding: "8px 10px", marginBottom: 8 }}>⚠️ {notice}</div>}
-        {d.opponents.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有可以挑戰的夥伴</div>}
+        {d.opponents.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有可以挑戰的隊員</div>}
         {d.opponents.slice().sort((a, b) => b.power - a.power).map(o => (
           <div key={o.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
             <span style={{ flex: 1, fontSize: 13.5 }}>{o.name}<span style={{ fontSize: 11, color: C.light, marginLeft: 6 }}>戰力 {Math.round(o.power)}{o.petTypeName ? `・${o.petTypeName}` : ""}</span>{me.petType && o.petType && PET_COUNTER[me.petType].includes(o.petType) ? <span style={{ fontSize: 11, color: C.green, marginLeft: 6 }}>你剋他</span> : null}{me.petType && o.petType && PET_COUNTER[o.petType].includes(me.petType) ? <span style={{ fontSize: 11, color: C.red, marginLeft: 6 }}>他剋你</span> : null}</span>

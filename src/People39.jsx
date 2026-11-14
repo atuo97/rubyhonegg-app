@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Flash } from "./TopToast.jsx";
 import { HATS } from "./universe/avatarCatalog.js";
+import { MountGrant } from "./Mount40.jsx";
 
-const TYPES = [["員工", "夥伴"], ["合作夥伴", "合作品牌"], ["加盟店夥伴", "加盟店"]];
+const TYPES = [["員工", "隊員"], ["合作夥伴", "合作品牌"], ["加盟店夥伴", "加盟店"]];
 
 // 選人：先選類別，再點名字（可搜尋）。value 是員工編號
 export function PeoplePicker({ apiGet, C, s, value, onChange }) {
@@ -15,7 +16,7 @@ export function PeoplePicker({ apiGet, C, s, value, onChange }) {
   useEffect(() => {
     apiGet({ action: "pplPick" }, 1).then(r => {
       if (r && r.success) setList(r.data || []);
-      else { setList([]); setErr(r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.39 後才能用選人選單" : (r && r.error) || "讀不到夥伴清單"); }
+      else { setList([]); setErr(r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.39 後才能用選人選單" : (r && r.error) || "讀不到隊員清單"); }
     });
   }, []);
   const picked = (list || []).find(p => p.id === value);
@@ -94,6 +95,7 @@ export function GrantPage({ user, apiGet, apiPost, C, s }) {
         </select>
         <button disabled={busy || !g.target} onClick={sendItem} style={{ ...s.btn("primary"), opacity: busy || !g.target ? .5 : 1 }}>發放</button>
       </div>
+      <MountGrant apiGet={apiGet} apiPost={apiPost} C={C} s={s} />
     </div>
   );
 }

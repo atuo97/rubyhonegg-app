@@ -1,6 +1,6 @@
 // v1.36 無敵8心：愛心、耐心、決心、雄心、誠心、信心、善心、良心
 // 每顆心銅、銀、金三階，依平常工作與遊戲紀錄自動點亮；8 顆都到銅＝無敵8心、都到金＝傳說・無敵8心
-// 愛心、善心可以由夥伴推薦（每月 3 次）或管理者頒發
+// 愛心、善心可以由隊員推薦（每月 3 次）或管理者頒發
 import { useEffect, useState } from "react";
 import { topToast } from "./TopToast.jsx";
 
@@ -104,7 +104,7 @@ export function HeartsPage({ user, apiGet, apiPost, C, s, who }) {
   if (d.error) return <div style={{ ...s.card, color: C.muted, fontSize: 13.5, lineHeight: 1.7 }}>{/未知/.test(d.error) ? "無敵8心還沒開通（後端更新到 v1.36 後就會出現）" : d.error}</div>;
   const me = d.data, other = d.other;
   const send = async () => {
-    if (!rec.to) { topToast("請先選要推薦的夥伴"); return; }
+    if (!rec.to) { topToast("請先選要推薦的隊員"); return; }
     if (rec.reason.trim().length < 4) { topToast("請寫一句推薦的原因（至少 4 個字）"); return; }
     setBusy(true);
     const r = await apiPost({ action: "h36Rec", to: rec.to, heart: rec.heart, reason: rec.reason.trim(), mode: rec.give ? "give" : "" }, 0);
@@ -152,17 +152,17 @@ export function HeartsPage({ user, apiGet, apiPost, C, s, who }) {
             </button>
             {open === h.key && <div style={{ fontSize: 12.5, lineHeight: 1.7, marginTop: 8, padding: "8px 10px", background: C.warm, borderRadius: 10 }}>
               <b>怎麼累積：</b>{h.how}<br /><b>門檻：</b>銅 {h.th[0]}・銀 {h.th[1]}・金 {h.th[2]} 分{h.at ? <><br />{LV_NAME[h.lv]}點亮於 {h.at}</> : null}
-              {(h.key === "love" || h.key === "kindness") && <><br />也可以請夥伴推薦你，或由管理者頒發。</>}
+              {(h.key === "love" || h.key === "kindness") && <><br />也可以請隊員推薦你，或由管理者頒發。</>}
             </div>}
           </div>);
       })}
 
       <div style={{ ...s.card }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 4 }}>💌 推薦夥伴</div>
-        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, lineHeight: 1.6 }}>看到夥伴很有愛心、善心，推薦他一下！每位夥伴的愛心或善心 +{rec.give ? d.mgrPts : d.recPts} 分。{rec.give ? "管理者頒發不占推薦次數。" : `這個月還可以推薦 ${d.recLeft} 次。`}</div>
-        {d.mgr && <div style={{ display: "flex", gap: 6, marginBottom: 8 }}><button onClick={() => setRec({ ...rec, give: false })} style={chip(!rec.give)}>夥伴推薦</button><button onClick={() => setRec({ ...rec, give: true })} style={chip(rec.give)}>🎖️ 管理者頒發</button></div>}
+        <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 4 }}>💌 推薦隊員</div>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 8, lineHeight: 1.6 }}>看到隊員很有愛心、善心，推薦他一下！每位隊員的愛心或善心 +{rec.give ? d.mgrPts : d.recPts} 分。{rec.give ? "管理者頒發不占推薦次數。" : `這個月還可以推薦 ${d.recLeft} 次。`}</div>
+        {d.mgr && <div style={{ display: "flex", gap: 6, marginBottom: 8 }}><button onClick={() => setRec({ ...rec, give: false })} style={chip(!rec.give)}>隊員推薦</button><button onClick={() => setRec({ ...rec, give: true })} style={chip(rec.give)}>🎖️ 管理者頒發</button></div>}
         <select value={rec.to} onChange={e => setRec({ ...rec, to: e.target.value })} style={{ ...s.input, marginBottom: 8 }}>
-          <option value="">選擇夥伴…</option>
+          <option value="">選擇隊員…</option>
           {(d.people || []).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>

@@ -51,7 +51,7 @@ export const HATS = [
   // v1.30 季節扭蛋
   { id: "x_antler", name: "麋鹿角", kind: "shop" }, { id: "x_tree", name: "聖誕樹頭飾", kind: "shop" },
   { id: "c_ingot", name: "元寶頭飾", kind: "shop" }, { id: "c_lion", name: "舞獅頭", kind: "shop" },
-  { id: "og_cap", name: "OG 紅帽", kind: "og", note: "測試版創始夥伴" },   // v1.31 正式版時發給測試期夥伴
+  { id: "og_cap", name: "OG 紅帽", kind: "og", note: "測試版創始隊員" },   // v1.31 正式版時發給測試期隊員
 ];
 // 赤心幣商店／扭蛋:配件、服裝、名牌框(要先擁有才能穿,價格與來源以後端「商品目錄」為準)
 export const ACCS = [
@@ -67,9 +67,9 @@ export const OUTFITS = [
   { id: "spacesuit", name: "太空服" }, { id: "goldtrex", name: "金色小暴龍裝" },
   { id: "x_snowman", name: "雪人裝" }, { id: "x_santa", name: "聖誕老人裝" }, { id: "c_tang", name: "紅色唐裝" },
 ];
-export const FRAMES = [{ id: "none", name: "無" }, { id: "frame_wood", name: "木質名牌框" }, { id: "frame_glow", name: "發光名牌框" }, { id: "x_frame", name: "雪花名牌框" }, { id: "c_frame", name: "金色春聯框" }, { id: "og_frame", name: "創始夥伴金框" }];
+export const FRAMES = [{ id: "none", name: "無" }, { id: "frame_wood", name: "木質名牌框" }, { id: "frame_glow", name: "發光名牌框" }, { id: "x_frame", name: "雪花名牌框" }, { id: "c_frame", name: "金色春聯框" }, { id: "og_frame", name: "創始隊員金框" }];
 export const MASCOTS = [
-  { id: "none", name: "夥伴本人" }, { id: "trex", name: "小暴龍" }, { id: "penguin", name: "企鵝" },
+  { id: "none", name: "隊員本人" }, { id: "trex", name: "小暴龍" }, { id: "penguin", name: "企鵝" },
 ];
 
 export const SAYING_MAX = 24;
@@ -79,7 +79,7 @@ export const defaultCfg = () => ({
 });
 
 const has = (list, id) => list.some(x => x.id === id);
-// 夥伴自己寫的一句話:去掉換行/控制字元與 < >,最多 24 字
+// 隊員自己寫的一句話:去掉換行/控制字元與 < >,最多 24 字
 export function cleanSaying(v) {
   return String(v == null ? "" : v).replace(/[\u0000-\u001f\u007f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, SAYING_MAX);
 }
@@ -116,7 +116,7 @@ export function hatUnlocked(item, today, granted = [], owned = {}) {
   return granted.includes(item.id);
 }
 export function hatLockText(item) {
-  return item.kind === "season" ? "限定期間 " + item.note : item.kind === "shop" ? "扭蛋限定" : item.kind === "og" ? "測試版創始夥伴限定" : "限定款・" + item.note;
+  return item.kind === "season" ? "限定期間 " + item.note : item.kind === "shop" ? "扭蛋限定" : item.kind === "og" ? "測試版創始隊員限定" : "限定款・" + item.note;
 }
 
 const pickC = (list, id) => (list.find(x => x.id === id) || list[0]).c;

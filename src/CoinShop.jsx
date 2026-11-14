@@ -1,19 +1,21 @@
 // ─────────────────────────────────────────────
 // v1.33 赤心幣商店：把「我和寵物 → 商店」和「赤心幣花費」合成一個地方，用分類切換。
-// 夥伴自己開的店仍在「夥伴商店街」。商品點一下可以試穿預覽（買不起也能看）。
+// 隊員自己開的店仍在「隊員商店街」。商品點一下可以試穿預覽（買不起也能看）。
 // ─────────────────────────────────────────────
 import { useState } from "react";
 import GameTab from "./GameTab.jsx";
 import { SpendPage } from "./Spend30.jsx";
+import { MountShop } from "./Mount40.jsx";
 
 const CATS = [
-  ["look", "👕 造型"], ["pet", "🐾 寵物"], ["seat", "🪑 座位"], ["title", "🏷️ 稱號・特效"],
+  ["look", "👕 造型"], ["pet", "🐾 寵物"], ["mount", "🛵 坐騎"], ["seat", "🪑 座位"], ["title", "🏷️ 稱號・特效"],
   ["battle", "⚔️ 對戰"], ["gacha", "🎰 扭蛋"], ["boss", "👹 活動"], ["meal", "🎁 兌換"],
 ];
 const NOTE = {
   look: "髮色、配件、服裝、帽子、名牌框。點商品可以先試穿看看。",
   pet: "寵物配件、特殊顏色、小窩。點配件可以看寵物戴上的樣子。",
-  seat: "宇宙辦公室的夥伴座位區：桌子、椅子、桌上擺飾。",
+  mount: "宇宙辦公室裡走路時騎著。一般款永久買斷；小暴龍、火車、挖土機、三角龍、赤心大鳥每月給上個月上班時數前 5 名。",
+  seat: "宇宙辦公室休息區的隊員座位：桌子、椅子、桌上擺飾。",
   title: "名字旁的稱號、打卡上班時的進場特效。",
   battle: "對戰用的武器、防具、卡片與裝備強化。買了到「對戰」頁的「我的戰鬥數值」裝備。",
   gacha: "一般扭蛋與季節限定扭蛋。",
@@ -35,6 +37,7 @@ export default function CoinShop({ user, apiGet, apiPost, C, s, initial, onEditA
       <div style={{ fontSize: 12, color: C.muted, margin: "0 4px 10px", lineHeight: 1.6 }}>{NOTE[cat]}</div>
       {cat === "look" && G(["haircolor", "acc", "outfit", "hat", "frame"])}
       {cat === "pet" && <>{G(["petacc"])}{S("pet", true)}</>}
+      {cat === "mount" && <MountShop apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={onChanged} />}
       {cat === "seat" && S("seat")}
       {cat === "title" && <>{S("title")}{S("fx", true)}</>}
       {cat === "battle" && <>{G(["weapon", "armor", "card"])}{S("enh", true)}</>}

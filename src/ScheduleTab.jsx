@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 // 排班系統 2.0(v1.18,2026-11-11)
 //   ScheduleManager:分隊長/管理員排班(個人月曆「刷子」連點、櫃位週檢視、換班核准、打卡對帳、班型設定)
-//   MyShifts:夥伴「我的班表」(本月/下月班、填空檔、轉讓/釋出/認領空班)
+//   MyShifts:隊員「我的班表」(本月/下月班、填空檔、轉讓/釋出/認領空班)
 // 規則(隊長定案):一人一天預設只能一個櫃位;Lv.3 以上可加排第二個櫃位,但時間不能重疊。
 // 改動先存在手機(草稿),按「發布」才一次寫入〈班表〉。
 // v1.20:已排的班可「改時間」;對帳頁加「待確認（影響薪資）」:核准加班、確認無打卡、核准臨時支援(新工時規則,2026-12 起)。
@@ -238,7 +238,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
       {publishing && (
         <Sheet C={C} title={publishing.busy ? "發布中…" : publishing.done ? "發布完成" : "未發布"} onClose={() => !publishing.busy && setPublishing(null)}>
           {publishing.busy && <div style={{ color:C.muted, fontSize:13 }}>正在寫入班表,請稍候</div>}
-          {publishing.done && <div style={{ color:C.green, fontSize:14 }}>✓ {publishing.done}。夥伴 App 已看得到新班表。</div>}
+          {publishing.done && <div style={{ color:C.green, fontSize:14 }}>✓ {publishing.done}。隊員 App 已看得到新班表。</div>}
           {publishing.error && <>
             <div style={{ color:C.red, fontSize:14, marginBottom:8 }}>{publishing.error}</div>
             {publishing.conflicts.map((t, i) => <div key={i} style={{ fontSize:12.5, padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>{t}</div>)}
@@ -257,7 +257,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
             <div style={{ ...s.sectionTitle, marginTop:14 }}>重複排班</div>
             {!tidy.issues.length ? <div style={{ fontSize:13, color:C.green }}>✓ 沒有重複</div>
               : tidy.issues.map((x, i) => <div key={i} style={{ fontSize:12.5, color:C.red, padding:"5px 0", borderBottom:`1px solid ${C.border}` }}>{x}</div>)}
-            {tidy.issues.length > 0 && <div style={{ fontSize:12, color:C.muted, marginTop:8 }}>重複的班不會自動刪,請到「個人」選那位夥伴處理,或回 Sheets 修改。</div>}
+            {tidy.issues.length > 0 && <div style={{ fontSize:12, color:C.muted, marginTop:8 }}>重複的班不會自動刪,請到「個人」選那位隊員處理,或回 Sheets 修改。</div>}
           </>}
           {!tidy.busy && <button onClick={() => setTidy(null)} style={{ ...s.btn("ghost"), marginTop:14 }}>關閉</button>}
         </Sheet>
@@ -269,7 +269,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
 const navBtn = C => ({ width:34, height:34, borderRadius:10, border:`1px solid ${C.border}`, background:C.card, color:C.text, fontSize:16, cursor:"pointer", fontFamily:"inherit" });
 const barBtn = { border:"none", borderRadius:10, padding:"8px 12px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit" };
 
-// ── 個人:選夥伴 → 選刷子(櫃位・班型)→ 連點日子 ──
+// ── 個人:選隊員 → 選刷子(櫃位・班型)→ 連點日子 ──
 function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, removeShift, retime, C, s, today }) {
   const [q, setQ] = useState("");
   const [empId, setEmpId] = useState("");
@@ -306,7 +306,7 @@ function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, re
   return (
     <>
       <div style={s.card}>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋夥伴" style={{ ...s.input, padding:"9px 12px", marginBottom:10 }}/>
+        <input value={q} onChange={e => setQ(e.target.value)} placeholder="搜尋隊員" style={{ ...s.input, padding:"9px 12px", marginBottom:10 }}/>
         <div style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:2 }}>
           {list.map(x => {
             const filled = !!b.avail[x.id];
@@ -320,7 +320,7 @@ function PersonView({ b, ym, eff, hol, wage, role, managed, locColor, assign, re
         </div>
       </div>
 
-      {!emp && <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13, lineHeight:1.8 }}>先選一位夥伴<br/>再選下方的「櫃位・班型」,點日子就排好了</div>}
+      {!emp && <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13, lineHeight:1.8 }}>先選一位隊員<br/>再選下方的「櫃位・班型」,點日子就排好了</div>}
 
       {emp && <>
         <div style={s.card}>
@@ -563,7 +563,7 @@ function LocDaySheet({ C, s, b, loc, day, eff, hol, role, managed, assign, remov
       <div style={{ display:"flex", gap:6, flexWrap:"wrap", margin:"12px 0 10px" }}>
         {ts.map((x, i) => <button key={i} onClick={() => setTi(i)} style={chip(C, ti === i)}>{x.name} {x.start}–{x.end}</button>)}
       </div>
-      <div style={{ fontSize:12, color:C.muted, marginBottom:4 }}>點夥伴加入(有空的排前面)</div>
+      <div style={{ fontSize:12, color:C.muted, marginBottom:4 }}>點隊員加入(有空的排前面)</div>
       {staff.map(x => {
         const a = b.avail[x.id]?.days?.[day];
         const other = eff.find(y => y.empId === x.id && y.date === day);
@@ -617,7 +617,7 @@ function ReqView({ b, user, apiPost, reload, managed, C, s, today }) {
           </div>
         </Row>)}
       </div>
-      <button onClick={() => setForm({ loc:managed[0], date:today, start:"10:00", end:"20:00", count:1, note:"" })} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 開放空班給夥伴認領</button>
+      <button onClick={() => setForm({ loc:managed[0], date:today, start:"10:00", end:"20:00", count:1, note:"" })} style={{ ...s.btn("primary"), marginBottom:12 }}>＋ 開放空班給隊員認領</button>
       {waiting.length > 0 && <div style={s.card}><div style={s.sectionTitle}>等待中</div>{waiting.map(q => <Row key={q.id} q={q}/>)}</div>}
       {done.length > 0 && <div style={s.card}><div style={s.sectionTitle}>最近處理</div>{done.map(q => <Row key={q.id} q={q}/>)}</div>}
       {form && (
@@ -758,7 +758,7 @@ function TemplateEditor({ b, user, apiPost, managed, onClose, onSaved, C, s }) {
 }
 
 // ═══════════════════════════════════════════════
-// 夥伴:我的班表
+// 隊員:我的班表
 // ═══════════════════════════════════════════════
 export function MyShifts({ user, apiGet, apiPost, C, s, todayStr }) {
   const today = todayStr();
@@ -867,12 +867,12 @@ function SwapSheet({ C, s, d, shift, onClose, submit }) {
   const [mode, setMode] = useState("release"), [to, setTo] = useState(""), [note, setNote] = useState("");
   return (
     <Sheet C={C} onClose={onClose} title={`換班:${md(shift.date)} ${shortLoc(shift.loc)} ${shift.start}–${shift.end}`}>
-      <Seg C={C} value={mode} onChange={setMode} items={[["release","釋出給大家"],["give","轉讓給指定夥伴"]]}/>
+      <Seg C={C} value={mode} onChange={setMode} items={[["release","釋出給大家"],["give","轉讓給指定隊員"]]}/>
       <div style={{ fontSize:12, color:C.muted, margin:"10px 0" }}>
-        {mode === "release" ? "所有夥伴都看得到,有人認領後由分隊長核准。核准前這個班仍是你的。" : "對方同意後,再由分隊長核准。核准前這個班仍是你的。"}
+        {mode === "release" ? "所有隊員都看得到,有人認領後由分隊長核准。核准前這個班仍是你的。" : "對方同意後,再由分隊長核准。核准前這個班仍是你的。"}
       </div>
       {mode === "give" && <select value={to} onChange={e => setTo(e.target.value)} style={{ ...s.input, marginBottom:10 }}>
-        <option value="">選擇夥伴</option>{d.staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
+        <option value="">選擇隊員</option>{d.staff.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
       </select>}
       <input value={note} onChange={e => setNote(e.target.value)} placeholder="原因(選填)" style={{ ...s.input, marginBottom:14 }}/>
       <button disabled={mode === "give" && !to} onClick={() => submit({ kind:mode, toId:to, note })} style={{ ...s.btn("primary"), opacity: mode === "give" && !to ? .5 : 1 }}>送出</button>

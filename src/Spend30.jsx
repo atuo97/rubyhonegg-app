@@ -47,7 +47,7 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, onl
   const Seat = () => {
     const st = d.seat;
     if (!st) { const b = byId("seat_basic"); return <div style={s.card}>
-      <Head t="開通我的座位" sub="宇宙辦公室多了一區「夥伴座位區」。開通後你有自己的桌子和椅子，人在辦公室或沒上班的時候，小人就會坐在自己的座位上。之後可以再換桌子、椅子，桌上擺 3 個擺飾，旁邊放寵物小窩。" />
+      <Head t="開通我的座位" sub="宇宙辦公室多了一區「隊員座位區」。開通後你有自己的桌子和椅子，人在辦公室或沒上班的時候，小人就會坐在自己的座位上。之後可以再換桌子、椅子，桌上擺 3 個擺飾，旁邊放寵物小窩。" />
       <div style={{ textAlign: "center", fontSize: 44, margin: "6px 0 10px" }}>🪑🖥️🪴</div>
       <button disabled={busy || d.balance < b.price} onClick={() => act({ action: "s30Buy", item: "seat_basic" }, "座位開通了！到宇宙辦公室 → 座位區看看")} style={s.btn("primary")}>開通座位 ❤️ {b.price}</button>
     </div>; }

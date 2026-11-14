@@ -1,11 +1,12 @@
 import { createPortal } from "react-dom";
 // ─────────────────────────────────────────────
 // 🌌 宇宙辦公室分頁(全員可見)
-// 依打卡狀態，讓夥伴的角色出現在他上班的櫃位
-// v1.17:寵物、徽章、生日派對、冠軍旗＋煙火、天氣、節日、基金解鎖家具、夥伴互動
+// 依打卡狀態，讓隊員的角色出現在他上班的櫃位
+// v1.17:寵物、徽章、生日派對、冠軍旗＋煙火、天氣、節日、基金解鎖家具、隊員互動
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { Flash } from "../TopToast.jsx";
+import { MOUNT_INFO } from "../Mount40.jsx";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
 import { HeartDots } from "../Hearts36.jsx";
@@ -149,17 +150,28 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   // v1.19:場景名單＝在班的人＋隊長(連大隊長帳號,常駐辦公室)＋沒上班的自己(在休息區)
   const sceneList = (() => {
     if (demo) return DEMO;
-    const list = onDuty.slice(), has = id => list.some(p => String(p.id) === String(id));
-    const boss = game && game.boss, at = game && game.bossAt;
-    if (boss && !has(boss.id)) list.push({ id: boss.id, name: boss.name, location: "辦公室", isBoss: true });
-    // v1.39 大隊長選了「前往」的地點 → 站在那裡（視察中）
-    if (boss && at && at.loc) { const i = list.findIndex(p => String(p.id) === String(boss.id)); if (i >= 0) list[i] = { ...list[i], location: at.loc, isBoss: true, visiting: at.time || true, resting: false }; }
-    if (!has(user.id)) list.push({ id: user.id, name: user.nick || user.name, location: "辦公室", resting: true });
+    const people = (game && game.people) || [], pm = {}; people.forEach(p => (pm[String(p.id)] = p));
+    const list = onDuty.map(p => ({ ...p, mgr: !!(pm[String(p.id)] || {}).mgr })), has = id => list.some(p => String(p.id) === String(id));
+    const boss = game && game.boss;
+    if (boss && !has(boss.id)) list.push({ id: boss.id, name: boss.name, location: "辦公室", isBoss: true, mgr: true });
+    // v1.40 沒上班的隊員：一般隊員在休息區、主管在辦公室沙發區（人多時最多 40 位）
+    people.filter(p => !has(p.id)).slice(0, 40).forEach(p => list.push({ id: p.id, name: p.name, location: "辦公室", resting: true, mgr: !!p.mgr }));
+    if (!has(user.id)) list.push({ id: user.id, name: user.nick || user.name, location: "辦公室", resting: true, mgr: user.role >= 3 });
+    // v1.40 視察：Lv.3 以上選了「前往」的地點（大隊長舊資料 bossAt 也相容）
+    const visits = { ...((game && game.visits) || {}) };
+    if (boss && game && game.bossAt && game.bossAt.loc && !visits[boss.id]) visits[boss.id] = game.bossAt;
+    Object.keys(visits).forEach(id => {
+      const v = visits[id], i = list.findIndex(p => String(p.id) === String(id)); if (i < 0 || !v || !v.loc) return;
+      const isB = boss && String(boss.id) === String(id);
+      list[i] = v.loc === "休息區"
+        ? { ...list[i], location: "休息區", resting: true, visiting: v.time || true, visitLabel: "休息一下 ☕" }
+        : { ...list[i], location: v.loc, resting: false, visiting: v.time || true, visitLabel: isB ? "大隊長視察中 👀" : "視察中 👀" };
+    });
     return list;
   })();
-  const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss, !!p.visiting]));
+  const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss, !!p.visiting, !!p.mgr, p.visitLabel || ""]));
   useEffect(() => { engine.current && engine.current.setCrew(sceneList); }, [sceneSig]);
-  // 活動場景招牌：顯示在「活動」打卡的夥伴填的活動名稱（後端 getOnDutyCrew 需回傳打卡備註 note，格式「活動:○○」）
+  // 活動場景招牌：顯示在「活動」打卡的隊員填的活動名稱（後端 getOnDutyCrew 需回傳打卡備註 note，格式「活動:○○」）
   useEffect(() => {
     const ev = (onDuty || []).find(p => /活動/.test(p.location || "") && p.note);
     const name = ev ? String(ev.note).replace(/^活動[:：]\s*/, "") : "";
@@ -171,7 +183,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     engine.current && engine.current.setBoards(map);
   }, [short]);
 
-  // ── 夥伴自選造型(後端 getAvatars;尚未部署時安靜略過,小人維持預設外型)──
+  // ── 隊員自選造型(後端 getAvatars;尚未部署時安靜略過,小人維持預設外型)──
   const loadAvatars = async () => {
     const r = await apiGet({ action: "getAvatars" }, 0);
     if (r && r.success && engine.current) engine.current.setAvatars(r.data || {});
@@ -219,7 +231,16 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
     engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, hearts: d.hearts || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
-      fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary) });
+      fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary),
+      mounts: d.mounts || {}, boards: d.boards || null });
+    engine.current.setRev && engine.current.setRev(d.liveRev || []);
+    // v1.40 營業額里程碑：沒看過的就放一次煙火
+    try {
+      const seen = JSON.parse(localStorage.getItem("rh_cele") || "{}"), key = x => today + "|" + x.loc + "|" + x.text;
+      (d.celebrate || []).forEach((x, i) => { if (!seen[key(x)]) { seen[key(x)] = 1; setTimeout(() => engine.current && engine.current.celebrate(x.loc), 800 + i * 1500); } });
+      Object.keys(seen).forEach(k => { if (k.slice(0, 10) !== today) delete seen[k]; });
+      localStorage.setItem("rh_cele", JSON.stringify(seen));
+    } catch (e) {}
     // 新的互動 → 在 3D 場景表演一次(第一次載入不表演舊的)
     const keys = (d.feed || []).map(f => f.time + f.from + f.to + f.type);
     if (seenFeed.current) (d.feed || []).slice().reverse().forEach((f, i) => {
@@ -270,7 +291,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       return;
     }
     const staffRes = await apiGet({ action: "getStaffList", empId: user.id });
-    if (!staffRes.success) { setErr(staffRes.error || "讀取夥伴名單失敗"); return; }
+    if (!staffRes.success) { setErr(staffRes.error || "讀取隊員名單失敗"); return; }
     const staff = staffRes.data || [];
     setProgress(`讀取打卡狀態 0/${staff.length}`);
     const date = todayStr();
@@ -298,7 +319,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const stores = SCENE_KEYS.filter(k => SCENES[k].store && (k === "other" ? count(k) > 0 || view === k : !openScenes || openScenes[k] || count(k) || view === k));
     const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
     stores.sort((a, b) => n(a) - n(b));
-    return ["office", ...(game && game.seats && game.seats.length ? ["seats"] : []), "factory", ...stores, "street"];
+    return ["office", "seats", ...stores, "street", "factory", "warehouse"];   // v1.40 工廠、倉庫放最後
   })();
   // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
   const opsMap = (() => {
@@ -322,13 +343,26 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const pk = picked && (sceneList.find(x => String(x.id) === String(picked.id)) || shown.find(x => String(x.id) === String(picked.id)) || picked);
   // v1.39 大隊長前往、即時營業額
   const isMeBoss = !!(game && game.boss && String(game.boss.id) === String(user.id));
-  const goPlaces = ["辦公室", ...Object.keys(locInfo).filter(n => n !== "辦公室" && (!locInfo[n].status || locInfo[n].status === "營運中"))];
+  const isMgr = isMeBoss || user.role >= 3;   // v1.40 Lv.3 以上都能視察
+  const goPlaces = ["辦公室", "休息區", ...Object.keys(locInfo).filter(n => n !== "辦公室" && (!locInfo[n].status || locInfo[n].status === "營運中"))];
+  const myVisit = (game && game.visits && game.visits[user.id]) || (isMeBoss && game && game.bossAt) || null;
   const goTo = async (loc) => {
     setGoOpen(false);
-    const r = await apiPost({ action: "v39Goto", loc: loc === "辦公室" ? "" : loc }, 0);
-    if (r && r.success) { setGame(g => g ? { ...g, bossAt: r.data } : g); setView(sceneOf(loc)); setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公室" : `✅ 前往 ${loc}，夥伴會看到你在視察` }); loadGame(); }
+    const r = await apiPost({ action: "v40Goto", loc: loc === "辦公室" ? "" : loc }, 0);
+    if (r && r.success) {
+      setGame(g => { if (!g) return g; const v = { ...(g.visits || {}) }; if (r.data) v[user.id] = r.data; else delete v[user.id]; return { ...g, visits: v, bossAt: isMeBoss && r.data && r.data.loc !== "休息區" ? r.data : isMeBoss ? null : g.bossAt }; });
+      setView(loc === "辦公室" ? "office" : sceneOf(loc));
+      setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公室沙發區" : loc === "休息區" ? "✅ 回到休息區" : `✅ 前往 ${loc}，在班隊員會收到「來看你了」` });
+      loadGame();
+    }
     else setRevMsg({ ok: false, text: (r && r.error) || (r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.39 後才能用" : "前往失敗") });
   };
+  const [smallBusy, setSmallBusy] = useState(false);
+  const smallAct = async (payload, okText) => {
+    setSmallBusy(true); const r = await apiPost(payload, 0); setSmallBusy(false);
+    if (r && r.success) setRevMsg({ ok: true, text: okText(r) }); else setRevMsg({ ok: false, text: (r && r.error) || "失敗了，再試一次" });
+  };
+  const ticker = (game && game.ticker) || [];
   const meDuty = (onDuty || []).find(p => String(p.id) === String(user.id));
   const revLoc = meDuty && meDuty.location && (locInfo[meDuty.location] || {}).kind !== "內部" ? meDuty.location : (user.role >= 2 && isStore ? (Object.keys(locInfo).find(n => sceneOf(n) === view && (locInfo[n].kind || "") !== "內部" && (!locInfo[n].status || locInfo[n].status === "營運中")) || "") : "");
   const liveRev = (game && game.liveRev) || [];
@@ -337,7 +371,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     setRevBusy(true);
     const r = await apiPost({ action: "v39Rev", loc: revLoc, amount: revAmt }, 0);
     setRevBusy(false);
-    if (r && r.success) { setRevAmt(""); setGame(g => g ? { ...g, liveRev: r.data || [] } : g); setRevMsg({ ok: true, text: `✅ 已回報 ${revLoc} $${Number(revAmt).toLocaleString()}${r.coin ? `（+${r.coin} 枚）` : ""}` }); }
+    if (r && r.success) { setRevAmt(""); setGame(g => g ? { ...g, liveRev: r.data || [] } : g); engine.current && engine.current.setRev && engine.current.setRev(r.data || []); if (r.milestone) engine.current && engine.current.celebrate(revLoc); setRevMsg({ ok: true, text: `✅ 已回報 ${revLoc} $${Number(revAmt).toLocaleString()}${r.coin ? `（+${r.coin} 枚）` : ""}` }); }
     else setRevMsg({ ok: false, text: (r && r.error) || "回報失敗" });
   };
   const timeOf = t => { if (!t) return ""; const d = new Date(t); return isNaN(d) ? String(t) : d.toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei", hour: "2-digit", minute: "2-digit", hour12: false }); };
@@ -390,6 +424,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
                     {SCENES[sceneOf(pk.location)].icon} {pk.visiting ? `視察中・${shortLoc(pk.location)}` : pk.isBoss ? "辦公室" : pk.resting ? "休息中" : shortLoc(pk.location)}{pk.inTime ? ` · ${timeOf(pk.inTime)} 上班` : ""}
                   </div>
                   {game && game.pets && game.pets[pk.id] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>🐾 寵物：{game.pets[pk.id].name || "（未命名）"}</div>}
+                  {game && game.mounts && MOUNT_INFO[game.mounts[pk.id]] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>{MOUNT_INFO[game.mounts[pk.id]].icon} 坐騎：{MOUNT_INFO[game.mounts[pk.id]].name}</div>}
                   {game && game.hearts && game.hearts[pk.id] && <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 3, cursor: onOpenHearts ? "pointer" : "default" }} onClick={() => onOpenHearts && onOpenHearts(pk.id)}><HeartDots lv={game.hearts[pk.id].lv} size={11} /><span style={{ fontSize: 10.5, color: "#b0466a" }}>{game.hearts[pk.id].n === 8 ? (game.hearts[pk.id].g === 8 ? "傳說・無敵8心" : "無敵8心") : `${game.hearts[pk.id].n}／8 心`}</span></div>}
                 </div>
                 {game && game.pets && game.pets[pk.id] && <PetSprite type={game.pets[pk.id].type} stage={game.pets[pk.id].stage} flavor={game.pets[pk.id].flavor} acc={game.pets[pk.id].acc} size={40} />}
@@ -398,19 +433,31 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
               {String(pk.id) === String(user.id) && (
                 <div style={{ marginTop: 8, fontSize: 12, color: "#8a6a4a", background: "#fff3d6", borderRadius: 8, padding: "6px 9px" }}>🚶 點畫面上的地面，你的小人就會走過去（走動時這張名片會收起來，再點自己就會出現；停 3 分鐘後回到工作位置）</div>
               )}
-              {!demo && isMeBoss && String(pk.id) === String(user.id) && (
-                <button onClick={() => setGoOpen(true)} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📍 前往…（幫夥伴、視察）</button>
+              {!demo && isMgr && String(pk.id) === String(user.id) && (
+                <button onClick={() => setGoOpen(true)} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📍 前往…（視察、回休息區）</button>
               )}
               {!demo && String(pk.id) !== String(user.id) && (
-                <button onClick={() => { setTarget(pk); setImsg(""); }} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 互動・加油打氣</button>
+                <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                  <button onClick={() => { setTarget(pk); setImsg(""); }} style={{ flex: 2, border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 互動</button>
+                  {pk.resting && <button disabled={smallBusy} onClick={() => smallAct({ action: "v40Coffee", to: pk.id }, r => { engine.current && engine.current.coffee(pk.id, user.nick || user.name); return `☕ 請 ${pk.name} 喝了一杯`; })} style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: C.text }}>☕ 請喝</button>}
+                  {isMgr && !pk.resting && <button disabled={smallBusy} onClick={() => smallAct({ action: "v40Cheer", to: pk.id }, () => `👍 已跟 ${pk.name} 說辛苦了`)} style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: C.text }}>👍 辛苦了</button>}
+                </div>
               )}
             </div>
           )}
         </div>
-        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點夥伴拉近看名片 · 點地面你的小人就會走過去 · ⛶ 全螢幕可單指拖曳移動</div>
+        {/* v1.40 跑馬燈：今日動態 */}
+        {ticker.length > 0 && (
+          <div style={{ marginTop: 8, background: "#2b1d16", color: "#ffe6b0", borderRadius: 10, overflow: "hidden", whiteSpace: "nowrap", fontSize: 12.5, padding: "6px 0" }}>
+            <div style={{ display: "inline-block", paddingLeft: "100%", animation: `rhTicker ${Math.max(18, ticker.length * 7)}s linear infinite` }}>
+              {ticker.map((t, i) => <span key={i} style={{ marginRight: 28 }}>📣 {t.time} {t.text}</span>)}
+            </div>
+          </div>
+        )}
+        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點隊員拉近看名片 · 點地面你的小人就會走過去 · ⛶ 全螢幕可單指拖曳移動</div>
       </div>
 
-      {/* v1.39 即時營業額 PK：不強迫、次數不限，顯示回報時間；全部夥伴看得到 */}
+      {/* v1.39 即時營業額 PK：不強迫、次數不限，顯示回報時間；全部隊員看得到 */}
       {revMsg && <Flash text={revMsg.text} kind={revMsg.ok ? "ok" : "bad"} />}
       <div style={s.card}>
         <div style={{ ...s.sectionTitle, display: "flex", justifyContent: "space-between" }}><span>⚡ 今日即時營業額 PK</span><span style={{ letterSpacing: 0, fontWeight: 400 }}>各櫃位最新一次回報</span></div>
@@ -436,12 +483,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
       {goOpen && createPortal(
         <div onClick={() => setGoOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1500, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "0 0 20px 20px", padding: "calc(16px + env(safe-area-inset-top)) 16px 18px", boxShadow: "0 8px 24px rgba(0,0,0,.18)", animation: "rhDropIn .22s ease-out" }}>
-            <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 4 }}>📍 大隊長要去哪裡？</div>
-            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 12 }}>今天有效，夥伴會看到你在那裡「視察中」</div>
+            <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 4 }}>📍 {isMeBoss ? "大隊長" : "你"}要去哪裡？</div>
+            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 12 }}>今天有效。去櫃位時，在班隊員會收到「來看你了 👀」</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {goPlaces.map(n => {
-                const on = (game && game.bossAt && game.bossAt.loc === n) || (n === "辦公室" && !(game && game.bossAt));
-                return <button key={n} onClick={() => goTo(n)} style={{ border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.text, textAlign: "left" }}>{SCENES[sceneOf(n)].icon} {n}</button>;
+                const on = (myVisit && myVisit.loc === n) || (n === "辦公室" && !myVisit);
+                return <button key={n} onClick={() => goTo(n)} style={{ border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.text, textAlign: "left" }}>{n === "辦公室" ? "💼 辦公室沙發區" : `${SCENES[sceneOf(n)].icon} ${n}`}</button>;
               })}
             </div>
             <button onClick={() => setGoOpen(false)} style={{ ...s.btn("ghost"), marginTop: 12 }}>關閉</button>

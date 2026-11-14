@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
 // 我的小人造型(紙娃娃)
-// 夥伴自選:吉祥物、膚色、髮型/髮色、上衣、圍裙、褲子、臉部配件、帽子;v1.17 起加上赤心幣商店的配件、服裝、名牌框。
+// 隊員自選:吉祥物、膚色、髮型/髮色、上衣、圍裙、褲子、臉部配件、帽子;v1.17 起加上赤心幣商店的配件、服裝、名牌框。
 // 存檔後,宇宙辦公室裡的小人就會換成這個造型。
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
@@ -173,7 +173,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
       <div style={s.card}>
         <div style={s.sectionTitle}>頭頂的一句話</div>
         <input value={cfg.saying} maxLength={SAYING_MAX} onChange={e => set("saying", e.target.value)} placeholder="例如：今天也要加油！" style={s.input} />
-        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>會出現在宇宙辦公室你的頭頂，所有夥伴都看得到（{[...cfg.saying].length}/{SAYING_MAX} 字）。請友善、正向喔。</div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>會出現在宇宙辦公室你的頭頂，所有隊員都看得到（{[...cfg.saying].length}/{SAYING_MAX} 字）。請友善、正向喔。</div>
         <Title>角色</Title>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {MASCOTS.map(m => <Chip key={m.id} C={C} on={cfg.mascot === m.id} label={m.name} onClick={() => set("mascot", m.id)} />)}

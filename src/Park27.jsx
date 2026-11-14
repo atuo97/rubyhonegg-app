@@ -15,7 +15,7 @@ export function RulesPage({ user, apiGet, C, s, onOpenLedger, loc }) {
     <span style={{ flex: 1, minWidth: 0 }}><span style={{ fontSize: 14 }}>{l}</span>{sub && <span style={{ display: "block", fontSize: 11.5, color: C.muted, marginTop: 1 }}>{sub}</span>}</span>
     <b style={{ fontSize: 14, color: C.accent, whiteSpace: "nowrap" }}>{r}</b></div>;
   const ex = [d.me.roleMult, ...d.events.slice(0, 2).map(e => e.mult)];
-  const roleName = r => ["", "夥伴", "分隊長", "管理者", "總經理", "大隊長"][r];
+  const roleName = r => ["", "隊員", "分隊長", "管理者", "總經理", "大隊長"][r];
   return (
     <div>
       <div style={{ ...s.card, textAlign: "center", background: C.accentBg }}>
@@ -116,7 +116,7 @@ const TIMELINE = [
   ["2018", "開始進入百貨櫃位，跑遍各地快閃與活動"],
   ["造型系列", "從心形出發，推出火車、挖土機、三角龍、小暴龍"],
   ["十年", "參加超過 500 場活動，包含與政府單位的合作"],
-  ["2026", "成為光譜餐飲品牌集團的紅色品牌；開放加盟；啟用夥伴 App"],
+  ["2026", "成為光譜餐飲品牌集團的紅色品牌；開放加盟；啟用隊員 App"],
 ];
 export function BrandPage({ C, s, locations }) {
   const locs = Object.entries(locations || {}).filter(([n, v]) => !/^(00|66)/.test(n) && !(v && /結束|停/.test(v.status || "")));

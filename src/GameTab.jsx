@@ -354,7 +354,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
               {me.petTradeNext && me.petTradeNext > me.today ? <><br /><span style={{ color: C.accent }}>你在 {me.petTradeNext} 之後才能再交換。</span></> : null}
             </div>
             {(pt.stage < 2 || pt.stage >= 5) && <div style={{ fontSize: 13, color: C.muted }}>{pt.stage < 2 ? "孵化之後才能交換喔。" : "完全體不能交換。"}</div>}
-            {pt.stage >= 2 && pt.stage < 5 && !(me.petPartners || []).length && <div style={{ fontSize: 13, color: C.muted }}>目前沒有同階段的夥伴可以交換。</div>}
+            {pt.stage >= 2 && pt.stage < 5 && !(me.petPartners || []).length && <div style={{ fontSize: 13, color: C.muted }}>目前沒有同階段的隊員可以交換。</div>}
             {(me.petPartners || []).map(p => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: `1px solid ${C.border}` }}>
                 <PetSprite type={p.pet.type} stage={p.pet.stage} flavor={p.pet.flavor} size={44} />
@@ -404,7 +404,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <div key={r.loc} style={{ display: "flex", justifyContent: "space-between", padding: "7px 0", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
               <span>{r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : r.rank + "."} {r.loc.replace(/^\d+/, "")}</span><b>${Number(r.rev).toLocaleString()}</b>
             </div>))}
-          <div style={{ fontSize: 11, color: C.light, marginTop: 8 }}>每月 1 日結算，第一名櫃位的夥伴依上班時數分 {P["冠軍櫃位總獎勵"]} 枚（活動場次不列入）</div>
+          <div style={{ fontSize: 11, color: C.light, marginTop: 8 }}>每月 1 日結算，第一名櫃位的隊員依上班時數分 {P["冠軍櫃位總獎勵"]} 枚（活動場次不列入）</div>
         </Card>
         <Card>
           <Title right={<span style={{ fontSize: 12, color: C.muted }}>我捐了 {f.mine}</span>}>團隊基金</Title>

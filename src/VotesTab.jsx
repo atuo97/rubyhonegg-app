@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════
 // 投票系統 App 元件 v1(2026-11-01,2026-11-09 接入 App v1.10)
-// 入口:首頁「🗳️ 夥伴投票」卡片。user.role===3 為管理員。
+// 入口:首頁「🗳️ 隊員投票」卡片。user.role===3 為管理員。
 // ═══════════════════════════════════════════════
 import { useState, useEffect } from "react";
 import { Flash } from "./TopToast.jsx";
@@ -66,7 +66,7 @@ export default function VotesTab({ user, apiGet, apiPost, C, s, onBack }) {
           color:C.muted, fontSize:13, padding:"0 0 10px", fontFamily:"inherit" }}>‹ 回首頁</button>
       )}
       <div style={{ ...s.card, textAlign:"center", padding:18 }}>
-        <div style={{ fontSize:16, fontWeight:600 }}>夥伴投票</div>
+        <div style={{ fontSize:16, fontWeight:600 }}>隊員投票</div>
         <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>投票為記名，管理員可查看投票內容</div>
       </div>
 

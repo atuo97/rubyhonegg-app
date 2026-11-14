@@ -68,7 +68,7 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
         <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>櫃位爭霸戰</div>
         <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>只列營業中的櫃位；進行中的活動也算一個櫃位，休賽、撤櫃期間先隱藏（等級保留）</div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.7 }}>
-          本週積分＝營業額 1 元 {rule.rev} 分＋捐獻 1 枚 {fmt(rule.give)} 分<br />每週一結算，冠軍櫃位的夥伴依上班時數分 {rule.pool} 枚<br />累積總分每 {wan(rule.step)} 分升 1 級，只升不降
+          本週積分＝營業額 1 元 {rule.rev} 分＋捐獻 1 枚 {fmt(rule.give)} 分<br />每週一結算，冠軍櫃位的隊員依上班時數分 {rule.pool} 枚<br />累積總分每 {wan(rule.step)} 分升 1 級，只升不降
         </div>
       </div>
 
