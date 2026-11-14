@@ -28,7 +28,7 @@ export function punchDistCheck(locations, loc, coords, kindLabel) {
 // 「出勤」頁最上面：我的打卡異常（沒打下班卡 → 申請補登）
 export function PunchAlerts({ apiGet, apiPost, C, s }) {
   const [d, setD] = useState(null), [form, setForm] = useState(null), [msg, setMsg] = useState(null), [busy, setBusy] = useState(false);
-  const load = () => apiGet({ action: "pfMine" }, 1).then(r => setD(r && r.success ? r.data : null)).catch(() => {});
+  const load = () => apiGet({ action: "pfMine" }, 1).then(r => setD(r && r.success && r.data && Array.isArray(r.data.open) && Array.isArray(r.data.reqs) ? r.data : null)).catch(() => {});   // 部署端：格式不對就不顯示（出勤頁是打卡的地方，不能整頁當掉）
   useEffect(() => { load(); }, []);
   if (!d) return null;
   const recent = d.reqs.filter(r => r.status !== "核准" || r.date >= new Date(Date.now() - 3 * 864e5 + 8 * 3600e3).toISOString().slice(0, 10)).slice(0, 5);
@@ -71,7 +71,7 @@ export function PunchAlerts({ apiGet, apiPost, C, s }) {
 // 管理 → 人員 →「⏰ 打卡異常」
 export function PunchAdmin({ apiGet, apiPost, C, s }) {
   const [d, setD] = useState(null), [t, setT] = useState("req"), [msg, setMsg] = useState(null), [form, setForm] = useState(null), [busy, setBusy] = useState(false);
-  const load = () => apiGet({ action: "pfList" }, 0).then(r => setD(r && r.success ? r.data : { error: (r && r.error) || "讀取失敗" }));
+  const load = () => apiGet({ action: "pfList" }, 0).then(r => setD(r && r.success && r.data && Array.isArray(r.data.reqs) && Array.isArray(r.data.open) && Array.isArray(r.data.far) ? r.data : { error: (r && r.error) || "讀取失敗" }));   // 部署端：格式檢查
   useEffect(() => { load(); }, []);
   const call = async (body, ok) => {
     setBusy(true); const r = await apiPost(body, 0); setBusy(false);
@@ -145,7 +145,7 @@ export function usePfCount(user, apiGet) {
   useEffect(() => {
     if (!user || user.role < 2) return;
     let alive = true;
-    const run = () => apiGet({ action: "pfList" }, 1).then(r => { if (alive && r && r.success) setN(r.data.reqs.filter(x => x.canDecide).length + r.data.open.filter(x => !x.mine).length + r.data.far.length); }).catch(() => {});
+    const run = () => apiGet({ action: "pfList" }, 1).then(r => { if (alive && r && r.success && r.data && Array.isArray(r.data.reqs) && Array.isArray(r.data.open) && Array.isArray(r.data.far)) setN(r.data.reqs.filter(x => x.canDecide).length + r.data.open.filter(x => !x.mine).length + r.data.far.length); }).catch(() => {});
     run(); const t = setInterval(run, 10 * 60 * 1000);
     return () => { alive = false; clearInterval(t); };
   }, [user && user.id, user && user.role]);
