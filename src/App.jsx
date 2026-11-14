@@ -2,6 +2,7 @@ import { AlbumPage } from "./Photo44.jsx";
 import { BuildingGuide, QuickModal, VoicePage, useVoiceCount, BagPage, useNotifs, BellButton, NotifCenter } from "./Hub47.jsx";
 import { VisionPage, BugPage } from "./Vision51.jsx";
 import { PartnerPage } from "./Partner51.jsx";
+import { PunchAlerts, PunchAdmin, usePfCount, punchDistCheck } from "./Punch56.jsx";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { Flash, TopToastHost } from "./TopToast.jsx";
@@ -652,6 +653,7 @@ export default function App(){
   const [loading, setLoading] = useState(false);
   const [rpCnt, setRpCnt] = useState(null);   // v1.24 門市回報待處理數
   const voiceCnt = useVoiceCount(user, apiGet);   // v1.47 隊員的聲音：未回覆／待規劃
+  const pfCnt = usePfCount(user, apiGet);           // v1.56 打卡異常
   const notifs = useNotifs(user, apiGet);          // v1.47 通知中心
   const [homeTodo, setHomeTodo] = useState(null);   // v1.27 今天要處理（後端彙整）
   const loadRp = () => apiGet({ action:"rpCount", empId:user.id }, 0).then(r => r && r.success && setRpCnt(r)).catch(() => {});
@@ -760,7 +762,7 @@ export default function App(){
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
     universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"home", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
-    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage", voice:"manage", album:"info", bag:"info", notif:"home", vision:"park", bug:"info", partners:"park" };
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage", voice:"manage", album:"info", bag:"info", notif:"home", vision:"park", bug:"info", partners:"park", pfadmin:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
   const ext = !!opsMe && user.role < 3 && (opsMe.type === "合作夥伴" || opsMe.type === "加盟店夥伴");   // v1.49 外部帳號：看不到總部營業額、爭霸戰、福利補助
@@ -776,7 +778,7 @@ export default function App(){
     { id:"punch",  icon:"clock", label:"出勤", badge: ord.open.length, red: ord.late.length > 0 },
     { id:"info",   icon:"user",  label:"我的" },
     { id:"park",   icon:"park",  label:"樂園" },
-    ...(user.role >= 2 ? [{ id:"manage", icon:"mng", label:"管理", badge: (rpCnt?.pending || 0) + (user.role >= 3 ? (opsMe?.matPending || 0) : 0) + (voiceCnt || 0), red: rpCnt?.urgent > 0 || voiceCnt > 0 }] : []),
+    ...(user.role >= 2 ? [{ id:"manage", icon:"mng", label:"管理", badge: (rpCnt?.pending || 0) + (user.role >= 3 ? (opsMe?.matPending || 0) : 0) + (voiceCnt || 0) + (pfCnt || 0), red: rpCnt?.urgent > 0 || voiceCnt > 0 || pfCnt > 0 }] : []),
   ];
   if (!SUB.includes(tab)) lastMain.current = tab;
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
@@ -785,7 +787,7 @@ export default function App(){
     if (backTo && backTo.tab !== tab) { const b = backTo; setBackTo(null); if (b.tab === "universe") setUni({ room: b.room || null, auto: null, key: Date.now() }); setTab(b.tab); return; }
     setBackTo(null); setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
   };
-  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", album:"我的相簿", voice:"隊員的聲音", vision:"隊長室・願景白板", partners:"隊長室・合作夥伴牆", bug:"回報問題", bag:"我的背包", notif:"通知中心", foodsafe:"食安管理", rules:"赤心幣規則", spend:"官方商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", album:"我的相簿", voice:"隊員的聲音", vision:"隊長室・願景白板", partners:"隊長室・合作夥伴牆", pfadmin:"打卡異常", bug:"回報問題", bag:"我的背包", notif:"通知中心", foodsafe:"食安管理", rules:"赤心幣規則", spend:"官方商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -861,6 +863,7 @@ export default function App(){
           {/* v1.47：音樂設定移到頂端 🔊 長按與「我的 → 設定」；首頁最下面只留「關於紅玉滿」 */}
           <ListItem icon="home" title="關於紅玉滿" desc="品牌精神、名字的由來、品牌故事" onClick={()=>setTab("about")}/>
         </div>}
+        {!partner && tab==="punch" && <PunchAlerts key={"pf" + segRefreshKey} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {!partner && tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
@@ -947,6 +950,7 @@ export default function App(){
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>人員</div>
             <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
+            <ListItem icon="cal" title="⏰ 打卡異常" desc={user.role>=3 ? "補登申請核准、沒打下班卡、打卡位置離櫃位太遠（所有地點）" : "補登申請核准、沒打下班卡、位置異常（負責的櫃位）"} badge={pfCnt || null} badgeRed={pfCnt > 0} onClick={()=>setTab("pfadmin")}/>
             {user.role>=3 && <ListItem icon="user" title="隊員資料" desc="新增隊員、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>}
             {user.role>=3 && <ListItem icon="user" title="無敵8心頒發" desc="看隊員的 8 心、頒發愛心與善心" onClick={()=>{ setHeartsWho(null); setTab("hearts"); }}/>}
             {user.role>=3 && user.role<5 && <ListItem icon="coin" title="發放限定造型" desc="直接選隊員、合作品牌或加盟店" onClick={()=>setTab("grant")}/>}
@@ -982,6 +986,7 @@ export default function App(){
         {tab==="notif" && <NotifCenter C={C} s={s} notifs={notifs} onGo={t => { if (t.tab === "bag") setBagTab(t.bag || null); if (t.tab === "voice") setVoiceTab(t.voice || null); nav(t); }} />}
         {tab==="bag" && <BagPage key={"bag" + (bagTab || "")} initial={bagTab} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onChanged={() => game.refresh && game.refresh()} onOpenShop={() => nav({ tab:"spend", back:{ tab:"bag" } })} />}
         {tab==="vision" && <VisionPage key={visionB || "v"} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={visionB} />}
+        {tab==="pfadmin" && user.role>=2 && <PunchAdmin apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="partners" && <PartnerPage key={partnerCat || "p"} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={partnerCat} />}
         {tab==="bug" && <BugPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="voice" && user.role>=3 && <VoicePage key={voiceTab || "v"} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={voiceTab} />}
@@ -1491,6 +1496,8 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
+      const far = punchDistCheck(locations, workLoc, coords, "上班打卡");   // v1.56 離櫃位太遠先問原因
+      if (far === null) { setLoading(false); setErr("已取消打卡，請到櫃位附近再打一次"); return; }
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
       setMsg("儀容照上傳中…");
@@ -1500,7 +1507,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
         action: "punch", date: todayStr(), empId: user.id, name: user.name,
         scheduleId: todaySchedule?.id || "", type: "上班", time: now.toISOString(),
         lat: coords.lat, lng: coords.lng, location: workLoc, offline: false, photoUrl,
-        note: isActivity ? "活動:" + venue.trim() : "",
+        note: [isActivity ? "活動:" + venue.trim() : "", far].filter(Boolean).join("｜"),
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
       const fs = await apiPost({ action:"fsLog", loc: workLoc, type:"上班", temps: fridgePayload(fsMeta, workLoc, temps), groom }, 1).catch(() => null);
@@ -1739,6 +1746,8 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
+      const far = punchDistCheck(locations, activeSeg.location, coords, "下班打卡");   // v1.56 離櫃位太遠先問原因
+      if (far === null) { setLoading(false); setErr("已取消打卡，請到櫃位附近再打一次"); return; }
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
 
@@ -1774,7 +1783,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
         action:"punch", date:todayStr(), empId:user.id, name:user.name,
         scheduleId:"", type:"下班", time:now.toISOString(),
         lat:coords.lat, lng:coords.lng, location:activeSeg.location, offline:false,
-        note: getVenue(user.id, activeSeg.location) ? "活動:" + getVenue(user.id, activeSeg.location) : "",
+        note: [getVenue(user.id, activeSeg.location) ? "活動:" + getVenue(user.id, activeSeg.location) : "", far].filter(Boolean).join("｜"),
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
       if (!isInner) await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
@@ -2604,7 +2613,7 @@ function AdminTab({ user, onOpenBatter }) {
       <button onClick={()=>load(ym)} style={{ ...s.btn(), marginTop:4 }}>🔄 重新整理</button>
 
       <div style={{ marginTop:20 }}>
-        <AbnormalShiftPanel user={user} />
+        <button onClick={()=>window.dispatchEvent(new CustomEvent("rh:nav", { detail:{ tab:"pfadmin" } }))} style={{ ...s.btn("ghost") }}>⏰ 打卡異常（補登申請、沒打下班、位置異常）</button>   {/* v1.56 取代舊的異常未下班面板 */}
       </div>
       {user.role >= 3 && <div style={{ marginTop:12 }}>
         <InsuranceGradePanel user={user} ym={ym} />

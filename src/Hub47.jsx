@@ -167,7 +167,7 @@ export function BagPage({ user, apiGet, apiPost, todayStr, C, s, initial, onChan
 // ───────── 1-3 通知中心 ─────────
 // 頂端 🔔：最近 7 天的提醒都看得到（頂端跳出照舊）。未讀＝上次打開通知中心之後才來的
 const SEEN_KEY = "rh_notif_seen";
-export const NOTE_ICON = { coffee: "☕", thanks: "💌", cheer: "👍", visit: "👀", benefit: "🎁", claw: "🧸", care: "💗", shop: "💡", mount: "🛵", milestone: "🎆", overtake: "🏃", bug: "🐞", vision: "🗺️" };
+export const NOTE_ICON = { coffee: "☕", thanks: "💌", cheer: "👍", visit: "👀", benefit: "🎁", claw: "🧸", care: "💗", shop: "💡", mount: "🛵", milestone: "🎆", overtake: "🏃", bug: "🐞", vision: "🗺️", punch: "⏰" };
 export function useNotifs(user, apiGet) {
   const [list, setList] = useState([]), [seen, setSeen] = useState(() => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (e) { return 0; } });
   const load = () => apiGet({ action: "v47Notes" }, 0).then(r => { if (r && r.success) setList(r.data || []); }).catch(() => {});
@@ -191,6 +191,7 @@ export function noteTarget(x) {
   if (x.type === "care") return { tab: "voice", voice: "mood", back };
   if (x.type === "bug") return /^🐞 你/.test(x.text || "") ? { tab: "bug", back } : { tab: "voice", voice: "bug", back };
   if (x.type === "vision") return { tab: "vision", back };
+  if (x.type === "punch") return /^⏰ 你|幫你|把你/.test(x.text || "") ? { tab: "punch", back } : { tab: "pfadmin", back };
   if (x.type === "shop") return { tab: "street", back };
   if (x.type === "mount") return { tab: "bag", bag: "mount", back };
   if (x.type === "milestone" || x.type === "overtake") return { tab: "universe", room: "office", auto: "rev", back };
