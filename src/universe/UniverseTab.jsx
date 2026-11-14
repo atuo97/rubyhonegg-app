@@ -210,10 +210,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const meal = new Set(((game && game.canteen && game.canteen.meal) || []).map(x => String(x.id)));
     if (meal.size && boss) meal.add(String(boss.id));
     const bday = new Set(((game && game.birthdays) || []).map(b => String(b.id)));
+    const duty = new Set((onDuty || []).map(p => String(p.id)));
     list.forEach((p, i) => {
       const id = String(p.id);
+      const free = p.resting || (p.visiting && !duty.has(id));   // v1.50 視察中（沒上班）也可以去運動，運動完再回到視察地點
       if (meetOn && (mt.ids || []).some(x => String(x) === id)) list[i] = { ...p, meeting: true };
-      else if (p.resting && acts[id] && acts[id].until > nowT) list[i] = { ...p, act: acts[id].act };
+      else if (free && acts[id] && acts[id].until > nowT) list[i] = { ...p, act: acts[id].act, resting: true, visiting: false, visitLabel: "" };
       else if (p.resting && !p.visiting && meal.has(id)) list[i] = { ...p, meal: true };   // v1.44 今天和隊長吃飯 → 飯堂隊長的桌子
       else if (p.resting && !p.visiting && bday.has(id)) list[i] = { ...p, bday: true };   // v1.44 壽星 → 飯堂蛋糕桌
     });
