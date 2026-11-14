@@ -114,9 +114,28 @@ const TIMELINE = [
   ["之後", "帶著攤子到不同地方擺攤，最後開著行動車停在西門紅樓前"],
   ["媒體報導", "Yahoo 新聞、部落客陸續報導，成為「台灣十大人氣雞蛋糕品牌」"],
   ["2018", "開始進入百貨櫃位，跑遍各地快閃與活動"],
+  ["2020–2021", "新冠疫情。2021 年 5 月全國三級警戒，活動大量取消，全年只剩 26 場"],
+  ["2023–2024", "疫情後回溫：2023 年 74 場，2024 年第一次一年超過 100 場"],
   ["造型系列", "從心形出發，推出火車、挖土機、三角龍、小暴龍"],
-  ["十年", "參加超過 500 場活動，包含與政府單位的合作"],
+  ["十年", "參加超過 560 場活動、140 多檔百貨櫃位與快閃，合作過 300 多個機關與品牌"],
   ["2026", "成為光譜餐飲品牌集團的紅色品牌；開放加盟；啟用夥伴 App"],
+];
+// v1.52 十年足跡：依雲端「32活動配合」各年度資料夾（不含未接、取消）與「31百貨通路」統計（2026 到 11 月）
+const YEAR_EVENTS = [[2016, 2], [2017, 7], [2018, 10], [2019, 29], [2020, 39], [2021, 26], [2022, 38], [2023, 74], [2024, 127], [2025, 119], [2026, 94]];
+const STATS = [["565", "場活動"], ["142", "檔百貨櫃位・快閃"], ["306", "個合作單位"]];
+// 合作過的單位（亮點，完整名單在隊長室「合作夥伴牆」）
+const HIGHLIGHTS = [
+  ["🏛️ 中央機關", "總統府、外交部、國家兩廳院、國家鐵道博物館、臺鐵鐵路便當節、公共電視、國立臺灣科學教育館"],
+  ["🏙️ 地方機關", "臺北市觀光傳播局、臺北流行音樂中心、新北市政府、新北市漁業處、臺中市政府、高雄兒童藝術節"],
+  ["🤝 協會・基金會", "台灣觀光協會（海外觀光推廣）、台北市電腦公會、SEMI 國際半導體產業協會、外貿協會"],
+  ["🚗 汽車", "Mercedes-Benz、BMW、MINI、Porsche、Volvo、Honda、Audi、Land Rover"],
+  ["💻 科技", "台積電、華碩、微星、金士頓、BenQ、Leica、Samsung、Intel、Google"],
+  ["💊 醫藥", "GSK・Haleon、Moderna、各醫學會年會"],
+  ["📱 社群・媒體", "Meta、foodpanda、Uber Eats、VOGUE、ELLE、親子天下"],
+  ["🎓 學校", "國立政治大學、國立臺灣大學、國立臺北大學、世新大學、臺北醫學大學"],
+  ["🦖 IP 合作", "Snoopy、七龍珠、小魔女 DoReMi、數碼寶貝、美少女戰士、咒術迴戰、庫洛魔法使、楓之谷、汪汪隊立大功"],
+  ["👜 精品時尚", "Louis Vuitton、Chanel、Patek Philippe、Dunhill、COACH、Calvin Klein、Timberland、Under Armour"],
+  ["🛍️ 百貨通路", "遠東百貨・SOGO、新光三越、環球、美麗華、三井 LaLaport、微風、誠品、桃園機場"],
 ];
 export function BrandPage({ C, s, locations }) {
   const locs = Object.entries(locations || {}).filter(([n, v]) => !/^(00|66)/.test(n) && !(v && /結束|停/.test(v.status || "")));
@@ -158,6 +177,38 @@ export function BrandPage({ C, s, locations }) {
             <div style={{ fontSize: 13.5, lineHeight: 1.6 }}>{v}</div>
           </div>)}
         </div>
+      </div>
+      <div style={s.card}>
+        <div style={s.sectionTitle}>十年足跡</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+          {STATS.map(([n, l]) => <div key={l} style={{ flex: 1, textAlign: "center", background: C.warm, borderRadius: 12, padding: "10px 4px" }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.accent }}>{n}</div><div style={{ fontSize: 11.5, color: C.muted }}>{l}</div></div>)}
+        </div>
+        <div style={{ fontSize: 12.5, color: C.muted, marginBottom: 6 }}>每年活動場數</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 132, paddingTop: 16 }}>
+          {YEAR_EVENTS.map(([y, n]) => { const covid = y === 2021;
+            return <div key={y} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
+              <div style={{ fontSize: 10, color: covid ? "#b9770e" : C.muted, marginBottom: 2 }}>{n}</div>
+              <div style={{ width: "100%", height: Math.max(3, n / 127 * 92), background: covid ? "#d4ac6e" : C.accent, opacity: y === 2026 ? .7 : 1, borderRadius: "4px 4px 0 0" }} />
+              <div style={{ fontSize: 9.5, color: C.muted, marginTop: 3 }}>{String(y).slice(2)}</div>
+            </div>; })}
+        </div>
+        <div style={{ fontSize: 11, color: C.light, marginTop: 6 }}>依活動資料夾統計（不含未接、取消）；2026 年到 11 月。</div>
+      </div>
+      <div style={s.card}>
+        <div style={s.sectionTitle}>疫情那幾年</div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.85 }}>
+          2020 年新冠疫情爆發，台灣本土疫情相對穩定，紅玉滿那一年仍跑了 39 場活動。2021 年 5 月 15 日雙北升到三級警戒，5 月 19 日起全國三級警戒，集會活動和內用都停下來，直到 7 月 27 日才降為二級，雙北還是先維持只能外帶。那一年活動大量取消，全年只剩 26 場，是這幾年最低的一年。
+        </div>
+        <div style={{ fontSize: 13.5, lineHeight: 1.85, marginTop: 8 }}>
+          疫情慢慢過去後，活動一場一場回來：2022 年 38 場、2023 年 74 場，2024 年第一次一年超過 100 場。謝謝每一位在那段時間陪著紅玉滿撐過來的隊員和客人。
+        </div>
+      </div>
+      <div style={s.card}>
+        <div style={s.sectionTitle}>合作過的單位</div>
+        {HIGHLIGHTS.map(([k, v]) => <div key={k} style={{ padding: "7px 0", borderBottom: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>{k}</div><div style={{ fontSize: 13, lineHeight: 1.65, color: C.text }}>{v}</div></div>)}
+        {locations && <button onClick={() => { try { window.dispatchEvent(new CustomEvent("rh:nav", { detail: { tab: "partners" } })); } catch (e) {} }} style={{ ...s.btn("ghost"), marginTop: 10 }}>🤝 看完整合作夥伴牆（隊長室）</button>}
       </div>
       {locs.length > 0 && <div style={s.card}>
         <div style={s.sectionTitle}>現在在這裡</div>
