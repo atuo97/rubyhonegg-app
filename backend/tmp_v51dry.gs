@@ -16362,13 +16362,11 @@ function extHandler_(action, p) {
   return v41_wordRes_(r);
 }
 
-function v55_dry() {
+function v55_dry2() {
   var c = cal_company_(), out = [];
   c.getEvents(new Date('2026-11-01T00:00:00+08:00'), new Date('2026-12-01T00:00:00+08:00')).forEach(function (ev) {
-    var t = ev.getTitle(); if (t.indexOf('賓士') < 0) return;
-    var x = cal_ev_(ev, 'company');
-    out.push([x.id.slice(0, 12), x.title, x.date, x.end, x.allDay, String(ev.getDescription() || '').replace(/\n/g, '/').slice(0, 40), ev.getAllDayStartDate && x.allDay ? Utilities.formatDate(ev.getAllDayStartDate(), 'Asia/Taipei', 'MM-dd') + '~' + Utilities.formatDate(ev.getAllDayEndDate(), 'Asia/Taipei', 'MM-dd') : ''].join('|'));
+    if (!ev.isAllDayEvent()) return;
+    out.push([ev.getTitle().slice(0, 8), ev.getStartTime().toISOString(), ev.getEndTime().toISOString(), ev.getAllDayStartDate().toISOString(), ev.getAllDayEndDate().toISOString()].join('|'));
   });
-  var m = v39_rows_('設備清單行程', V39_EQCAL_HEAD).map(function (r) { return String(r[0]).slice(0, 14) + '->' + String(r[1]).slice(0, 12); });
-  Logger.log('EV ' + out.join(' ;; ') + ' || MAP ' + m.join(' , ') + ' || TZ ' + Session.getScriptTimeZone());
+  Logger.log('CALTZ ' + c.getTimeZone() + ' || ' + out.join(' ;; '));
 }
