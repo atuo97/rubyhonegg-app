@@ -81,7 +81,7 @@ function apiGet(params, retries = 2) {
 async function apiGetRaw(qs, retries) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(`${API_URL}?${qs}`);
+      const res = await fetch(`${API_URL}?${qs}&_t=${Date.now()}`, { cache: "no-store" });   // v1.54 不用瀏覽器快取（改完行事曆再讀，才不會拿到舊資料）
       const text = await res.text();
       return JSON.parse(text);
     } catch(e) {
@@ -2016,6 +2016,17 @@ function InsCard({ user }) {
     </div>);
 }
 
+// v1.54 年資：到職日到今天（台灣時間），例「3 年 10 個月 14 天（共 1,414 天）」
+function tenureText(hire) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(hire || ""); if (!m) return "";
+  const t = new Date(Date.now() + 8 * 3600e3), ty = t.getUTCFullYear(), tm = t.getUTCMonth() + 1, td = t.getUTCDate();
+  let y = ty - +m[1], mo = tm - +m[2], d = td - +m[3];
+  if (d < 0) { mo -= 1; d += new Date(Date.UTC(ty, tm - 1, 0)).getUTCDate(); }
+  if (mo < 0) { y -= 1; mo += 12; }
+  const total = Math.floor((Date.UTC(ty, tm - 1, td) - Date.UTC(+m[1], +m[2] - 1, +m[3])) / 86400000) + 1;
+  if (total <= 0) return "還沒到職";
+  return `${y ? y + " 年 " : ""}${y || mo ? mo + " 個月 " : ""}${d} 天（第 ${total.toLocaleString()} 天）`;
+}
 function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged, onLogout, viewAs, links, bfLinks, recLinks, setLinks }) {
   const Sec = ({ t }) => <div style={{ ...s.sectionTitle, marginTop:18 }}>{t}</div>;   // v1.47 我的分四區
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
@@ -2035,6 +2046,7 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
           <div style={{ fontSize:18, fontWeight:600 }}>{user.name}</div>
           <div style={{ fontSize:12.5, color:C.muted, marginTop:2 }}>{user.position} · {user.id}</div>
           <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>🎂 {rocBirthday(user.birthday)}</div>
+          {staffInfo?.hireDate && <div style={{ fontSize:12, color:C.muted, marginTop:3 }}>🗓 到職 {staffInfo.hireDate.replace(/-/g, "/")}・<b style={{ color:C.accent }}>{tenureText(staffInfo.hireDate)}</b></div>}
         </div>
       </div>
 

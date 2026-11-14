@@ -15,12 +15,18 @@ export function CalendarPage({ user, apiGet, apiPost, C, s, todayStr }) {
   useEffect(() => { load(); }, [from]);
   const save = async () => {
     setBusy(true); const r = await apiPost({ action: "calSave", ...edit }, 0); setBusy(false);
-    if (r && r.success) { setMsg("✅ 已儲存，Google 日曆也同步了"); setEdit(null); load(); } else setMsg((r && r.error) || "儲存失敗");
+    if (r && r.success) {
+      // v1.54 先把畫面上的這一筆換成剛改好的內容，再從 Google 日曆重讀（避免讀到舊資料，看起來像沒改到）
+      const x = { ...edit, id: r.id || edit.id, allDay: !edit.start, end: edit.end || edit.date };
+      setD(o => o && !o.error ? { ...o, data: [...o.data.filter(y => !(y.id === x.id && y.src === x.src)), x].sort((a, b) => (a.date + (a.start || "")) < (b.date + (b.start || "")) ? -1 : 1) } : o);
+      setMsg("✅ 已儲存，Google 日曆也同步了"); setEdit(null);
+      setTimeout(() => apiGet({ action: "calList", from, to }, 1).then(q => { if (q && q.success) setD(q); }), 1500);
+    } else setMsg((r && r.error) || "儲存失敗");
   };
   const del = async () => {
     if (!confirm(`刪除「${edit.title}」？Google 日曆上也會一起刪除。`)) return;
     setBusy(true); const r = await apiPost({ action: "calDel", id: edit.id, src: edit.src }, 0); setBusy(false);
-    if (r && r.success) { setMsg("已刪除"); setEdit(null); load(); } else setMsg((r && r.error) || "刪除失敗");
+    if (r && r.success) { const id = edit.id, src = edit.src; setD(o => o && !o.error ? { ...o, data: o.data.filter(y => !(y.id === id && y.src === src)) } : o); setMsg("已刪除"); setEdit(null); setTimeout(() => apiGet({ action: "calList", from, to }, 1).then(q => { if (q && q.success) setD(q); }), 1500); } else setMsg((r && r.error) || "刪除失敗");
   };
   if (d && d.error) return <div style={{ ...s.card, color: C.muted, textAlign: "center" }}>{/未知/.test(d.error) ? "行事曆還沒開通（後端更新到 v1.28 後就會出現）" : d.error}</div>;
   if (edit) return (
