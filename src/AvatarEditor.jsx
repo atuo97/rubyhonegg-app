@@ -9,7 +9,7 @@ import { Coin, Heart } from "./Coin.jsx";
 import { PeoplePicker } from "./People39.jsx";
 import {
   SKINS, HAIR_STYLES, HAIR_COLORS, TOPS, PANTS, FACES, HATS, MASCOTS, ACCS, OUTFITS, FRAMES,
-  defaultCfg, sanitize, hatUnlocked, hatLockText, SAYING_MAX,
+  defaultCfg, sanitize, hatUnlocked, hatLockText, SAYING_MAX, mascotUnlocked, mascotNeedText, MASCOT_KEEP_UNTIL,
 } from "./universe/avatarCatalog.js";
 
 const hex = n => "#" + n.toString(16).padStart(6, "0");
@@ -17,12 +17,11 @@ const col = (list, id) => hex((list.find(x => x.id === id) || list[0]).c);
 
 // 2D 像素預覽(20×30 格,與 3D 小人同樣的配件組合)
 export function Doll({ cfg, size = 190 }) {
-  const OC = { chefsuit: ["#ffffff", "#2c2c3a"], spacesuit: ["#dfe6ec", "#dfe6ec"], raincoat: ["#f4d03f", null] }[cfg.outfit];
+  const OC = { chefsuit: ["#ffffff", "#2c2c3a"], spacesuit: ["#dfe6ec", "#dfe6ec"], raincoat: ["#f4d03f", null], goldtrex: ["#f1c40f", "#f1c40f"] }[cfg.outfit];
   const skin = col(SKINS, cfg.skin), hair = col(HAIR_COLORS, cfg.hairColor), top = OC ? OC[0] : col(TOPS, cfg.top), pants = OC && OC[1] ? OC[1] : col(PANTS, cfg.pants);
-  if (cfg.outfit === "goldtrex") cfg = { ...cfg, mascot: "trex", _gold: true };
   const R = (x, y, w, h, f, k) => <rect key={k} x={x} y={y} width={w} height={h} fill={f} />;
   const hat = cfg.hat, hs = [];
-  const hatTop = cfg.mascot === "trex" ? 3 : cfg.mascot === "penguin" ? 5 : 2;
+  const hatTop = cfg.mascot === "trex" ? 3 : cfg.mascot === "penguin" ? 5 : cfg.mascot === "robot" ? 3 : cfg.outfit === "goldtrex" ? 1 : 2;
   const hy = hatTop; // 帽子底部 y
   if (hat === "cap") hs.push(R(5, hy, 10, 2, top, "h1"), R(5, hy + 1.5, 12, 1, top, "h2"));
   if (hat === "chef" || hat === "goldchef") { const k = hat === "goldchef" ? "#f1c40f" : "#ffffff";
@@ -48,6 +47,13 @@ export function Doll({ cfg, size = 190 }) {
       {R(4, 4, 12, 10, (cfg._gold ? "#f1c40f" : "#d94a3a"), "hd")}{R(5, 11.5, 10, 2.5, "#ffe6c7", "jw")}
       {R(6, 6, 3, 3, "#fff", "e1")}{R(11, 6, 3, 3, "#fff", "e2")}{R(7.5, 7, 1.5, 1.8, "#222", "p1")}{R(12.5, 7, 1.5, 1.8, "#222", "p2")}
       {R(5, 9.5, 2, 1, "#ff9aa2", "c1")}{R(13, 9.5, 2, 1, "#ff9aa2", "c2")}</>;
+  } else if (cfg.mascot === "robot") {   // v1.41 機器人
+    body = <>
+      {R(6, 22, 3, 5, "#7f8c99", "l1")}{R(11, 22, 3, 5, "#7f8c99", "l2")}{R(5.5, 26.5, 4, 1.5, "#4a5560", "f1")}{R(10.5, 26.5, 4, 1.5, "#4a5560", "f2")}
+      {R(4, 14, 12, 9, "#bfc8d2", "b")}{R(7, 15.5, 6, 5, "#2c3e50", "pn")}{R(8.6, 17, 2.8, 2, "#c0392b", "ht")}{R(8.2, 16.4, 1.4, 1.2, "#c0392b", "h1")}{R(10.4, 16.4, 1.4, 1.2, "#c0392b", "h2")}
+      {R(2, 14, 2, 7, "#7f8c99", "a1")}{R(16, 14, 2, 7, "#7f8c99", "a2")}{R(1.6, 20.5, 2.8, 2, "#bfc8d2", "k1")}{R(15.6, 20.5, 2.8, 2, "#bfc8d2", "k2")}
+      {R(4, 4, 12, 9, "#bfc8d2", "hd")}{R(5.5, 5.5, 9, 6, "#1b2631", "sc")}{R(7, 7.3, 2, 2, "#5dfdcb", "e1")}{R(11, 7.3, 2, 2, "#5dfdcb", "e2")}{R(8.5, 10, 3, 0.7, "#5dfdcb", "m")}
+      {R(9.6, 1.5, 0.8, 2.5, "#7f8c99", "an")}{R(9, 0.4, 2, 1.6, "#ff5a5a", "bl")}</>;
   } else if (cfg.mascot === "penguin") {
     body = <>
       {R(6, 25, 4, 1.5, "#f39c12", "f1")}{R(11, 25, 4, 1.5, "#f39c12", "f2")}
@@ -86,6 +92,11 @@ export function Doll({ cfg, size = 190 }) {
   if (a === "g_moonpin") front.push(R(7, 16, 1.4, 1.4, "#f1c40f", "mp"));
   if (cfg.outfit === "chefsuit") [17, 19, 21].forEach(y => front.push(R(8.6, y, 0.6, 0.6, "#333", "cb" + y), R(10.8, y, 0.6, 0.6, "#333", "cc" + y)));
   if (cfg.outfit === "spacesuit") front.push(R(7.5, 17, 5, 3, "#2e86de", "sp"));
+  if (cfg.outfit === "goldtrex" && cfg.mascot === "none") {   // v1.41 金色小暴龍裝：頭套露出臉、背刺、尾巴
+    behind.push(R(15, 19, 4, 3, "#f1c40f", "tt1"), R(17, 21, 2.5, 2, "#f1c40f", "tt2"));
+    front.push(R(5, 2, 10, 3, "#f1c40f", "hd1"), R(5, 2, 1.4, 11, "#f1c40f", "hd2"), R(13.6, 2, 1.4, 11, "#f1c40f", "hd3"), R(6.5, 2.6, 2, 1.6, "#fff", "he1"), R(11.5, 2.6, 2, 1.6, "#fff", "he2"), R(7.2, 3, 0.9, 0.9, "#222", "hp1"), R(12.2, 3, 0.9, 0.9, "#222", "hp2"),
+      R(6.4, 4.6, 7.2, 0.6, "#fff", "tth"), R(9, 0.8, 2, 1.4, "#c49a12", "sp1"), R(7.5, 16, 5, 6, "#ffe6c7", "bly"));
+  }
   return (
     <svg viewBox="0 0 20 30" width={size} height={size * 1.5} shapeRendering="crispEdges" role="img" aria-label="造型預覽">
       {behind}{body}{front}{hs}
@@ -116,6 +127,8 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
   const [prices, setPrices] = useState({});
   const [state, setState] = useState("loading"); // loading | ready | saving | saved | error
   const [msg, setMsg] = useState("");
+  const [hearts, setHearts] = useState(null);       // v1.41 角色解鎖用 {n,g}
+  const [origMascot, setOrigMascot] = useState("none");
   const [gTarget, setGTarget] = useState(""); const [gItem, setGItem] = useState("crown"); const [gMsg, setGMsg] = useState("");
   const today = todayStr();
 
@@ -123,9 +136,10 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
     let on = true;
     apiGet({ action: "getMyAvatar", empId: user.id }, 1).then(r => {
       if (!on) return;
-      if (r && r.success) { setCfg(sanitize(r.data && r.data.cfg)); setGranted((r.data && r.data.granted) || []); setState("ready"); }
+      if (r && r.success) { const c0 = sanitize(r.data && r.data.cfg); setCfg(c0); setOrigMascot(c0.mascot); setGranted((r.data && r.data.granted) || []); setState("ready"); }
       else { setState("ready"); setMsg("造型功能後端尚未開通，先用預設造型預覽（暫時無法儲存）"); }
     });
+    apiGet({ action: "h36Me", empId: user.id }, 0).then(r => { if (on && r && r.success && r.data) setHearts({ n: r.data.n || 0, g: r.data.g || 0 }); else if (on) setHearts({ n: 0, g: 0 }); });
     apiGet({ action: "gmMe", empId: user.id }, 0).then(r => {
       if (!on || !r || !r.success) return;
       const o = {}, pr = {}; (r.data.catalog || []).forEach(c => { if (c.owned) o[c.id] = 1; pr[c.id] = c; });
@@ -140,7 +154,10 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
 
   const set = (k, v) => { setCfg(c => ({ ...c, [k]: v })); if (state === "saved") setState("ready"); };
 
+  // v1.41 角色解鎖（12/1 前已經在用的人可以繼續用）
+  const canMascot = id => mascotUnlocked(id, hearts) || (id === origMascot && today < MASCOT_KEEP_UNTIL);
   const save = async () => {
+    if (!canMascot(cfg.mascot)) { setMsg(`「${(MASCOTS.find(m => m.id === cfg.mascot) || {}).name}」要${mascotNeedText(cfg.mascot)}，請換一個角色`); return; }
     const h = HATS.find(x => x.id === cfg.hat);
     if (!hatUnlocked(h, today, granted, owned)) { setMsg("這個帽子目前還沒解鎖，請換一個"); return; }
     const bad = ["hairColor", "acc", "outfit", "frame"].find(k => lockedItem(cfg[k]));
@@ -176,7 +193,8 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
         <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>會出現在宇宙辦公室你的頭頂，所有隊員都看得到（{[...cfg.saying].length}/{SAYING_MAX} 字）。請友善、正向喔。</div>
         <Title>角色</Title>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {MASCOTS.map(m => <Chip key={m.id} C={C} on={cfg.mascot === m.id} label={m.name} onClick={() => set("mascot", m.id)} />)}
+          {MASCOTS.map(m => { const ok = canMascot(m.id); return <Chip key={m.id} C={C} on={cfg.mascot === m.id} label={m.name} locked={!ok} sub={m.need ? (ok && !mascotUnlocked(m.id, hearts) ? "可用到 11/30" : mascotNeedText(m.id)) : ""}
+            onClick={() => ok ? set("mascot", m.id) : setMsg(`「${m.name}」要${mascotNeedText(m.id)}${hearts ? `（你目前點亮 ${hearts.n} 心、金心 ${hearts.g} 顆）` : ""}`)} />; })}
         </div>
         {isMascot && <div style={{ fontSize: 11.5, color: C.muted, marginTop: 8 }}>穿上吉祥物裝後，膚色、髮型、衣服會先收起來；帽子仍然可以戴。</div>}
 

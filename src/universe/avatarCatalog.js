@@ -69,8 +69,15 @@ export const OUTFITS = [
 ];
 export const FRAMES = [{ id: "none", name: "無" }, { id: "frame_wood", name: "木質名牌框" }, { id: "frame_glow", name: "發光名牌框" }, { id: "x_frame", name: "雪花名牌框" }, { id: "c_frame", name: "金色春聯框" }, { id: "og_frame", name: "創始隊員金框" }];
 export const MASCOTS = [
-  { id: "none", name: "隊員本人" }, { id: "trex", name: "小暴龍" }, { id: "penguin", name: "企鵝" },
+  { id: "none", name: "隊員本人" }, { id: "penguin", name: "企鵝", need: 4 }, { id: "trex", name: "小暴龍", need: 8 }, { id: "robot", name: "機器人", need: "legend" },
 ];
+// v1.41 角色解鎖：企鵝＝點亮 4 心、小暴龍＝無敵 8 心、機器人＝傳說 8 心（8 顆金心）；12/1 前已經在用的人可以繼續用
+export const MASCOT_KEEP_UNTIL = "2026-12-01";
+export function mascotUnlocked(id, h /* {n,g} */) {
+  const m = MASCOTS.find(x => x.id === id); if (!m || !m.need) return true;
+  h = h || {}; return m.need === "legend" ? (h.g || 0) >= 8 : (h.n || 0) >= m.need;
+}
+export const mascotNeedText = id => { const m = MASCOTS.find(x => x.id === id); return !m || !m.need ? "" : m.need === "legend" ? "傳說8心解鎖" : m.need === 8 ? "無敵8心解鎖" : `點亮 ${m.need} 心解鎖`; };
 
 export const SAYING_MAX = 24;
 export const defaultCfg = () => ({
@@ -123,20 +130,19 @@ const pickC = (list, id) => (list.find(x => x.id === id) || list[0]).c;
 
 // 設定 → 3D 場景用的參數(場景的 makeChar / makePenguin / makeTrex 讀這個)
 // 期間過了的季節帽自動不戴;限定款以後端存檔時的檢查為準
-const OUTFIT_COLORS = { chefsuit: [0xffffff, 0x2c2c3a], spacesuit: [0xdfe6ec, 0xdfe6ec], raincoat: [0xf4d03f, null], x_santa: [0xc0392b, 0xc0392b], x_snowman: [0xf7f9fb, 0xf7f9fb], c_tang: [0xc0392b, 0x1a1a1a] };
+const OUTFIT_COLORS = { goldtrex: [0xf1c40f, 0xf1c40f], chefsuit: [0xffffff, 0x2c2c3a], spacesuit: [0xdfe6ec, 0xdfe6ec], raincoat: [0xf4d03f, null], x_santa: [0xc0392b, 0xc0392b], x_snowman: [0xf7f9fb, 0xf7f9fb], c_tang: [0xc0392b, 0x1a1a1a] };
 export function toSceneOpts(rawCfg, today) {
   const cfg = sanitize(rawCfg);
   const hatItem = HATS.find(h => h.id === cfg.hat);
   const hat = hatItem && hatItem.kind === "season" && !inSeason(hatItem, today) ? "none" : cfg.hat;
   const oc = OUTFIT_COLORS[cfg.outfit];
-  const gold = cfg.outfit === "goldtrex";
   return {
     skin: pickC(SKINS, cfg.skin), hair: pickC(HAIR_COLORS, cfg.hairColor),
     hairStyle: cfg.hairStyle, shirt: oc ? oc[0] : pickC(TOPS, cfg.top), pants: oc && oc[1] ? oc[1] : pickC(PANTS, cfg.pants),
-    face: cfg.face, hat, apron: cfg.apron, mascot: gold ? "trex" : cfg.mascot, saying: cfg.saying,
+    face: cfg.face, hat, apron: cfg.apron, mascot: cfg.mascot, saying: cfg.saying,   // v1.41 金色小暴龍裝改成人穿布偶裝（看得到臉），不再變成小暴龍角色
     acc: cfg.acc !== "none" ? cfg.acc : "", outfit: oc ? cfg.outfit : "", frame: cfg.frame !== "none" ? cfg.frame : "",
-    trexColor: gold ? 0xf1c40f : 0,
+    trexColor: 0,
     ponytail: cfg.hairStyle === "ponytail", bob: cfg.hairStyle === "bob", glasses: cfg.face === "glasses",
-    penguin: !gold && cfg.mascot === "penguin",
+    penguin: cfg.mascot === "penguin",
   };
 }

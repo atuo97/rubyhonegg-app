@@ -7,22 +7,30 @@ import { toSceneOpts } from "./avatarCatalog.js";
 import { petLine } from "../pets/petSprites.jsx";
 
 export const SCENES = {
-  office:  { x: 0,   name: "辦公室",       short: "辦公室", icon: "💼", aisle: 2.6 },
-  factory: { x: 40,  name: "工廠",         short: "工廠",   icon: "🏭", aisle: 2.6 },
-  xinyi:   { x: 80,  name: "遠百信義",     short: "信義",   icon: "🏙️", aisle: -2.8, store: true, focus: { x: 0.5, z: -0.8, zoom: 1.7 } },
-  hall:    { x: 120, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true, focus: { x: 0.2, z: -1.2, zoom: 1.6 } },
-  nangang: { x: 160, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true, focus: { x: 0.2, z: -0.8, zoom: 1.6 } },
-  zhubei:  { x: 200, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true, focus: { x: 0.3, z: -0.8, zoom: 1.6 } },
-  other:   { x: 240, name: "其他櫃位・活動", short: "其他", icon: "🎪", aisle: -2.8, store: true },
-  street:  { x: 280, name: "隊員商店街",   short: "商店街", icon: "🏪", aisle: 2.6 },
-  meili:   { x: 320, name: "美麗華",       short: "美麗華", icon: "🎡", aisle: -2.8, store: true, focus: { x: -0.6, z: -1.0, zoom: 1.45 } },
-  airport: { x: 360, name: "桃園機場 × 山海豆花", short: "桃機", icon: "✈️", aisle: -5.2, store: true, focus: { x: -0.2, z: -2.0, zoom: 1.5 } },
-  huatai:  { x: 400, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true, focus: { x: -0.8, z: -1.2, zoom: 1.3 } },
-  event:   { x: 440, name: "活動",         short: "活動",   icon: "⛺", aisle: -2.8, store: true, focus: { x: 1.4, z: -0.6, zoom: 1.35 } },
-  guangfu: { x: 480, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -3.6, store: true, focus: { x: 0.6, z: -1.2, zoom: 1.9, az: 0.3 } },
-  seats:   { x: 520, name: "休息區",       short: "休息區", icon: "🛋️", aisle: 4.6, focus: { x: -2.6, z: 1.2, zoom: 1.25 } },   // v1.30 我的座位 → v1.40 改名休息區（沒上班的隊員都在這）
-  warehouse: { x: 560, name: "倉庫",       short: "倉庫",   icon: "📦", aisle: 2.6 },   // v1.40 倉庫獨立場景（之後接 ERP）
+  // v1.41 紅玉滿宇宙大樓：大廳｜辦公區｜休息區｜飯堂｜遊戲室｜運動室 相連（bld），中間有門可以走過去
+  lobby:   { x: -16, name: "大廳",         short: "大廳",   icon: "🚪", aisle: 4.6, bld: true, w: 16 },
+  office:  { x: 0,   name: "辦公區・休息區", short: "辦公室", icon: "💼", aisle: 4.6, bld: true, w: 16, focus: { x: 13.5, z: 0.6, zoom: 0.45, az: 0.32 }, pan: 34 },
+  seats:   { x: 20,  name: "休息區",       short: "休息區", icon: "🛋️", aisle: 4.6, bld: true, w: 24, tab: "office" },   // v1.41 和辦公區同一個畫面（中間玻璃門）
+  meet:    { x: 0,   name: "會議桌",       short: "開會",   icon: "📋", aisle: 4.6, bld: true, w: 16, tab: "office", virtual: true },   // v1.41 開會（辦公區會議桌）
+  canteen: { x: 40,  name: "飯堂",         short: "飯堂",   icon: "🍱", aisle: 4.6, bld: true, w: 16 },
+  gameroom:{ x: 56,  name: "遊戲室",       short: "遊戲室", icon: "🎮", aisle: 4.6, bld: true, w: 16 },
+  gym:     { x: 72,  name: "運動室",       short: "運動室", icon: "💪", aisle: 4.6, bld: true, w: 16 },
+  factory: { x: 120, name: "工廠",         short: "工廠",   icon: "🏭", aisle: 2.6 },
+  xinyi:   { x: 160, name: "遠百信義",     short: "信義",   icon: "🏙️", aisle: -2.8, store: true, focus: { x: 0.5, z: -0.8, zoom: 1.7 } },
+  hall:    { x: 200, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true, focus: { x: 0.2, z: -1.2, zoom: 1.6 } },
+  nangang: { x: 240, name: "南港 LaLaport", short: "南港",  icon: "🛍️", aisle: -2.8, store: true, focus: { x: 0.2, z: -0.8, zoom: 1.6 } },
+  zhubei:  { x: 280, name: "遠百竹北",     short: "竹北",   icon: "🏬", aisle: -2.8, store: true, focus: { x: 0.3, z: -0.8, zoom: 1.6 } },
+  other:   { x: 320, name: "其他櫃位・活動", short: "其他", icon: "🎪", aisle: -2.8, store: true },
+  street:  { x: 360, name: "隊員商店街",   short: "商店街", icon: "🏪", aisle: 2.6 },
+  meili:   { x: 400, name: "美麗華",       short: "美麗華", icon: "🎡", aisle: -2.8, store: true, focus: { x: -0.6, z: -1.0, zoom: 1.45 } },
+  airport: { x: 440, name: "桃園機場 × 山海豆花", short: "桃機", icon: "✈️", aisle: -5.2, store: true, focus: { x: -0.2, z: -2.0, zoom: 1.5 } },
+  huatai:  { x: 480, name: "華泰名品城",   short: "華泰",   icon: "🛒", aisle: -2.8, store: true, focus: { x: -0.8, z: -1.2, zoom: 1.3 } },
+  event:   { x: 520, name: "活動",         short: "活動",   icon: "⛺", aisle: -2.8, store: true, focus: { x: 1.4, z: -0.6, zoom: 1.35 } },
+  guangfu: { x: 560, name: "新竹光復隊",   short: "光復",   icon: "🏠", aisle: -3.6, store: true, focus: { x: 0.6, z: -1.2, zoom: 1.9, az: 0.3 } },
+  warehouse: { x: 600, name: "倉庫",       short: "倉庫",   icon: "📦", aisle: 2.6 },   // v1.40 倉庫獨立場景（之後接 ERP）
 };
+// v1.41 畫面分頁：休息區、會議桌都顯示在「辦公室」分頁
+export const tabOf = k => (SCENES[k] && SCENES[k].tab) || k;
 export const SCENE_KEYS = Object.keys(SCENES);
 
 // 打卡地點 → 場景
@@ -34,6 +42,10 @@ export function sceneOf(loc = "") {
   if (/倉庫/.test(loc)) return "warehouse";   // v1.40 倉庫獨立場景
   if (/工廠|中央廚房/.test(loc)) return "factory";
   if (/休息區/.test(loc)) return "seats";
+  if (/大廳/.test(loc)) return "lobby";
+  if (/飯堂|餐廳/.test(loc)) return "canteen";
+  if (/遊戲室/.test(loc)) return "gameroom";
+  if (/運動室|健身/.test(loc)) return "gym";
   if (/辦公/.test(loc)) return "office";
   if (/商店街/.test(loc)) return "street";
   if (/美麗華/.test(loc)) return "meili";
@@ -80,6 +92,8 @@ const FACTORY_LINES = ["麵糊備好了！", "預拌粉秤好了 ⚖️", "攪�
 const WAREHOUSE_LINES = ["這批要送信義 📦", "盤點中…", "棧板排好了！", "叫貨單出貨囉 🚚"];
 const OFFICE_LINES = ["排班表更新好了 📋", "這個月業績不錯喔！", "來開個小會吧～", "報表整理中…"];
 const REST_LINES = ["今天休假～", "休息一下 ☕", "大家加油！", "明天見 👋"];
+const GYM_LINES = { run: ["再跑一公里！🏃", "流汗好舒服～"], punch: ["吃我一拳！👊", "大魔王倒下吧！"], yoga: ["深呼吸～🧘", "放鬆、放鬆…"], lift: ["再一下！💪", "練出好體力搬麵糊！"], stretch: ["伸展一下筋骨～", "久站要動一動 🙆"] };
+const MEET_LINES = ["收到！📋", "這週目標是…", "我來報告一下", "大家辛苦了！"];
 const PENGUIN_LINES = ["企鵝不怕熱 🐧", "翻模！翻模！", "這批烤色漂亮 👍", "麵糊備好了！"];
 const GUEST_LINES = ["我要一盒原味！", "紅玉跟抹茶各一盒～", "造型好可愛，先拍照 📸", "現烤的好香喔！", "可以刷卡嗎？", "買回去給小孩吃 😊", "逛街逛到餓了～"];
 const pick = a => a[(Math.random() * a.length) | 0];
@@ -124,8 +138,8 @@ export function createOffice(container, opts) {
 
   scene.add(new THREE.HemisphereLight(0xfff4e6, 0x3a3350, 0.75));
   const sun = new THREE.DirectionalLight(0xffffff, 0.75);
-  sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
-  Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 12, bottom: -12 });
+  sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -26, right: 26, top: 26, bottom: -26 });
   scene.add(sun); scene.add(sun.target);
 
   // ── 小工具 ──
@@ -147,7 +161,26 @@ export function createOffice(container, opts) {
   }
   function put(P, m, x, y, z, ry, rx) { m.position.set(x, y, z); if (ry) m.rotation.y = ry; if (rx) m.rotation.x = rx; P.add(m); return m; }
   const GROUPS = [];
-  function group(k) { const g = new THREE.Group(); g.position.x = SCENES[k].x; scene.add(g); GROUPS.push(g); return g; }
+  const GROUP_OF = {};   // v1.41 依場景名稱找群組（v1.40 起群組建立順序和 SCENE_KEYS 不同，用索引會放錯場景）
+  function group(k) { const g = new THREE.Group(); g.position.x = SCENES[k].x; scene.add(g); GROUPS.push(g); GROUP_OF[k] = g; return g; }
+  // v1.41 大樓房間：寬 w、後牆＋左側隔間（solid 實牆／door 有門口的牆／glass 玻璃牆＋玻璃門）；前方 z 3.6～6 是走廊，房間之間互通
+  function bldRoom(P, w, floor, wall, trim, left, checker) {
+    const hw = w / 2;
+    box(w, 0.4, 12, floor, 0, -0.2, 0, P);
+    if (checker) for (let i = -hw + 1; i < hw; i += 2) for (let j = -5; j < 6; j += 2) box(1.96, 0.02, 1.96, ((Math.round(i + hw) + j + 5) / 2) % 2 ? checker[0] : checker[1], i, 0.01, j, P);
+    box(w + 0.4, 4, 0.4, wall, 0, 2, -6.2, P); box(w + 0.4, 0.3, 0.44, trim, 0, 3.2, -6.2, P);
+    const lx = -hw - 0.2;
+    if (left === "solid") { box(0.4, 4, 12.4, wall, lx, 2, 0, P); box(0.44, 0.3, 12.4, trim, lx, 3.2, 0, P); }
+    else if (left === "glass") {   // 玻璃隔間：後段玻璃牆、前段玻璃門（開著）
+      const gw = glassBox(0.14, 3.6, 9.4, 0xbfe7ff, 0.28); gw.position.set(lx, 1.8, -1.5); P.add(gw);
+      box(0.2, 0.16, 12.4, 0x8a9aa6, lx, 3.68, 0, P); box(0.2, 3.7, 0.16, 0x8a9aa6, lx, 1.85, 3.25, P); box(0.2, 3.7, 0.16, 0x8a9aa6, lx, 1.85, -6.1, P);
+      const door = glassBox(0.1, 3.2, 1.3, 0xbfe7ff, 0.32); door.position.set(lx + 0.75, 1.6, 3.95); door.rotation.y = Math.PI / 2.6; P.add(door);
+      box(0.06, 0.5, 0.06, 0xd0d6dc, lx + 0.55, 1.4, 4.4, P);
+    } else {   // 有門口的牆（門口在前方走廊）
+      box(0.4, 4, 9.6, wall, lx, 2, -1.4, P); box(0.44, 0.3, 9.6, trim, lx, 3.2, -1.4, P);
+      box(0.4, 0.8, 2.8, wall, lx, 3.6, 4.6, P);
+    }
+  }
   function plant(P, x, z) { box(0.6, 0.6, 0.6, 0xb5532d, x, 0.3, z, P); box(0.7, 0.7, 0.7, 0x2ecc71, x, 0.95, z, P); box(0.45, 0.5, 0.45, 0x27ae60, x, 1.5, z, P); }
   function room(P, floor, wall, trim, checker) {
     box(16, 0.4, 12, floor, 0, -0.2, 0, P);
@@ -202,43 +235,56 @@ export function createOffice(container, opts) {
 
   // ── 場景：辦公室 ──
   const SLOTS = {};
+  const MEETSIGN = {};   // v1.41 會議倒數牌
   const REVB = {};   // v1.40 營業額布告欄（辦公室排名、工廠產線、倉庫庫存）
+  // v1.41 看板：可以點一下放大（BOARD_HIT：mesh → 看板代號）
+  const BOARD_HIT = [];
+  function wallBoard(P, key, x, y, z, w, h, ry) {
+    const bc = document.createElement("canvas"); bc.width = 512; bc.height = Math.round(512 * h / w);
+    box(w + 0.2, h + 0.2, 0.1, 0x6e4b2a, x, y, z, P);
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
+    bm.position.set(x, y, z + 0.06); if (ry) bm.rotation.y = ry; P.add(bm);
+    BOARD_HIT.push({ mesh: bm, key }); return { canvas: bc, mesh: bm };
+  }
+  // ── v1.41 辦公區：工作桌、營業額 PK、櫃位狀態看板、會議桌（左邊有門通大廳，右邊玻璃門通休息區）──
   {
     const P = group("office");
-    room(P, 0xdcae82, 0x8a5a3b, 0xc0392b, [0xd4a274, 0xe3b98f]);
-    box(6.4, 0.05, 5.2, 0x5b7fd6, 4.5, 0.03, -1.4, P);
-    put(P, textPlane("紅玉滿赤心 · 宇宙辦公室", 5, 0.9, { bg: "#c0392b", color: "#fff3e0", size: 46 }), 4.5, 2.6, -5.98);
-    put(P, textPlane("WORK ZONE", 5, 1.2), -4.5, 0.03, 3.6, 0, -Math.PI / 2);
-    put(P, textPlane("沙發區 SOFA", 4, 1), 4.5, 0.07, 1.6, 0, -Math.PI / 2);   // v1.40 主管平常坐這裡
-    // v1.40 布告欄：今日即時營業額排名（掛在左牆）
-    {
-      box(0.1, 2.5, 3.6, 0x6e4b2a, -7.98, 2.0, -1.8, P);
-      const bc = document.createElement("canvas"); bc.width = 512; bc.height = 352;
-      const bm = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 2.27), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
-      bm.position.set(-7.92, 2.0, -1.8); bm.rotation.y = Math.PI / 2; P.add(bm);
-      REVB.office = { canvas: bc, mesh: bm };
-    }
-    shelf(P, -5.5, -5.65, 0, "book"); shelf(P, -2.5, -5.65, 0, "book"); shelf(P, -7.65, 3.5, Math.PI / 2, "book"); shelf(P, 1.2, -5.65, 0, "book");
-    const d1 = desk(P, -6, 0), d2 = desk(P, -3, 0), d3 = desk(P, -6, -3.5), d4 = desk(P, -3, -3.5);
-    box(4.4, 0.55, 1.2, 0xc0392b, 4.5, 0.45, -3.6, P); box(4.4, 1.2, 0.4, 0xa93226, 4.5, 0.9, -4.25, P);
-    box(0.4, 0.9, 1.2, 0xa93226, 2.3, 0.6, -3.6, P); box(0.4, 0.9, 1.2, 0xa93226, 6.7, 0.6, -3.6, P);
-    box(1.4, 0.45, 0.9, 0x8b5a2b, 4.5, 0.3, -1.6, P); box(0.5, 0.08, 0.5, 0xffffff, 4.3, 0.57, -1.6, P);
-    for (let i = 0; i < 4; i++) box(0.16, 0.12, 0.16, 0xf0b429, 4.15 + (i % 2) * 0.22, 0.67, -1.7 + ((i / 2) | 0) * 0.2, P);
-    plant(P, 7.3, -5.3); plant(P, -0.2, -5.3); plant(P, 7.3, 5.2); plant(P, -7.4, 5.2);
-    const via = [{ x: -4.5, z: -1.7 }];
+    bldRoom(P, 16, 0xdcae82, 0x8a5a3b, 0xc0392b, "door", [0xd4a274, 0xe3b98f]);
+    put(P, textPlane("紅玉滿赤心 · 宇宙辦公室", 5, 0.8, { bg: "#c0392b", color: "#fff3e0", size: 46 }), -4.6, 3.55, -5.95);
+    put(P, textPlane("辦公區 OFFICE", 5, 1.2), -4.5, 0.03, 3.0, 0, -Math.PI / 2);
+    REVB.office = wallBoard(P, "rev", 4.2, 1.9, -6.0, 3.3, 2.27);
+    REVB.status = wallBoard(P, "status", 0.4, 1.9, -6.0, 3.3, 2.27);
+    shelf(P, -6.6, -5.65, 0, "book"); shelf(P, -3.6, -5.65, 0, "book");
+    const d1 = desk(P, -6, 0), d2 = desk(P, -3, 0), d3 = desk(P, -6, -3.0), d4 = desk(P, -3, -3.0);
+    // 會議桌（12 個位子）
+    box(5.2, 0.12, 1.9, 0x6e4b2a, 3.8, 0.95, -1.4, P); box(0.3, 0.9, 1.2, 0x4a3220, 2.2, 0.45, -1.4, P); box(0.3, 0.9, 1.2, 0x4a3220, 5.4, 0.45, -1.4, P);
+    box(0.5, 0.06, 0.35, 0xffffff, 3.2, 1.04, -1.3, P); box(0.5, 0.06, 0.35, 0xffffff, 4.6, 1.04, -1.6, P);
+    const MEET = [];
+    [1.8, 2.8, 3.8, 4.8, 5.8].forEach(x => {
+      box(0.6, 0.1, 0.55, 0x2c3e50, x, 0.55, -2.75, P); box(0.6, 0.6, 0.1, 0x2c3e50, x, 0.85, -3.05, P);
+      box(0.6, 0.1, 0.55, 0x2c3e50, x, 0.55, -0.05, P); box(0.6, 0.6, 0.1, 0x2c3e50, x, 0.85, 0.25, P);
+      MEET.push({ x, z: -2.75, rotY: 0, sit: true, anim: "talk" }, { x, z: -0.05, rotY: Math.PI, sit: true, anim: "sit" });
+    });
+    MEET.push({ x: 0.7, z: -1.4, rotY: Math.PI / 2, anim: "talk" }, { x: 6.9, z: -1.4, rotY: -Math.PI / 2, sit: false, anim: "stand" });
+    // 會議倒數牌（開會時才出現）
+    const mc = document.createElement("canvas"); mc.width = 512; mc.height = 128;
+    const meetSign = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.8), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(mc), transparent: true, side: THREE.DoubleSide }));
+    meetSign.position.set(3.8, 3.0, -1.4); meetSign.visible = false; P.add(meetSign);
+    MEETSIGN.c = mc; MEETSIGN.mesh = meetSign;
+    plant(P, 7.2, -5.3); plant(P, -1.6, -5.3); plant(P, 7.2, 2.6); plant(P, -7.4, 2.6);
+    const via = [{ x: -4.5, z: -1.5 }];
     SLOTS.office = [
       { x: -6, z: 0.9, rotY: Math.PI, sit: true, anim: "type", fx: d1 },
       { x: -3, z: 0.9, rotY: Math.PI, sit: true, anim: "type", fx: d2 },
-      { x: -6, z: -2.6, rotY: Math.PI, sit: true, anim: "type", fx: d3, via },
-      { x: -3, z: -2.6, rotY: Math.PI, sit: true, anim: "type", fx: d4, via },
-      { x: 3.3, z: -3.5, rotY: 0, sit: true, anim: "sit" },
-      { x: 5.7, z: -3.5, rotY: 0, sit: true, anim: "sit" },
-      // v1.19:休息區(沒上班的自己)與隊長固定位置
-      { x: 3.4, z: -0.4, rotY: Math.PI * 0.8, anim: "stand" },
-      { x: 5.6, z: -0.4, rotY: -Math.PI * 0.8, anim: "stand" },
-      { x: 4.5, z: 0.7, rotY: Math.PI, anim: "stand" },
-      { x: 0.6, z: 4.6, rotY: -Math.PI / 4, anim: "stand" },
+      { x: -6, z: -2.1, rotY: Math.PI, sit: true, anim: "type", fx: d3, via },
+      { x: -3, z: -2.1, rotY: Math.PI, sit: true, anim: "type", fx: d4, via },
+      { x: 4.2, z: -4.4, rotY: Math.PI, anim: "stand" },
+      { x: 0.4, z: -4.4, rotY: Math.PI, anim: "stand" },
+      { x: 1.2, z: 2.4, rotY: -Math.PI / 4, anim: "stand" },   // 6：大隊長平常站的位置
+      { x: -1.0, z: 2.4, rotY: Math.PI / 4, anim: "stand" },
+      { x: 6.4, z: 2.0, rotY: -Math.PI / 2, anim: "stand" },
     ];
+    SLOTS.meet = MEET;
   }
 
   // ── 場景：工廠（v1.40 分成「預拌粉區」與「製作麵糊區」，標語：安全・衛生・可靠）──
@@ -291,7 +337,7 @@ export function createOffice(container, opts) {
       box(2.9, 2.05, 0.1, 0x6e4b2a, -0.2 + 0, 1.75, -5.95, P);
       const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.75, 1.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
       bm.position.set(-0.2, 1.75, -5.89); P.add(bm);
-      REVB.factory = { canvas: bc, mesh: bm };
+      REVB.factory = { canvas: bc, mesh: bm }; BOARD_HIT.push({ mesh: bm, key: "factory" });
     }
     SLOTS.factory = [
       { x: -5.2, z: -1.4, rotY: Math.PI, anim: "cook", fx: blender },
@@ -330,7 +376,7 @@ export function createOffice(container, opts) {
       box(2.9, 2.05, 0.1, 0x6e4b2a, 4.8, 1.75, -5.95, P);
       const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.75, 1.9), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
       bm.position.set(4.8, 1.75, -5.89); P.add(bm);
-      REVB.warehouse = { canvas: bc, mesh: bm };
+      REVB.warehouse = { canvas: bc, mesh: bm }; BOARD_HIT.push({ mesh: bm, key: "warehouse" });
     }
     plant(P, 7.3, 5.2);
     SLOTS.warehouse = [
@@ -486,6 +532,16 @@ export function createOffice(container, opts) {
       case "x_santa": box(0.8, 0.1, 0.48, 0xffffff, 0, 1.46, 0, g); box(0.8, 0.1, 0.48, 0x1a1a1a, 0, 0.92, 0, g); box(0.16, 0.1, 0.03, 0xf1c40f, 0, 0.92, 0.25, g); box(0.1, 0.5, 0.03, 0xffffff, 0, 1.2, 0.25, g); break;
       case "x_snowman": [1.3, 1.1].forEach(y => box(0.08, 0.08, 0.03, 0x1a1a1a, 0, y, 0.25, g)); box(0.8, 0.12, 0.5, 0xc0392b, 0, 1.46, 0, g); break;
       case "c_tang": box(0.06, 0.6, 0.03, 0xf1c40f, 0.1, 1.15, 0.25, g); [1.35, 1.15, 0.95].forEach(y => box(0.14, 0.04, 0.03, 0xf1c40f, 0.1, y, 0.26, g)); box(0.8, 0.1, 0.5, 0xf1c40f, 0, 1.46, 0, g); break;
+      case "goldtrex": {   // v1.41 金色小暴龍裝：人穿布偶裝，看得到臉（頭套、背刺、尾巴、肚子）
+        const Y = 0xf1c40f, D = 0xc49a12;
+        box(0.84, 0.36, 0.8, Y, 0, 2.25, -0.02, g); box(0.84, 0.7, 0.14, Y, 0, 1.85, -0.37, g); box(0.12, 0.62, 0.72, Y, -0.4, 1.82, -0.02, g); box(0.12, 0.62, 0.72, Y, 0.4, 1.82, -0.02, g);
+        [-0.22, 0.22].forEach(x => { box(0.16, 0.14, 0.04, 0xffffff, x, 2.3, 0.38, g); box(0.08, 0.08, 0.03, 0x222222, x, 2.3, 0.4, g); });
+        for (let i = 0; i < 4; i++) box(0.84 - i * 0.1, 0.06, 0.06, 0xffffff, 0, 2.08, 0.4, g);
+        [[2.45, -0.15], [2.2, -0.45], [1.8, -0.5], [1.4, -0.4]].forEach(q => box(0.12, 0.18, 0.16, D, 0, q[0], q[1], g));
+        box(0.5, 0.55, 0.04, 0xffe6c7, 0, 1.05, 0.25, g);
+        box(0.36, 0.3, 0.5, Y, 0, 0.75, -0.5, g); box(0.24, 0.22, 0.45, Y, 0, 0.6, -0.9, g);
+        break;
+      }
     }
   }
   // 小暴龍裝(品牌吉祥物,可自選穿上)
@@ -506,7 +562,27 @@ export function createOffice(container, opts) {
     if (o.acc && ["cape", "g_galaxy", "wings", "halo", "g_saturn", "scarf", "bowtie"].indexOf(o.acc) >= 0) { const a = new THREE.Group(); a.position.y = 0.05; a.scale.set(1.1, 1, 1.4); g.add(a); addAcc(a, o.acc, o); }
     return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.2, trex: true };
   }
-  function buildChar(av) { const c = av.mascot === "trex" ? makeTrex(av) : av.penguin ? makePenguin(av) : makeChar(av); c.saying = av.saying || ""; return c; }
+  function buildChar(av) { const c = av.mascot === "trex" ? makeTrex(av) : av.mascot === "robot" ? makeRobot(av) : av.penguin ? makePenguin(av) : makeChar(av); c.saying = av.saying || ""; return c; }
+  // v1.41 機器人角色（傳說 8 心解鎖）：銀色身體、螢幕臉、天線燈、胸口赤心
+  function makeRobot(o) {
+    const g = new THREE.Group(); scene.add(g);
+    const S = 0xbfc8d2, D = 0x7f8c99, A = o.shirt && o.shirt !== 0xc0392b ? o.shirt : 0xc0392b;
+    const legL = new THREE.Group(); legL.position.set(-0.2, 0.7, 0); g.add(legL); box(0.26, 0.6, 0.3, D, 0, -0.3, 0, legL); box(0.34, 0.14, 0.44, 0x4a5560, 0, -0.62, 0.06, legL);
+    const legR = new THREE.Group(); legR.position.set(0.2, 0.7, 0); g.add(legR); box(0.26, 0.6, 0.3, D, 0, -0.3, 0, legR); box(0.34, 0.14, 0.44, 0x4a5560, 0, -0.62, 0.06, legR);
+    box(0.86, 0.82, 0.56, S, 0, 1.1, 0, g); box(0.5, 0.42, 0.04, 0x2c3e50, 0, 1.12, 0.29, g);
+    box(0.2, 0.18, 0.03, A, 0, 1.16, 0.315, g); box(0.1, 0.1, 0.03, A, -0.07, 1.25, 0.315, g); box(0.1, 0.1, 0.03, A, 0.07, 1.25, 0.315, g);
+    const armL = new THREE.Group(); armL.position.set(-0.54, 1.42, 0); g.add(armL); box(0.2, 0.62, 0.24, D, 0, -0.28, 0, armL); box(0.24, 0.16, 0.26, S, 0, -0.62, 0, armL);
+    const armR = new THREE.Group(); armR.position.set(0.54, 1.42, 0); g.add(armR); box(0.2, 0.62, 0.24, D, 0, -0.28, 0, armR); box(0.24, 0.16, 0.26, S, 0, -0.62, 0, armR);
+    box(0.2, 0.12, 0.2, D, 0, 1.56, 0, g);
+    box(0.82, 0.66, 0.66, S, 0, 1.92, 0, g); box(0.66, 0.44, 0.03, 0x1b2631, 0, 1.92, 0.335, g);
+    [-0.15, 0.15].forEach(x => { const e = box(0.12, 0.12, 0.02, 0x5dfdcb, x, 1.97, 0.355, g); e.material = new THREE.MeshBasicMaterial({ color: 0x5dfdcb }); });
+    box(0.22, 0.04, 0.02, 0x5dfdcb, 0, 1.82, 0.355, g);
+    box(0.08, 0.2, 0.42, D, -0.45, 1.92, 0, g); box(0.08, 0.2, 0.42, D, 0.45, 1.92, 0, g);
+    box(0.05, 0.3, 0.05, D, 0, 2.38, 0, g); const bulb = box(0.14, 0.14, 0.14, 0xff5a5a, 0, 2.56, 0, g); bulb.material = new THREE.MeshBasicMaterial({ color: 0xff5a5a });
+    addHat(g, o.hat, 2.28, A);
+    if (o.acc) addAcc(g, o.acc, o);
+    return { g, legL, legR, armL, armR, bubble: bubbleEl("uo-bubble"), t: Math.random() * 5, anim: "stand", sit: false, path: [], speed: 3.2, robot: true };
+  }
   function makeChar(o) {
     const g = new THREE.Group(); scene.add(g);
     const legL = new THREE.Group(); legL.position.set(-0.18, 0.7, 0); g.add(legL); box(0.3, 0.7, 0.32, o.pants, 0, -0.35, 0, legL);
@@ -622,6 +698,35 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     drawPanel("factory", "🏭 今日產線", [["待做麵糊", (f.batter || 0) + " 包"], ["預拌粉需求", (f.flour || 0) + " 袋"], ...(f.byLoc || []).slice(0, 2).map(x => ["・" + x.loc, x.qty + " 包"])], "依各櫃位叫貨單（未出貨）");
     drawPanel("warehouse", "📦 倉庫看板", [["待出貨叫貨單", (w.pending || 0) + " 張"], ["配送中", (w.shipped || 0) + " 張"], ["今天新進叫貨", (w.todayIn || 0) + " 張"]], "之後接 ERP 顯示真實庫存");
   }
+  // v1.41 大樓看板：櫃位狀態、今日出勤、菜單、排行榜、運動
+  function drawList(key, title, color, rows, foot) {
+    const b = REVB[key]; if (!b) return;
+    const g = b.canvas.getContext("2d"), W = 512, H = 352;
+    g.fillStyle = "#fbfaf5"; g.fillRect(0, 0, W, H);
+    g.fillStyle = color; g.fillRect(0, 0, W, 64);
+    g.fillStyle = "#fff"; g.font = FONT(34); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(title, W / 2, 33);
+    g.textAlign = "left";
+    if (!rows.length) { g.fillStyle = "#8a7a68"; g.font = FONT(30); g.fillText(foot || "—", 30, 190); }
+    rows.slice(0, 6).forEach(([l, v, c], i) => {
+      const y = 100 + i * 44;
+      g.fillStyle = i % 2 ? "#f6efe3" : "#fbfaf5"; g.fillRect(8, y - 20, W - 16, 40);
+      g.fillStyle = "#3a2a1a"; g.font = FONT(26); g.fillText(String(l).slice(0, 12), 18, y);
+      g.fillStyle = c || "#c0392b"; g.font = FONT(26); g.textAlign = "right"; g.fillText(String(v), W - 18, y); g.textAlign = "left";
+    });
+    if (rows.length && foot) { g.fillStyle = "#8a7a68"; g.font = FONT(20); g.fillText(foot, 18, H - 18); }
+    b.mesh.material.map.needsUpdate = true;
+  }
+  const ST_TXT = { open: ["營業中", "#1e8449"], before: ["準備中", "#b9770e"], closed: ["已打烊", "#7f8c8d"] };
+  function drawStatus(map) {
+    map = map || {};
+    const rows = Object.keys(map).filter(k => SCENES[k] && SCENES[k].store && map[k] && (map[k].state === "open" || map[k].batterLow || map[k].pickup))
+      .map(k => { const m = map[k], t = ST_TXT[m.state] || ST_TXT.before; return [SCENES[k].short, (m.batterLow ? "⚠️麵糊 " : "") + (m.pickup ? "取貨" + m.pickup + " " : "") + t[0], m.batterLow ? "#c0392b" : t[1]]; });
+    drawList("status", "🏪 櫃位狀態", "#2e6da4", rows, "目前沒有櫃位營業");
+  }
+  function drawAttend(list) {
+    const on = (list || []).filter(p => !p.resting && !p.isBoss);
+    drawList("attend", "☀️ 今日出勤 " + on.length + " 人", "#e67e22", on.map(p => [p.name, shortLoc(p.location || "").slice(0, 6), "#1e8449"]), "大家早安！今天也加油");
+  }
   // 小型雙軸烤爐（攤車、櫃屋用）：一組三台，中間那台有人就三台一起開
   function miniOvens(P, xs, y, z) {
     const ovens = xs.map((x, idx) => {
@@ -646,7 +751,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const bc = document.createElement("canvas"); bc.width = 512; bc.height = 384;
     const bm = new THREE.Mesh(new THREE.PlaneGeometry(2.1, 1.55), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
     bm.position.set(0, 2.1, 0.0); bg.add(bm);
-    BOARDS[k] = { canvas: bc, mesh: bm }; drawBoard(k, []);
+    BOARDS[k] = { canvas: bc, mesh: bm }; BOARD_HIT.push({ mesh: bm, key: "store:" + k }); drawBoard(k, []);
     opsProps(k, bg);
   }
   // ── v1.21 櫃位營運連動：麵糊桶（四口味）、待取貨紙箱、準備中／已打烊立牌 ──
@@ -1614,30 +1719,35 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   eventScene("event");
   guangfuScene("guangfu");
 
-  // ── v1.30 隊員座位區：每個買了座位的人一張桌子（桌、椅、擺飾、寵物小窩依自己買的）──
+  // ── v1.30 隊員座位區 → v1.41 休息區（寬 24）：左半買來的座位（最多 12 張桌子），右半與前排公用座位 40 個 ──
   const SEAT_IDX = {}; let seatsG = null;
+  const PUBLIC = [];   // 公用座位（沙發 24、吧檯椅 8、懶骨頭 8）
   {
     const P = group("seats");
-    room(P, 0xe9d6b6, 0x8a5a3b, 0xc0392b, [0xe2c9a1, 0xefdcbc]);
-    for (let i = 1; i < 8; i += 2) for (let j = -5; j < 6; j += 2) box(1.96, 0.02, 1.96, ((i + j) / 2) % 2 ? 0xe2c9a1 : 0xefdcbc, i, 0.01, j, P);
-    put(P, textPlane("休息區 · 隊員座位", 6, 0.9, { bg: "#c0392b", color: "#fff3e0", size: 46 }), 0, 2.7, -5.98);
-    plant(P, 7.3, -5.3); plant(P, -7.4, 5.2); plant(P, 7.3, 5.2);
-    // v1.40 公用沙發（沒買座位的隊員坐這裡）＋咖啡吧
-    [[-4.05, 0x2e86c1], [3.0, 0x27ae60]].forEach(([cx, col]) => {
-      box(6.0, 0.45, 0.9, col, cx, 0.32, 3.45, P); box(6.0, 0.8, 0.3, col, cx, 0.75, 3.0, P);
-      box(0.3, 0.65, 0.9, col, cx - 3.0, 0.45, 3.45, P); box(0.3, 0.65, 0.9, col, cx + 3.0, 0.45, 3.45, P);
-      for (let i = 0; i < 4; i++) box(1.3, 0.1, 0.8, 0xf4efe6, cx - 2.25 + i * 1.5, 0.58, 3.5, P);
-    });
-    box(0.9, 1.0, 0.7, 0x6f4e37, 7.0, 0.5, 1.2, P); box(0.6, 0.5, 0.45, 0x2c2c34, 7.0, 1.25, 1.15, P); box(0.16, 0.12, 0.12, 0xffffff, 7.0, 1.08, 1.45, P);
-    put(P, textPlane("☕", 0.5, 0.5, { size: 90 }), 7.0, 1.8, 1.2);
+    bldRoom(P, 24, 0xe9d6b6, 0x8a5a3b, 0xc0392b, "glass", [0xe2c9a1, 0xefdcbc]);
+    put(P, textPlane("休息區 · 隊員座位", 6, 0.9, { bg: "#c0392b", color: "#fff3e0", size: 46 }), -5.5, 3.5, -5.95);
+    put(P, textPlane("休息區 LOUNGE", 6, 1.4), 6.5, 0.03, 4.7, 0, -Math.PI / 2);
+    // 右半：三排長沙發（每排 8 位）＋茶几
+    const SOFA = [0x2e86c1, 0x27ae60, 0xe67e22];
+    [-4.3, -1.7, 0.9].forEach((z, r) => [3.6, 8.4].forEach(cx => {
+      const col = SOFA[r];
+      box(4.4, 0.45, 0.9, col, cx, 0.32, z, P); box(4.4, 0.8, 0.3, col, cx, 0.75, z - 0.45, P);
+      box(0.3, 0.65, 0.9, col, cx - 2.2, 0.45, z, P); box(0.3, 0.65, 0.9, col, cx + 2.2, 0.45, z, P);
+      for (let i = 0; i < 4; i++) { box(0.95, 0.1, 0.8, 0xf4efe6, cx - 1.5 + i * 1.0, 0.58, z + 0.05, P); PUBLIC.push({ x: cx - 1.5 + i * 1.0, z: z + 0.05, rotY: 0, sit: true, anim: "sit" }); }
+      box(2.4, 0.4, 0.7, 0x8b5a2b, cx, 0.2, z + 1.15, P);
+    }));
+    // 左前：吧檯＋8 張吧檯椅（面向吧檯）
+    box(8.6, 1.1, 0.6, 0x6f4e37, -6.6, 0.55, 2.6, P); box(8.8, 0.08, 0.8, 0xc49a6c, -6.6, 1.12, 2.6, P);
+    for (let i = 0; i < 8; i++) { const x = -10.4 + i * 1.08; box(0.42, 0.08, 0.42, 0xc0392b, x, 0.85, 3.3, P); box(0.08, 0.8, 0.08, 0x555555, x, 0.42, 3.3, P); PUBLIC.push({ x, z: 3.3, rotY: Math.PI, sit: true, anim: "sit", hi: true }); }
+    // 咖啡機
+    box(0.6, 0.5, 0.45, 0x2c2c34, -2.6, 1.42, 2.55, P); put(P, textPlane("☕", 0.5, 0.5, { size: 90 }), -2.6, 2.0, 2.6);
+    // 右前：懶骨頭 8 個
+    for (let i = 0; i < 8; i++) { const x = 1.6 + i * 1.3, col = [0xe67e22, 0x9b59b6, 0xf1c40f, 0x1abc9c][i % 4]; box(0.95, 0.42, 0.9, col, x, 0.22, 3.0, P); box(0.95, 0.5, 0.28, col, x, 0.48, 2.6, P); PUBLIC.push({ x, z: 3.0, rotY: 0, sit: true, anim: "sit", low: true }); }
+    plant(P, 11.3, -5.3); plant(P, -11.4, 5.2); plant(P, 11.3, 5.2);
     SLOTS.seats = PUBLIC_SEATS_INIT();
   }
-  function PUBLIC_SEATS_INIT() {   // 0～11 是買來的座位（syncSeats 填），12 起是公用沙發
-    const out = new Array(12).fill(null);
-    [-6.3, -4.8, -3.3, -1.8, 0.75, 2.25, 3.75, 5.25].forEach(x => out.push({ x, z: 3.5, rotY: 0, sit: true, anim: "sit" }));
-    return out;
-  }
-  function seatXZ(i) { return { x: -5.4 + (i % 4) * 3.6, z: -4.4 + Math.floor(i / 4) * 3.0 }; }
+  function PUBLIC_SEATS_INIT() { return new Array(12).fill(null).concat(PUBLIC.map(x => ({ ...x }))); }   // 0～11 是買來的座位（syncSeats 填），12 起是公用座位
+  function seatXZ(i) { return { x: -10.2 + (i % 4) * 3.0, z: -4.7 + Math.floor(i / 4) * 2.45 }; }
   function seatDesk(P, x, z, kind) {
     const top = { desk_white: 0xf4f1ea, desk_game: 0x23232b, desk_boss: 0xa93226 }[kind] || 0x9b6b43;
     const leg = { desk_white: 0xd0d0d0, desk_game: 0x111111, desk_boss: 0x7b241c }[kind] || 0x5d3a1f;
@@ -1676,9 +1786,9 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (kind === "den_castle") { box(0.9, 0.55, 0.8, 0xbfc5cc, x, 0.28, z, P); [[-0.4, -0.35], [0.4, -0.35], [-0.4, 0.35], [0.4, 0.35]].forEach(q => { box(0.2, 0.85, 0.2, 0xa9b0b8, x + q[0], 0.42, z + q[1], P); box(0.04, 0.18, 0.12, 0xd62828, x + q[0], 0.95, z + q[1], P); }); box(0.3, 0.35, 0.04, 0x5a3a1a, x, 0.18, z + 0.41, P); }
   }
   function syncSeats() {
-    if (seatsG) { GROUPS[SCENE_KEYS.indexOf("seats")].remove(seatsG); for (let i = FX.length - 1; i >= 0; i--) if (FX[i].seat) FX.splice(i, 1); }
+    if (seatsG) { GROUP_OF.seats.remove(seatsG); for (let i = FX.length - 1; i >= 0; i--) if (FX[i].seat) FX.splice(i, 1); }
     Object.keys(SEAT_IDX).forEach(k => delete SEAT_IDX[k]); SLOTS.seats = PUBLIC_SEATS_INIT();
-    const P = seatsG = new THREE.Group(); GROUPS[SCENE_KEYS.indexOf("seats")].add(P);
+    const P = seatsG = new THREE.Group(); GROUP_OF.seats.add(P);
     (GAME.seats || []).slice(0, 12).forEach((st, i) => {
       const { x, z } = seatXZ(i);
       const fx = seatDesk(P, x, z, st.desk); fx.seat = true;
@@ -1687,9 +1797,127 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (st.den) seatDen(P, x - 1.3, z + 1.45, st.den);
       put(P, textPlane(st.name, 1.1, 0.26, { bg: "#fff3e0", color: "#7a2a1a", size: 40 }), x, 0.72, z + 0.565);
       SEAT_IDX[String(st.id)] = i;
-      SLOTS.seats[i] = { x, z: z + 0.9, rotY: Math.PI, sit: st.chair !== "chair_bean", anim: "type", fx, via: [{ x: x + 1.8, z: z + 0.9 }] };
+      SLOTS.seats[i] = { x, z: z + 0.9, rotY: Math.PI, sit: st.chair !== "chair_bean", anim: "type", fx, via: [{ x: x + 1.5, z: z + 0.9 }] };
     });
   }
+
+  // ── v1.41 大廳：櫃檯、品牌牆、今日出勤早安牆、等候沙發（左邊是大門）──
+  {
+    const P = group("lobby");
+    bldRoom(P, 16, 0xd8d2c8, 0x7a5a44, 0xc0392b, "solid", [0xcfc8bc, 0xe2ddd4]);
+    // 大門（左牆玻璃門）
+    const gd = glassBox(0.12, 3.0, 2.6, 0xbfe7ff, 0.35); gd.position.set(-8.0, 1.5, 3.8); P.add(gd); box(0.2, 0.2, 2.8, 0x8a9aa6, -8.0, 3.05, 3.8, P);
+    box(5.6, 1.6, 0.3, 0xc0392b, -2.0, 2.4, -5.85, P);
+    put(P, textPlane("紅玉滿赤心", 5.2, 1.1, { color: "#fff3e0", size: 120 }), -2.0, 2.45, -5.68);
+    put(P, textPlane("光譜餐飲品牌集團 · 紅色品牌", 5, 0.5, { color: "rgba(90,50,30,.7)", size: 40 }), -2.0, 1.2, -5.95);
+    REVB.attend = wallBoard(P, "attend", 4.6, 1.9, -6.0, 3.3, 2.27);
+    // 櫃檯
+    box(4.2, 1.1, 0.9, 0x6e4b2a, -2.0, 0.55, -2.4, P); box(4.4, 0.08, 1.1, 0xc49a6c, -2.0, 1.12, -2.4, P); box(4.2, 0.3, 0.06, 0xc0392b, -2.0, 0.8, -1.93, P);
+    box(0.5, 0.35, 0.06, 0x2c2c34, -2.6, 1.35, -2.6, P); box(0.3, 0.25, 0.3, 0xf1c40f, -0.9, 1.28, -2.3, P);
+    // 等候沙發＋茶几
+    box(3.6, 0.45, 0.9, 0x8e5b3a, 4.4, 0.3, -0.6, P); box(3.6, 0.8, 0.3, 0x8e5b3a, 4.4, 0.7, -1.05, P);
+    box(1.6, 0.4, 0.8, 0x6e4b2a, 4.4, 0.2, 0.6, P); box(0.4, 0.06, 0.3, 0xffffff, 4.2, 0.43, 0.6, P);
+    plant(P, -7.3, -5.3); plant(P, 7.2, -5.3); plant(P, -7.3, 2.0);
+    put(P, textPlane("歡迎光臨 WELCOME", 5, 1.2), -1.5, 0.03, 3.2, 0, -Math.PI / 2);
+    SLOTS.lobby = [
+      { x: -2.0, z: -3.4, rotY: 0, anim: "stand" },
+      { x: 3.6, z: -0.6, rotY: 0, sit: true, anim: "sit" }, { x: 5.2, z: -0.6, rotY: 0, sit: true, anim: "sit" },
+      { x: -2.6, z: -1.2, rotY: Math.PI, anim: "talk" }, { x: -1.2, z: -1.2, rotY: Math.PI, anim: "stand" },
+      { x: 4.6, z: -4.4, rotY: Math.PI, anim: "stand" }, { x: 1.0, z: 2.0, rotY: -Math.PI / 4, anim: "stand" },
+    ];
+  }
+  // ── v1.41 飯堂：三張長桌、自助餐檯、今日菜單、隊長的桌子 ──
+  {
+    const P = group("canteen");
+    bldRoom(P, 16, 0xe8dcc6, 0x8a5a3b, 0xc0392b, "door", [0xe0d2b8, 0xefe4d0]);
+    put(P, textPlane("飯堂 · 吃飽才有力氣", 5, 0.8, { bg: "#c0392b", color: "#fff3e0", size: 46 }), -4.5, 3.55, -5.95);
+    REVB.menu = wallBoard(P, "menu", 4.4, 1.9, -6.0, 3.3, 2.27);
+    // 自助餐檯
+    box(6.0, 1.0, 0.9, 0xb8c0c8, -4.3, 0.5, -5.2, P); box(6.1, 0.06, 1.0, 0xdfe4e8, -4.3, 1.02, -5.2, P);
+    [0xf2c46d, 0xb83227, 0x27ae60, 0xe67e22, 0xf4efe6].forEach((c, i) => box(0.9, 0.12, 0.6, c, -6.5 + i * 1.1, 1.1, -5.2, P));
+    const CAN = [];
+    [[-4.6, -2.0], [-4.6, 1.0], [1.4, 1.0]].forEach(([cx, z]) => {
+      box(4.2, 0.1, 1.1, 0xc49a6c, cx, 0.82, z, P); [[-1.8, -0.4], [1.8, -0.4], [-1.8, 0.4], [1.8, 0.4]].forEach(q => box(0.1, 0.8, 0.1, 0x6e4b2a, cx + q[0], 0.4, z + q[1], P));
+      box(4.2, 0.1, 0.4, 0x8b5a2b, cx, 0.48, z - 0.85, P); box(4.2, 0.1, 0.4, 0x8b5a2b, cx, 0.48, z + 0.85, P);
+      for (let i = 0; i < 4; i++) { const x = cx - 1.5 + i * 1.0; CAN.push({ x, z: z - 0.85, rotY: 0, sit: true, anim: "cook" }, { x, z: z + 0.85, rotY: Math.PI, sit: true, anim: "cook" }); box(0.36, 0.06, 0.36, 0xffffff, x, 0.9, z - 0.3, P); box(0.36, 0.06, 0.36, 0xffffff, x, 0.9, z + 0.3, P); }
+    });
+    // 隊長的桌子（和隊長吃飯）
+    const rt = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.0, 0.1, 20), mat(0xa93226)); rt.position.set(2.6, 0.85, -2.4); P.add(rt);
+    box(0.2, 0.8, 0.2, 0x5d3a1f, 2.6, 0.4, -2.4, P); put(P, textPlane("隊長的桌子", 1.8, 0.4, { bg: "#f1c40f", color: "#7a2a1a", size: 56 }), 2.6, 1.5, -2.4);
+    CAN.push({ x: 2.6, z: -3.5, rotY: 0, sit: false, anim: "talk" }, { x: 2.6, z: -1.3, rotY: Math.PI, sit: false, anim: "talk" });
+    plant(P, 7.2, -5.3); plant(P, 7.2, 2.6);
+    SLOTS.canteen = CAN;
+  }
+  // ── v1.41 遊戲室：三台大型機台、夾娃娃機、扭蛋機、對戰桌、排行榜 ──
+  {
+    const P = group("gameroom");
+    bldRoom(P, 16, 0x3b3456, 0x2c2440, 0x9b59b6, "door", [0x342d4d, 0x433a63]);
+    put(P, textPlane("遊戲室 GAME ROOM", 5, 0.8, { bg: "#8e44ad", color: "#fff", size: 46 }), -4.5, 3.55, -5.95);
+    REVB.rank = wallBoard(P, "rank", 4.4, 1.9, -6.0, 3.3, 2.27);
+    const SCR = [];
+    [["消消樂", 0xe74c3c], ["疊疊樂", 0x3498db], ["麵糊大作戰", 0xf39c12]].forEach(([n, c], i) => {
+      const x = -6.4 + i * 2.2;
+      box(1.5, 2.4, 1.1, c, x, 1.2, -5.2, P); box(1.3, 0.5, 0.2, 0x1a1a1a, x, 1.15, -4.6, P);
+      const sc = put(P, new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), x, 1.85, -4.64);
+      put(P, textPlane(n, 1.4, 0.35, { bg: "#111", color: "#ffe066", size: 60 }), x, 2.62, -4.64);
+      const fx = { kind: "screen", mesh: sc, on: false }; FX.push(fx); SCR.push(fx);
+    });
+    // 夾娃娃機
+    box(1.6, 1.0, 1.6, 0xff6fa8, 0.8, 0.5, -4.6, P);
+    const cg = glassBox(1.5, 1.5, 1.5, 0xffffff, 0.22); cg.position.set(0.8, 1.75, -4.6); P.add(cg); box(1.6, 0.3, 1.6, 0xff6fa8, 0.8, 2.65, -4.6, P);
+    [[0.5, -4.9, 0xf1c40f], [1.0, -4.4, 0xe74c3c], [0.6, -4.3, 0x3498db], [1.1, -4.9, 0x2ecc71]].forEach(q => box(0.3, 0.3, 0.3, q[2], q[0], 1.16, q[1], P));
+    box(0.05, 0.5, 0.05, 0xcccccc, 0.8, 2.25, -4.6, P); box(0.3, 0.08, 0.3, 0xcccccc, 0.8, 1.98, -4.6, P);
+    put(P, textPlane("夾娃娃機", 1.5, 0.3, { bg: "#ff6fa8", color: "#fff", size: 60 }), 0.8, 2.65, -3.78);
+    // 扭蛋機
+    box(0.9, 0.8, 0.9, 0xc0392b, 2.6, 0.4, -5.0, P); const gb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); gb.position.set(2.6, 1.3, -5.0); P.add(gb);
+    [[2.4, 1.2, -5.0, 0xf1c40f], [2.8, 1.25, -4.9, 0x3498db], [2.6, 1.05, -4.8, 0xe74c3c]].forEach(q => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mat(q[3])); b.position.set(q[0], q[1], q[2]); P.add(b); });
+    // 對戰桌
+    box(2.0, 0.1, 1.2, 0x16a085, -2.0, 0.85, 0.4, P); box(0.3, 0.8, 0.3, 0x2c3e50, -2.0, 0.4, 0.4, P);
+    put(P, textPlane("VS", 0.8, 0.5, { color: "#fff", size: 90 }), -2.0, 0.91, 0.4, 0, -Math.PI / 2);
+    // 陀螺台
+    const arena = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.5, 20), mat(0x7f8c8d)); arena.position.set(3.6, 0.25, 0.6); P.add(arena);
+    const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 8), mat(0xe74c3c)); top.position.set(3.4, 0.62, 0.5); top.rotation.x = Math.PI; P.add(top); FX.push({ kind: "spin", obj: top, on: true, always: true });
+    plant(P, 7.2, 2.6);
+    SLOTS.gameroom = [
+      { x: -6.4, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[0] }, { x: -4.2, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[1] }, { x: -2.0, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[2] },
+      { x: 0.8, z: -3.3, rotY: Math.PI, anim: "type" }, { x: 2.6, z: -4.0, rotY: Math.PI, anim: "serve" },
+      { x: -3.4, z: 0.4, rotY: Math.PI / 2, anim: "cheer" }, { x: -0.6, z: 0.4, rotY: -Math.PI / 2, anim: "talk" },
+      { x: 3.6, z: 2.0, rotY: Math.PI, anim: "cheer" }, { x: 5.4, z: -3.8, rotY: Math.PI, anim: "stand" },
+    ];
+  }
+  // ── v1.41 運動室：跑步機、大魔王沙包、瑜伽墊、重訓椅、伸展區 ──
+  {
+    const P = group("gym");
+    bldRoom(P, 16, 0x9fb8c8, 0x5d7180, 0x27ae60, "door", [0x95aebe, 0xa9c2d2]);
+    put(P, textPlane("運動室 · 健康最重要", 5, 0.8, { bg: "#27ae60", color: "#fff", size: 46 }), -4.5, 3.55, -5.95);
+    REVB.sport = wallBoard(P, "sport", 4.4, 1.9, -6.0, 3.3, 2.27);
+    const mirror = glassBox(5.0, 2.2, 0.06, 0xdff3ff, 0.5); mirror.position.set(-4.5, 1.7, -5.95); P.add(mirror);
+    const G = [];
+    [-6.4, -4.4].forEach(x => {   // 跑步機
+      box(1.0, 0.25, 2.0, 0x2c2c34, x, 0.13, -3.6, P); box(0.8, 0.04, 1.8, 0x555555, x, 0.28, -3.6, P);
+      box(0.1, 1.2, 0.1, 0x7f8c8d, x - 0.4, 0.8, -4.5, P); box(0.1, 1.2, 0.1, 0x7f8c8d, x + 0.4, 0.8, -4.5, P); box(0.9, 0.3, 0.2, 0x2c2c34, x, 1.4, -4.5, P);
+      G.push({ x, z: -3.4, rotY: Math.PI, anim: "run", act: "run", y: 0.3 });
+    });
+    // 大魔王沙包
+    box(0.1, 0.1, 1.6, 0x555555, -1.6, 3.4, -3.6, P); box(0.05, 0.6, 0.05, 0x555555, -1.6, 3.05, -3.6, P);
+    const bag = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.5, 14), mat(0xc0392b)); bag.position.set(-1.6, 2.0, -3.6); P.add(bag);
+    put(P, textPlane("大魔王", 0.9, 0.3, { bg: "#111", color: "#ffe066", size: 64 }), -1.6, 2.2, -3.16);
+    const bagFx = { kind: "bag", bag, on: false, t: 0 }; FX.push(bagFx);
+    G.push({ x: -1.6, z: -2.6, rotY: Math.PI, anim: "punch", act: "punch", fx: bagFx });
+    // 瑜伽墊
+    [[1.4, 0x9b59b6], [3.0, 0x1abc9c], [4.6, 0xf39c12]].forEach(([x, c]) => { box(1.0, 0.03, 1.9, c, x, 0.02, -0.8, P); G.push({ x, z: -0.8, rotY: Math.PI, sit: true, anim: "yoga", act: "yoga" }); });
+    // 重訓椅＋啞鈴架
+    box(0.6, 0.45, 1.6, 0x2c3e50, 1.6, 0.25, -4.2, P); box(1.8, 0.9, 0.5, 0x7f8c8d, 4.2, 0.45, -5.4, P);
+    for (let i = 0; i < 5; i++) box(0.3, 0.2, 0.2, 0x2c2c34, 3.5 + i * 0.35, 0.98, -5.4, P);
+    G.push({ x: 1.6, z: -3.2, rotY: Math.PI, sit: true, anim: "lift", act: "lift" }, { x: 4.2, z: -4.6, rotY: Math.PI, anim: "lift", act: "lift" });
+    // 伸展區
+    put(P, textPlane("伸展區 STRETCH", 4, 1), -4.0, 0.03, 0.8, 0, -Math.PI / 2);
+    [-5.6, -4.0, -2.4].forEach(x => G.push({ x, z: 0.8, rotY: Math.PI / 4, anim: "stretch", act: "stretch" }));
+    plant(P, 7.2, 2.6);
+    SLOTS.gym = G;
+  }
+  // 會議桌和大廳共用辦公區的座標系
+  SLOTS.meet = SLOTS.meet || [];
 
   // ── v1.30 進場特效：打卡上班 30 分鐘內第一次出現在宇宙時播放 ──
   const fresh = p => p && p.inTime && Date.now() - Date.parse(p.inTime) < 30 * 60e3;
@@ -1872,7 +2100,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const t = document.createElement("div");
     t.className = "uo-tag" + (opt.frame ? " uo-" + opt.frame : "") + (opt.rest ? " uo-rest" : "");
     t.textContent = (opt.rest ? "💤 " : "") + name + (opt.icons && opt.icons.length ? " " + opt.icons.join("") : "");
-    w.appendChild(t); overlay.appendChild(w); c.tagEl = w; c.hasSay = !!opt.saying;
+    w.appendChild(t); overlay.appendChild(w); c.tagEl = w; c.hasSay = !!opt.saying; c.restTag = !!opt.rest;
   }
   const timers = new WeakMap();
   function say(c, txt, ms) {
@@ -1884,16 +2112,17 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   const crew = new Map(); // id → { p, c, scene, slot, leaving }
   const occupied = {}; SCENE_KEYS.forEach(k => (occupied[k] = new Set()));
 
-  const REST_SLOTS = [4, 5, 6, 7, 8], BOSS_SLOT = 9, RESERVED = new Set([6, 7, 8, 9]);
+  const BOSS_SLOT = 6, RESERVED = new Set([6]);
   function freeSlot(k, p) {
     const list = SLOTS[k];
-    if (k === "seats") {   // v1.40 休息區：自己的座位 → 公用沙發 → 後排
+    if (k === "seats") {   // v1.41 休息區：自己的座位 → 固定的公用座位（依員工編號）→ 其他空位
       if (p && SEAT_IDX[String(p.id)] != null) return SEAT_IDX[String(p.id)];
-      for (let i = 12; i < list.length; i++) if (list[i] && !occupied.seats.has(i)) return i;
+      const n = list.length - 12, st = p ? hash(String(p.id)) % n : 0;
+      for (let j = 0; j < n; j++) { const i = 12 + (st + j) % n; if (list[i] && !occupied.seats.has(i)) return i; }
       let i = list.length; while (occupied.seats.has(i)) i++; return i;
     }
+    if (k === "gym" && p && p.act) { for (let i = 0; i < list.length; i++) if (list[i].act === p.act && !occupied.gym.has(i)) return i; }
     if (p && p.isBoss && k === "office" && !occupied.office.has(BOSS_SLOT)) return BOSS_SLOT;
-    if (p && p.resting && k === "office") { for (const i of REST_SLOTS) if (!occupied.office.has(i)) return i; }
     for (let i = 0; i < list.length; i++) if (!occupied[k].has(i) && !(k === "office" && RESERVED.has(i))) return i;
     let i = list.length; while (occupied[k].has(i)) i++; return i;
   }
@@ -1901,6 +2130,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const list = SLOTS[k];
     if (i < list.length) return list[i];
     const n = i - list.length; // 人太多時，在後方排一排
+    if (SCENES[k].bld) return { x: -5 + (n % 10) * 1.1, z: 5.2 - Math.floor(n / 10) * 0.8, rotY: Math.PI, anim: "stand" };   // v1.41 大樓：人太多時站在走廊
     const z = SCENES[k].store ? -3.3 - Math.floor(n / 5) * 0.9 : 4.2 + Math.floor(n / 5) * 0.9;
     return { x: 3 + (n % 5) * 1.0, z, rotY: SCENES[k].store ? 0 : Math.PI, anim: "stand" };
   }
@@ -1911,7 +2141,9 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     c.sit = false; c.anim = "walk"; m.arrived = false;
     const back = [];
     // v1.30 走到一半又換目的地時，以實際所在的場景為準（例：剛從辦公室出發要去座位區）
-    const here = !m.scene ? null : Math.abs(p.x - SCENES[m.scene].x) < 12 ? m.scene : (SCENE_KEYS.find(k => Math.abs(p.x - SCENES[k].x) < 12) || m.scene);
+    c.baseY = 0;
+    const halfW = k => (SCENES[k].w || 16) / 2;
+    const here = !m.scene ? null : Math.abs(p.x - SCENES[m.scene].x) < halfW(m.scene) + 2 ? m.scene : (SCENE_KEYS.find(k => !SCENES[k].virtual && Math.abs(p.x - SCENES[k].x) < halfW(k) + 2) || m.scene);
     if (m.slot != null && m.scene && here === m.scene) { const s = slotPos(m.scene, m.slot); if (s.via) for (let i = s.via.length - 1; i >= 0; i--) back.push({ x: worldX(m.scene, s.via[i].x), z: s.via[i].z }); }
     const intoPath = (k, s) => {
       const a = SCENES[k].aisle, pts = [];
@@ -1920,15 +2152,15 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       pts.push({ x: worldX(k, s.x), z: s.z }); return pts;
     };
     const cur = here;
-    if (cur === toScene) {
+    if (cur === toScene || (cur && toScene && SCENES[cur].bld && SCENES[toScene].bld)) {   // v1.41 大樓裡的房間互通：沿著前方走廊走過去
       const s = slotPos(toScene, toSlot);
       c.path = [...back, { x: (back.length ? back[back.length - 1].x : p.x), z: SCENES[cur].aisle }, ...intoPath(toScene, s)];
       c.onArrive = cb;
     } else {
-      const exitPts = cur ? [...back, { x: (back.length ? back[back.length - 1].x : p.x), z: SCENES[cur].aisle }, { x: SCENES[cur].x + 8.2, z: SCENES[cur].aisle }] : [];
+      const exitPts = cur ? [...back, { x: (back.length ? back[back.length - 1].x : p.x), z: SCENES[cur].aisle }, { x: SCENES[cur].x + halfW(cur) + 0.2, z: SCENES[cur].aisle }] : [];
       const enter = () => {
         if (!toScene) { cb && cb(); return; }
-        p.set(SCENES[toScene].x + 8.2, 0, SCENES[toScene].aisle);
+        p.set(SCENES[toScene].x + (SCENES[toScene].bld ? halfW(toScene) - 0.6 : 8.2), 0, SCENES[toScene].aisle);
         c.path = intoPath(toScene, slotPos(toScene, toSlot)); c.onArrive = cb;
       };
       if (exitPts.length) { c.path = exitPts; c.onArrive = enter; } else enter();
@@ -1937,6 +2169,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function settle(m) {
     const s = slotPos(m.scene, m.slot);
     m.c.g.rotation.y = s.rotY; m.c.sit = !!s.sit; m.c.anim = s.anim; m.arrived = true;
+    m.c.baseY = s.y || (s.hi ? 0.25 : s.low ? -0.2 : 0);   // v1.41 跑步機、吧檯椅、懶骨頭的高度
   }
 
   let lastList = [];
@@ -1970,7 +2203,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     nameTag(c, m.p.name, tagOpt(m.p, av)); m.c = c;
   }
   function setCrew(list) {
-    lastList = list;
+    lastList = list; drawAttend(list);
     const ids = new Set(list.map(p => String(p.id)));
     // 下班：揮手離場
     for (const [id, m] of crew) if (!ids.has(id) && !m.leaving) {
@@ -1982,8 +2215,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       m.scene = k;
     }
     list.forEach(p => {
-      // v1.40 沒上班：一般隊員到休息區（有座位坐自己的）、主管到辦公室沙發區；視察中照選的地點
-      const id = String(p.id), k0 = sceneOf(p.location), k = p.resting && !p.visiting ? (p.mgr ? "office" : "seats") : k0;
+      // v1.41 開會 → 會議桌；運動 → 運動室；沒上班 → 休息區（有買座位坐自己的，主管也一樣）；視察中照選的地點
+      const id = String(p.id), k0 = sceneOf(p.location), k = p.meeting ? "meet" : p.act ? "gym" : p.resting && !p.visiting ? "seats" : k0;
       let m = crew.get(id);
       if (m && m.leaving) return;
       const wasRest = m ? !!m.p.resting : false;
@@ -2000,10 +2233,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
         route(m, k, slot, () => { settle(m); if (p.visiting) say(m.c, p.visitLabel || "視察中 👀", 4000); else if (!p.resting && !p.isBoss) say(m.c, "上班囉！💪", 3200); });
         m.scene = k; m.slot = slot;
         if (!p.resting && !p.isBoss && fresh(p)) playEntry(m);
-      } else if (m.scene !== k || wasRest !== !!p.resting || (k === "seats" && SEAT_IDX[id] != null && m.slot !== SEAT_IDX[id])) {
+      } else if (m.scene !== k || wasRest !== !!p.resting || (m.p.act || "") !== (p.act || "") || (k === "seats" && SEAT_IDX[id] != null && m.slot !== SEAT_IDX[id])) {
         occupied[m.scene].delete(m.slot);
         const slot = freeSlot(k, p); occupied[k].add(slot);
-        route(m, k, slot, () => { settle(m); if (p.visiting) say(m.c, p.visitLabel || "視察中 👀", 4000); });   // v1.39 大隊長前往（v1.40 Lv.3 以上）
+        route(m, k, slot, () => { settle(m); if (p.meeting) say(m.c, "開會中 📋", 4000); else if (p.act) say(m.c, pick(GYM_LINES[p.act] || ["💪"]), 3000); else if (p.visiting) say(m.c, p.visitLabel || "視察中 👀", 4000); });   // v1.39 大隊長前往（v1.40 Lv.3 以上）
         m.scene = k; m.slot = slot;
       }
       m.p = p;
@@ -2024,12 +2257,16 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       case "cheer": aL = aR = -2.8 + Math.sin(t * 12) * 0.3; break;
       case "like": aL = -0.1; aR = -2.6; break;
       case "wave": aL = -0.1; aR = -2.4 + Math.sin(t * 10) * 0.4; break;
+      case "punch": { const k = Math.sin(t * 9); aL = -1.5 + Math.max(0, k) * 0.2; aR = -1.5 + Math.max(0, -k) * 0.2; zL = 0.2; zR = -0.2; break; }   // v1.41 運動
+      case "yoga": aL = aR = -2.9 + Math.sin(t * 1.2) * 0.12; break;
+      case "lift": aL = aR = -1.6 - (Math.sin(t * 3) + 1) * 0.6; break;
+      case "stretch": aL = -3.0; aR = -0.2; zL = Math.sin(t * 1.5) * 0.4; break;
       default: aL = aR = Math.sin(t * 1.5) * 0.05;
     }
-    if (c.anim === "walk") { const s = Math.sin(t * 10) * 0.6; c.legL.rotation.x = s; c.legR.rotation.x = -s; aL = -s; aR = s; }
+    if (c.anim === "walk" || c.anim === "run") { const sp = c.anim === "run" ? 14 : 10, s = Math.sin(t * sp) * 0.6; c.legL.rotation.x = s; c.legR.rotation.x = -s; aL = -s; aR = s; }
     else if (c.sit) { c.legL.rotation.x = c.legR.rotation.x = -Math.PI / 2; ly = 0.05; }
     else c.legL.rotation.x = c.legR.rotation.x = 0;
-    c.armL.rotation.x = aL; c.armR.rotation.x = aR; c.armL.rotation.z = zL; c.armR.rotation.z = zR; c.g.position.y = ly + (c.rideY || 0);
+    c.armL.rotation.x = aL; c.armR.rotation.x = aR; c.armL.rotation.z = zL; c.armR.rotation.z = zR; c.g.position.y = ly + (c.rideY || 0) + (c.baseY || 0);
     if (c.rideY) { c.legL.rotation.x = c.legR.rotation.x = -0.9; }
     c.g.rotation.x = c.anim === "nod" ? Math.max(0, Math.sin(t * 7)) * 0.18 : 0;
   }
@@ -2043,7 +2280,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function place(c) {
     const vis = c.g.visible && (v.set(c.g.position.x, c.g.position.y + (c.hasSay ? 3.45 : 2.95), c.g.position.z).project(camera), Math.abs(v.x) < 1.05 && Math.abs(v.y) < 1.1);
     c.bubble.style.visibility = vis ? "visible" : "hidden";
-    if (c.tagEl) c.tagEl.style.visibility = vis ? "visible" : "hidden";
+    if (c.tagEl) c.tagEl.style.visibility = vis && !(c.restTag && camera.zoom < 0.75) ? "visible" : "hidden";   // v1.41 大樓全景時，休息中的人先不顯示名牌（拉近才出現）
     if (!vis) return;
     const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
     c.bubble.style.left = ((v.x + 1) / 2 * w) + "px"; c.bubble.style.top = ((1 - v.y) / 2 * h) + "px";
@@ -2065,7 +2302,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     unfollowKeep();
     const k = worldPerPx(), rx = Math.cos(az), rz = -Math.sin(az), fx = -Math.sin(az), fz = -Math.cos(az);
     panX += -rx * dx * k + fx * dy * k / 0.625; panZ += -rz * dx * k + fz * dy * k / 0.625;
-    panX = Math.max(-14, Math.min(14, panX)); panZ = Math.max(-10, Math.min(10, panZ));
+    const px = SCENES[view].pan || 14; panX = Math.max(-px, Math.min(px, panX)); panZ = Math.max(-10, Math.min(10, panZ));
   }
   const clampZ = () => (uz = Math.max(ZMIN, Math.min(ZMAX, uz)));
   const pinchOf = () => { const [a, b] = [...ptrs.values()]; return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, ang: Math.atan2(b.y - a.y, b.x - a.x), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 }; };
@@ -2115,10 +2352,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     if (!ray.ray.intersectPlane(ground, gp)) return;
-    const sx = SCENES[m.scene].x, x = Math.max(sx - 7.4, Math.min(sx + 7.4, gp.x)), z = Math.max(-5.2, Math.min(5.2, gp.z));
+    const bld = SCENES[m.scene].bld, sx = SCENES[m.scene].x, hw = (SCENES[m.scene].w || 16) / 2 - 0.6;
+    const x = bld ? Math.max(-23.4, Math.min(79.4, gp.x)) : Math.max(sx - hw, Math.min(sx + hw, gp.x)), z = Math.max(-5.2, Math.min(5.2, gp.z));
     const c = m.c, id = (m.manualId = (m.manualId || 0) + 1);
-    c.sit = false; c.anim = "walk"; m.arrived = false;
-    c.path = [{ x, z }];
+    c.sit = false; c.anim = "walk"; m.arrived = false; c.baseY = 0;
+    const roomAt = X => SCENE_KEYS.find(k => SCENES[k].bld && !SCENES[k].virtual && Math.abs(X - SCENES[k].x) <= SCENES[k].w / 2);
+    // v1.41 大樓裡跨房間：先走到前方走廊，經過門口再走進去
+    c.path = bld && roomAt(x) !== roomAt(c.g.position.x) ? [{ x: c.g.position.x, z: 4.6 }, { x, z: 4.6 }, { x, z }] : [{ x, z }];
     c.onArrive = () => {
       c.anim = "idle"; c.g.rotation.y = Math.atan2(sx + (SCENES[m.scene].focus ? SCENES[m.scene].focus.x || 0 : 0) - c.g.position.x, 6 - c.g.position.z);
       setTimeout(() => { if (m.manualId === id && !m.leaving && crew.get(String(opts.selfId)) === m) route(m, m.scene, m.slot, () => settle(m)); }, 180000);   // v1.39 停 3 分鐘再回工作位置
@@ -2131,7 +2371,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const r = cv.getBoundingClientRect();
     ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
     ray.setFromCamera(ndc, camera);
-    const list = [...crew.values()].filter(m => !m.leaving && m.c.g.visible && m.scene === view);
+    const list = [...crew.values()].filter(m => !m.leaving && m.c.g.visible);
     const hits = ray.intersectObjects(list.map(m => m.c.g), true);
     let hit = null;
     if (hits.length) { let o = hits[0].object; while (o && !hit) { hit = list.find(m => m.c.g === o) || null; o = o.parent; } }
@@ -2141,15 +2381,18 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       list.forEach(m => { v.set(m.c.g.position.x, m.c.g.position.y + 1.2, m.c.g.position.z).project(camera); const sx = r.left + (v.x + 1) / 2 * r.width, sy = r.top + (1 - v.y) / 2 * r.height, d = Math.hypot(sx - cx, sy - cy); if (d < bd) { bd = d; best = m; } });
       hit = best;
     }
-    if (hit) focusCrew(String(hit.p.id));
-    else if (follow && opts.selfId && follow === String(opts.selfId)) moveSelf(cx, cy, r);   // v1.33 選了自己 → 點地面走過去
+    if (hit) { focusCrew(String(hit.p.id)); return; }
+    // v1.41 點看板 → 放大
+    const bh = ray.intersectObjects(BOARD_HIT.filter(b => b.mesh.parent && b.mesh.parent.visible).map(b => b.mesh), false);
+    if (bh.length && opts.onBoard) { const b = BOARD_HIT.find(x => x.mesh === bh[0].object); if (b) { opts.onBoard(b.key); return; } }
+    if (follow && opts.selfId && follow === String(opts.selfId)) moveSelf(cx, cy, r);   // v1.33 選了自己 → 點地面走過去
     else if (follow) { follow = null; opts.onPick && opts.onPick(null); }
     else { const me = opts.selfId && crew.get(String(opts.selfId)); if (me && !me.leaving && me.scene === view) moveSelf(cx, cy, r); }   // v1.39 沒選人時，點地面就是自己走過去
   }
   function focusCrew(id) {
     const m = id && crew.get(String(id));
     if (!m) { if (follow) { follow = null; opts.onPick && opts.onPick(null); } return false; }
-    if (m.scene !== view) { view = m.scene; resetCam(); }
+    if (Math.abs(m.c.g.position.x - camX) > 24) { view = tabOf(m.scene); resetCam(); }   // v1.41 同一個畫面看得到就不用換分頁
     follow = String(id);
     const fc = SCENES[view].focus || { zoom: 1 };
     uz = Math.max(uz, 2.8 / (fc.zoom || 1)); clampZ();
@@ -2203,6 +2446,14 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       box(0.12, 0.08, 0.12, b, 0, 0.49, 0.06, P); box(0.12, 0.06, 0.12, b, 0, 0.48, -0.05, P);
       box(0.34, 0.4, 0.24, b, 0, 0.4, -0.2, P); box(0.38, 0.04, 0.3, d, 0, 0.62, -0.2, P);
       box(0.02, 0.12, 0.12, l, 0.175, 0.46, -0.2, P); box(0.02, 0.12, 0.12, l, -0.175, 0.46, -0.2, P); return 0.68;
+    }
+    if (type === "robot") {   // v1.41 機器人寵物
+      box(0.12, 0.16, 0.14, d, -0.1, 0.08, 0, P); box(0.12, 0.16, 0.14, d, 0.1, 0.08, 0, P);
+      box(0.36, 0.32, 0.28, b, 0, 0.32, 0, P); box(0.12, 0.1, 0.02, 0xc0392b, 0, 0.34, 0.145, P);
+      box(0.08, 0.22, 0.1, d, -0.23, 0.32, 0, P); box(0.08, 0.22, 0.1, d, 0.23, 0.32, 0, P);
+      box(0.4, 0.32, 0.32, b, 0, 0.66, 0, P); box(0.32, 0.22, 0.02, 0x1b2631, 0, 0.66, 0.165, P);
+      const e1 = box(0.06, 0.06, 0.02, 0x5dfdcb, -0.08, 0.69, 0.18, P), e2 = box(0.06, 0.06, 0.02, 0x5dfdcb, 0.08, 0.69, 0.18, P); e1.material = e2.material = new THREE.MeshBasicMaterial({ color: 0x5dfdcb });
+      box(0.03, 0.14, 0.03, d, 0, 0.88, 0, P); const bl = box(0.08, 0.08, 0.08, 0xff5a5a, 0, 0.97, 0, P); bl.material = new THREE.MeshBasicMaterial({ color: 0xff5a5a }); return 1.0;
     }
     // trice
     box(0.1, 0.1, 0.26, b, 0, 0.26, -0.38, P);
@@ -2304,7 +2555,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     placePet(pt);
   }
   // 同一場景有兩隻以上寵物時,偶爾湊在一起玩
-  const PLAY_LINES = { "digger|train": ["一起蓋鐵路！", "嗯嗯～嗚嗚～"], "trex|trice": ["吼～追追追", "萌萌救命～"], "chicken|trex": ["咕咕！", "吼…是祖先？"],
+  const PLAY_LINES = { "chicken|robot": ["咕咕？", "嗶嗶！"], "robot|trex": ["嗶…是暴龍！", "吼～鐵罐頭？"], "digger|robot": ["一起蓋工地！", "嗶嗶～收到"], "digger|train": ["一起蓋鐵路！", "嗯嗯～嗚嗚～"], "trex|trice": ["吼～追追追", "萌萌救命～"], "chicken|trex": ["咕咕！", "吼…是祖先？"],
     "chicken|digger": ["挖到蟲了嗎？", "嗯嗯～"], "train|trex": ["嗚嗚～讓一讓！", "吼！"], "digger|trice": ["來挖寶！", "萌萌～"], "chicken|train": ["載我一程～", "鏗鏘！"] };
   let playClock = 15;
   function tickPlay(dt) {
@@ -2323,7 +2574,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function syncParty() {
     if (partyG) { partyG.parent.remove(partyG); partyG = null; }
     if (!GAME.birthdays.length) return;
-    partyG = new THREE.Group(); GROUPS[0].add(partyG);
+    partyG = new THREE.Group(); GROUP_OF.office.add(partyG);
     box(1.4, 0.5, 1.4, 0xfff3e0, 0.8, 0.25, 2.2, partyG); box(1.0, 0.45, 1.0, 0xf8a5c2, 0.8, 0.72, 2.2, partyG); box(0.6, 0.35, 0.6, 0xfff3e0, 0.8, 1.12, 2.2, partyG);
     [-0.2, 0, 0.2].forEach(x => { box(0.06, 0.25, 0.06, 0xffffff, 0.8 + x, 1.42, 2.2, partyG); box(0.07, 0.09, 0.07, 0xffb020, 0.8 + x, 1.6, 2.2, partyG); });
     [[-1, 0xe74c3c], [1.3, 0x3498db], [2.6, 0xf1c40f], [-2.3, 0x9b59b6], [3.9, 0x2ecc71]].forEach(b => { box(0.02, 1.6, 0.02, 0xdddddd, b[0], 2.0, -4.6, partyG); box(0.5, 0.6, 0.5, b[1], b[0], 3.0, -4.6, partyG); });
@@ -2343,7 +2594,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (flagG) { flagG.parent.remove(flagG); flagG = null; }
     const k = GAME.champion ? sceneOf(GAME.champion) : "";
     if (!k || !SCENES[k] || k === "other") return;
-    flagG = new THREE.Group(); GROUPS[SCENE_KEYS.indexOf(k)].add(flagG);
+    flagG = new THREE.Group(); GROUP_OF[k].add(flagG);
     box(0.12, 4.2, 0.12, 0xd0d0d0, 6.8, 2.1, -5.4, flagG); box(0.25, 0.25, 0.25, 0xf1c40f, 6.8, 4.3, -5.4, flagG);
     put(flagG, textPlane("本月冠軍", 2.2, 1.2, { bg: "#c0392b", color: "#ffe08a", size: 64 }), 7.95, 3.6, -5.4);
     flagG.userData.scene = k;
@@ -2371,7 +2622,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function syncUnlocks() {
     if (unlockG) { unlockG.parent.remove(unlockG); unlockG = null; }
     const U = GAME.unlocks || []; if (!U.length) return;
-    unlockG = new THREE.Group(); GROUPS[0].add(unlockG);
+    unlockG = new THREE.Group(); GROUP_OF.office.add(unlockG);
     if (U.indexOf("lounge") >= 0) {   // 咖啡機＋地毯
       box(0.9, 1.3, 0.7, 0x2c3e50, 7.3, 0.65, -1.2, unlockG); box(0.5, 0.3, 0.05, 0x5dade2, 7.3, 1.0, -0.84, unlockG); box(0.3, 0.2, 0.3, 0xffffff, 7.3, 0.4, -0.9, unlockG);
       box(2.6, 0.06, 2.0, 0xe8c07a, 4.5, 0.04, 1.2, unlockG);
@@ -2393,7 +2644,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   function syncHoliday() {
     if (holiG) { holiG.parent.remove(holiG); holiG = null; }
     const h = GAME.holiday; if (!h) return;
-    holiG = new THREE.Group(); GROUPS[0].add(holiG);
+    holiG = new THREE.Group(); GROUP_OF.office.add(holiG);
     if (h === "xmas") {
       box(0.3, 0.5, 0.3, 0x6e4b2a, -7, 0.25, 4.4, holiG);
       [[1.6, 0.6], [1.2, 1.1], [0.8, 1.55], [0.4, 1.95]].forEach(l => box(l[0], 0.5, l[0], 0x1e8449, -7, l[1] + 0.2, 4.4, holiG));
@@ -2497,7 +2748,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     let tx = SCENES[view].x + fc.x + panX, tz = fc.z + panZ;
     if (follow) {
       const fm = crew.get(follow);
-      if (!fm || fm.leaving || fm.scene !== view) { follow = null; opts.onPick && opts.onPick(null); }
+      if (!fm || fm.leaving) { follow = null; opts.onPick && opts.onPick(null); }
       else { tx = fm.c.g.position.x; tz = fm.c.g.position.z; }
     }
     const tzoom = fc.zoom * uz;
@@ -2505,6 +2756,17 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       camX = tx; camZ = tz; if (azT != null) az = azT; azT = null; camera.zoom = tzoom; camera.updateProjectionMatrix();   // v1.40 修正：視角已到位時 azT 會先變 null，換場景後畫面變成正面平視
       fadeEl.style.transition = "none"; fadeEl.style.opacity = "1";
       requestAnimationFrame(() => { fadeEl.style.transition = "opacity .35s"; fadeEl.style.opacity = "0"; });
+    }
+    if (MEETSIGN.end) {   // v1.41 會議倒數
+      const left = Math.max(0, Math.ceil((MEETSIGN.end - Date.now()) / 1000));
+      if (left !== MEETSIGN.left) {
+        MEETSIGN.left = left; const g = MEETSIGN.c.getContext("2d");
+        g.clearRect(0, 0, 512, 128); g.fillStyle = "rgba(192,57,43,.92)"; g.fillRect(0, 0, 512, 128);
+        g.fillStyle = "#fff"; g.font = FONT(44); g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillText("📋 開會中 " + String(Math.floor(left / 60)).padStart(2, "0") + ":" + String(left % 60).padStart(2, "0"), 256, 64);
+        MEETSIGN.mesh.material.map.needsUpdate = true;
+        if (!left) { MEETSIGN.end = 0; MEETSIGN.mesh.visible = false; opts.onMeetEnd && opts.onMeetEnd(); }
+      }
     }
     if (markerT > 0) { markerT -= dt; marker.material.opacity = Math.max(0, Math.min(0.9, markerT)); marker.scale.setScalar(1 + (1.2 - markerT) * 0.4); if (markerT <= 0) marker.visible = false; }
     camX += (tx - camX) * kk; camZ += (tz - camZ) * kk;
@@ -2515,13 +2777,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const os = OPS_STATE[view], lk = os === "closed" ? 0.42 : os === "before" ? 0.72 : 1;
     lightK += (lk - lightK) * Math.min(1, dt * 3);
     if (hemi) hemi.intensity = baseHemi * lightK; sun.intensity = baseSun * lightK;
-    GROUPS.forEach(g => (g.visible = Math.abs(g.position.x - camX) < 34));
+    GROUPS.forEach(g => (g.visible = Math.abs(g.position.x - camX) < 46));
 
     FX.forEach(f => (f.on = false));
     for (const m of crew.values()) {
       const c = m.c; stepMove(c, dt); tickMount(m, dt); animChar(c, dt);
       if (c.aura) { c.aura.t += dt; const a = 0.5 + Math.sin(c.aura.t * 2.4) * 0.5; c.aura.ring.material.opacity = 0.35 + a * 0.35; c.aura.ring.scale.setScalar(1 + a * 0.12); c.aura.glow.material.opacity = 0.05 + a * 0.08; }
-      c.g.visible = Math.abs(c.g.position.x - camX) < 34; place(c);
+      c.g.visible = Math.abs(c.g.position.x - camX) < 46; place(c);
       if (m.arrived && !m.leaving) {
         const s = slotPos(m.scene, m.slot); if (s.fx) s.fx.on = true;
         m.talk -= dt;
@@ -2530,7 +2792,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
           talkUntil[m.scene] = now + 3200;
           m.talk = 10 + Math.random() * 12;
           m.sayN = (m.sayN || 0) + 1;
-          const lines = m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "warehouse" ? WAREHOUSE_LINES : (m.scene === "office" || m.scene === "seats") ? OFFICE_LINES : SHOP_LINES;
+          const lines = m.p.meeting ? MEET_LINES : m.p.act ? (GYM_LINES[m.p.act] || REST_LINES) : m.p.resting ? REST_LINES : c.penguin ? PENGUIN_LINES : m.scene === "factory" ? FACTORY_LINES : m.scene === "warehouse" ? WAREHOUSE_LINES : (m.scene === "office" || m.scene === "seats") ? OFFICE_LINES : SHOP_LINES;
           say(c, pick(lines), 2800);
         }
       }
@@ -2554,6 +2816,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (f.kind === "screen") f.mesh.material.color.setHex(f.on ? (Math.sin(now / 120 + f.mesh.position.x) > -0.6 ? 0x5dade2 : 0x85c1e9) : 0x2a2f45);
       if (f.kind === "pos") f.mesh.material.color.setHex(f.on ? 0x58d68d : 0x2a2f45);
       if (f.kind === "rgb") f.mesh.material.color.setHSL((now / 3000) % 1, 0.9, 0.55);
+      if (f.kind === "spin") f.obj.rotation.y += dt * 14;   // v1.41 陀螺台
+      if (f.kind === "bag") { f.t += dt; f.bag.rotation.x = f.on ? Math.sin(f.t * 9) * 0.18 : f.bag.rotation.x * 0.9; }
       if (f.kind === "mixer" && f.on) { if (f.axis === "x") f.whisk.rotation.x += dt * 6; else f.whisk.rotation.y += dt * 9; }   // v1.40 攪拌機
       if (f.kind === "oven") {
         if (f.link && f.on) f.link.forEach(l => (l.on = true));
@@ -2575,7 +2839,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
   }
-  drawRevOffice([]); drawOpsBoards({});
+  drawRevOffice([]); drawOpsBoards({}); drawStatus({}); drawAttend([]);
+  drawList("menu", "🍱 今日菜單", "#c0392b", [["主廚推薦", "敬請期待"], ["飯後甜點", "現烤雞蛋糕"]], "");
+  drawList("rank", "🏆 遊戲排行榜", "#8e44ad", [["消消樂", "即將開放"], ["疊疊樂", "即將開放"], ["麵糊大作戰", "即將開放"]], "");
+  drawList("sport", "🏃 運動室", "#27ae60", [["跑步機", "🏃"], ["大魔王沙包", "👊"], ["瑜伽", "🧘"], ["重訓", "🏋️"], ["伸展", "🙆"]], "點自己 →「💪 去運動」，不限次數");
   size(); raf = requestAnimationFrame(loop);
 
   return {
@@ -2583,9 +2850,20 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     setAvatars(map) { AV_CFG = map || {}; setCrew(lastList); },
     setEventName(n) { drawEventSign(n || "今日活動"); },
     // v1.21 櫃位營運連動：{ 場景: { state: "open"|"before"|"closed", batter: {原味,其他口味}, batterLow: 麵糊不夠（v1.22 依平假日用量推算）, pickup: 筆數 } }
-    setOps(map) { Object.keys(OPS).forEach(k => drawOps(k, map && map[k])); },
+    setOps(map) { Object.keys(OPS).forEach(k => drawOps(k, map && map[k])); drawStatus(map); },
+    // v1.41 開會：end＝結束時間（毫秒），0＝沒有開會
+    setMeeting(end) { MEETSIGN.end = end > Date.now() ? end : 0; MEETSIGN.left = -1; if (MEETSIGN.mesh) MEETSIGN.mesh.visible = !!MEETSIGN.end; },
+    // v1.41 找自己：回傳所在場景，並切過去鏡頭拉近、腳下閃光
+    locate(id) {
+      const m = crew.get(String(id)); if (!m || m.leaving) return null;
+      if (Math.abs(m.c.g.position.x - camX) > 24) { view = tabOf(m.scene); }
+      follow = String(id); uz = Math.max(1, 2.2 / ((SCENES[view].focus || {}).zoom || 1)); clampZ();   // 鏡頭跟著自己，但不跳出名片
+      marker.position.set(m.c.g.position.x, 0.03, m.c.g.position.z); marker.visible = true; markerT = 2.0;
+      return m.scene;
+    },
+    whereIs(id) { const m = crew.get(String(id)); if (!m || m.leaving) return null; const p = m.c.g.position.x; const k = SCENE_KEYS.find(x => SCENES[x].bld && !SCENES[x].virtual && Math.abs(p - SCENES[x].x) <= SCENES[x].w / 2) || m.scene; return m.scene === "meet" ? "meet" : k; },
     setBoards(map) { Object.keys(BOARDS).forEach(k => drawBoard(k, (map && map[k]) || [])); },
-    setView(k) { if (SCENES[k] && k !== view) { view = k; if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); } },
+    setView(k) { k = tabOf(k); if (SCENES[k] && k !== view) { view = k; if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); } },
     // v1.21 放大
     setFullscreen(b) { full = !!b; cv.style.touchAction = full ? "none" : "pan-y"; size(); },
     resetView() { if (follow) { follow = null; opts.onPick && opts.onPick(null); } resetCam(); },

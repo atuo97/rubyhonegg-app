@@ -7,7 +7,8 @@ import { createPortal } from "react-dom";
 import { useEffect, useRef, useState } from "react";
 import { Flash } from "../TopToast.jsx";
 import { MOUNT_INFO } from "../Mount40.jsx";
-import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc } from "./officeScene.js";
+import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc, tabOf } from "./officeScene.js";
+import BoardModal41 from "./BoardModal41.jsx";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
 import { HeartDots } from "../Hearts36.jsx";
 import { bgm, BgmAsk } from "../Bgm36.jsx";
@@ -85,6 +86,12 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
+  const [board, setBoard] = useState(null);         // v1.41 點看板放大
+  const [nowT, setNowT] = useState(Date.now());     // v1.41 開會、運動到期用
+  const [myAct, setMyAct] = useState(null);         // v1.41 自己按的運動（先在畫面上動，不等後端）
+  const [actOpen, setActOpen] = useState(false);
+  const [where, setWhere] = useState("");           // v1.41 你在：○○
+  useEffect(() => { const t = setInterval(() => setNowT(Date.now()), 15000); return () => clearInterval(t); }, []);
   const [full, setFull] = useState(false);          // v1.21 全螢幕
   const [picked, setPicked] = useState(null);       // v1.21 點人拉近 → 名片
   const bdayMusic = useRef(false);
@@ -137,7 +144,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   };
 
   useEffect(() => {
-    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null) });
+    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null), onBoard: k => setBoard(k), onMeetEnd: () => setNowT(Date.now()) });
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
@@ -153,8 +160,8 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const people = (game && game.people) || [], pm = {}; people.forEach(p => (pm[String(p.id)] = p));
     const list = onDuty.map(p => ({ ...p, mgr: !!(pm[String(p.id)] || {}).mgr })), has = id => list.some(p => String(p.id) === String(id));
     const boss = game && game.boss;
-    if (boss && !has(boss.id)) list.push({ id: boss.id, name: boss.name, location: "辦公室", isBoss: true, mgr: true });
-    // v1.40 沒上班的隊員：一般隊員在休息區、主管在辦公室沙發區（人多時最多 40 位）
+    if (boss && !has(boss.id)) list.push({ id: boss.id, name: boss.name, location: "辦公室", isBoss: true, mgr: true, resting: true });   // v1.41 大隊長沒上班也在休息區（有座位坐自己的）
+    // v1.41 沒上班的隊員全部在休息區（有買座位坐自己的，主管也一樣；最多 40 位）
     people.filter(p => !has(p.id)).slice(0, 40).forEach(p => list.push({ id: p.id, name: p.name, location: "辦公室", resting: true, mgr: !!p.mgr }));
     if (!has(user.id)) list.push({ id: user.id, name: user.nick || user.name, location: "辦公室", resting: true, mgr: user.role >= 3 });
     // v1.40 視察：Lv.3 以上選了「前往」的地點（大隊長舊資料 bossAt 也相容）
@@ -167,9 +174,22 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         ? { ...list[i], location: "休息區", resting: true, visiting: v.time || true, visitLabel: "休息一下 ☕" }
         : { ...list[i], location: v.loc, resting: false, visiting: v.time || true, visitLabel: isB ? "大隊長視察中 👀" : "視察中 👀" };
     });
+    // v1.41 開會：Lv.2 以上主管到辦公區會議桌（只是動畫，不影響打卡）
+    const mt = game && game.meeting, meetOn = mt && mt.end > nowT;
+    // v1.41 運動室：沒上班的人按了運動就去運動室（3 分鐘）
+    const acts = { ...((game && game.acts) || {}) }; if (myAct) acts[user.id] = myAct;
+    list.forEach((p, i) => {
+      const id = String(p.id);
+      if (meetOn && (mt.ids || []).some(x => String(x) === id)) list[i] = { ...p, meeting: true };
+      else if (p.resting && acts[id] && acts[id].until > nowT) list[i] = { ...p, act: acts[id].act };
+    });
     return list;
   })();
-  const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss, !!p.visiting, !!p.mgr, p.visitLabel || ""]));
+  const sceneSig = JSON.stringify(sceneList.map(p => [p.id, p.location, !!p.resting, !!p.isBoss, !!p.visiting, !!p.mgr, p.visitLabel || "", !!p.meeting, p.act || ""]));
+  useEffect(() => { engine.current && engine.current.setMeeting && engine.current.setMeeting(game && game.meeting ? +game.meeting.end : 0); }, [game && game.meeting && game.meeting.end]);
+  // v1.41 你在：○○（每 3 秒看一次自己在哪個房間）
+  useEffect(() => { const t = setInterval(() => { const k = engine.current && engine.current.whereIs && engine.current.whereIs(user.id); setWhere(k && SCENES[k] ? SCENES[k].name.replace("辦公區・休息區", "辦公區") : ""); }, 3000); return () => clearInterval(t); }, []);
+  const locateMe = () => { const k = engine.current && engine.current.locate && engine.current.locate(user.id); if (k) setView(tabOf(k)); };
   useEffect(() => { engine.current && engine.current.setCrew(sceneList); }, [sceneSig]);
   // 活動場景招牌：顯示在「活動」打卡的隊員填的活動名稱（後端 getOnDutyCrew 需回傳打卡備註 note，格式「活動:○○」）
   useEffect(() => {
@@ -319,7 +339,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const stores = SCENE_KEYS.filter(k => SCENES[k].store && (k === "other" ? count(k) > 0 || view === k : !openScenes || openScenes[k] || count(k) || view === k));
     const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
     stores.sort((a, b) => n(a) - n(b));
-    return ["office", "seats", ...stores, "street", "factory", "warehouse"];   // v1.40 工廠、倉庫放最後
+    return ["office", "lobby", "canteen", "gameroom", "gym", ...stores, "street", "factory", "warehouse"];   // v1.41 大樓（辦公室含休息區）→ 櫃位 → 商店街 → 工廠、倉庫
   })();
   // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
   const opsMap = (() => {
@@ -339,20 +359,35 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const opsSig = JSON.stringify(opsMap);
   useEffect(() => { engine.current && engine.current.setOps && engine.current.setOps(opsMap); }, [opsSig]);
   const curOps = opsMap[view];
-  const focusPerson = (p) => { const k = sceneOf(p.location); setView(k); engine.current && engine.current.focusCrew && engine.current.focusCrew(p.id); };
+  const focusPerson = (p) => { const k = tabOf(sceneOf(p.location)); setView(k); engine.current && engine.current.focusCrew && engine.current.focusCrew(p.id); };
   const pk = picked && (sceneList.find(x => String(x.id) === String(picked.id)) || shown.find(x => String(x.id) === String(picked.id)) || picked);
   // v1.39 大隊長前往、即時營業額
   const isMeBoss = !!(game && game.boss && String(game.boss.id) === String(user.id));
   const isMgr = isMeBoss || user.role >= 3;   // v1.40 Lv.3 以上都能視察
-  const goPlaces = ["辦公室", "休息區", ...Object.keys(locInfo).filter(n => n !== "辦公室" && (!locInfo[n].status || locInfo[n].status === "營運中"))];
+  const canMeet = isMeBoss || user.role >= 4;   // v1.41 Lv.4 以上選「辦公區」＝召開會議
+  const goPlaces = ["辦公室", "休息區", "大廳", "飯堂", "遊戲室", "運動室", ...Object.keys(locInfo).filter(n => !/辦公/.test(n) && (!locInfo[n].status || locInfo[n].status === "營運中"))];
   const myVisit = (game && game.visits && game.visits[user.id]) || (isMeBoss && game && game.bossAt) || null;
+  const callMeeting = async () => {
+    setGoOpen(false);
+    if (!window.confirm("召開會議？所有 Lv.2 以上主管會到辦公區會議桌開會 5 分鐘（只是宇宙辦公室的動畫，不影響打卡），並收到提醒。")) return;
+    const r = await apiPost({ action: "v41Meet" }, 0);
+    if (r && r.success) { setGame(g => g ? { ...g, meeting: r.data } : g); setView("office"); setRevMsg({ ok: true, text: "📋 已召開會議，主管們正走向會議桌" }); loadGame(); }
+    else setRevMsg({ ok: false, text: (r && r.error) || "召開失敗" });
+  };
+  const ACTS = [["run", "🏃", "跑步機"], ["punch", "👊", "打大魔王沙包"], ["yoga", "🧘", "瑜伽"], ["lift", "🏋️", "舉啞鈴"], ["stretch", "🙆", "伸展"]];
+  const doAct = async (a) => {
+    setActOpen(false);
+    const until = Date.now() + 3 * 60e3; setMyAct({ act: a, until }); setNowT(Date.now()); setView("gym");
+    setTimeout(() => { setMyAct(null); setNowT(Date.now()); }, 3 * 60e3 + 500);
+    apiPost({ action: "v41Act", act: a }, 0).then(r => { if (r && r.success) loadGame(); });
+  };
   const goTo = async (loc) => {
     setGoOpen(false);
     const r = await apiPost({ action: "v40Goto", loc: loc === "辦公室" ? "" : loc }, 0);
     if (r && r.success) {
       setGame(g => { if (!g) return g; const v = { ...(g.visits || {}) }; if (r.data) v[user.id] = r.data; else delete v[user.id]; return { ...g, visits: v, bossAt: isMeBoss && r.data && r.data.loc !== "休息區" ? r.data : isMeBoss ? null : g.bossAt }; });
-      setView(loc === "辦公室" ? "office" : sceneOf(loc));
-      setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公室沙發區" : loc === "休息區" ? "✅ 回到休息區" : `✅ 前往 ${loc}，在班隊員會收到「來看你了」` });
+      setView(loc === "辦公室" ? "office" : tabOf(sceneOf(loc)));
+      setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公區" : loc === "休息區" ? "✅ 回到休息區" : /^(大廳|飯堂|遊戲室|運動室|辦公區)$/.test(loc) ? `✅ 前往${loc}` : `✅ 前往 ${loc}，在班隊員會收到「來看你了」` });
       loadGame();
     }
     else setRevMsg({ ok: false, text: (r && r.error) || (r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.39 後才能用" : "前往失敗") });
@@ -405,6 +440,11 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
           <div className="uo-ctl" style={{ top: full ? "calc(8px + env(safe-area-inset-top))" : 8, right: 8 }}>
             <button onClick={() => setFull(f => !f)} title={full ? "離開全螢幕" : "全螢幕"}>{full ? "✕" : "⛶"}</button>
           </div>
+          {/* v1.41 找自己 */}
+          <div className="uo-ctl" style={{ top: full ? "calc(48px + env(safe-area-inset-top))" : 48, right: 8, flexDirection: "column", alignItems: "flex-end" }}>
+            <button onClick={locateMe} title="找到我" style={{ width: "auto", padding: "0 10px", fontSize: 13, fontWeight: 700, background: "rgba(192,57,43,.9)" }}>📍我</button>
+          </div>
+          {where && <div style={{ position: "absolute", zIndex: 3, top: full ? "calc(48px + env(safe-area-inset-top))" : 8, left: "50%", transform: "translateX(-50%)", background: "rgba(20,18,36,.62)", color: "#fff", fontSize: 11.5, padding: "3px 10px", borderRadius: 8, pointerEvents: "none", whiteSpace: "nowrap" }}>你在：{where}</div>}
           <div className="uo-ctl" style={{ bottom: pk ? (full ? "calc(118px + env(safe-area-inset-bottom))" : 112) : (full ? "calc(10px + env(safe-area-inset-bottom))" : 8), right: 8, flexDirection: "column" }}>
             <button onClick={() => engine.current && engine.current.zoomBy(1.25)} title="放大">＋</button>
             <button onClick={() => engine.current && engine.current.zoomBy(0.8)} title="縮小">－</button>
@@ -421,7 +461,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 700 }}>{pk.resting ? "💤 " : ""}{pk.name} <span style={{ fontWeight: 400 }}>{((game && game.worn && game.worn[pk.id]) || []).join("")}</span></div>
                   <div style={{ fontSize: 12, color: "#7a6a5c", marginTop: 2 }}>
-                    {SCENES[sceneOf(pk.location)].icon} {pk.visiting ? `視察中・${shortLoc(pk.location)}` : pk.isBoss ? "辦公室" : pk.resting ? "休息中" : shortLoc(pk.location)}{pk.inTime ? ` · ${timeOf(pk.inTime)} 上班` : ""}
+                    {pk.meeting ? "📋 開會中" : pk.act ? "💪 運動中" : <>{SCENES[sceneOf(pk.location)].icon} {pk.visiting ? `視察中・${shortLoc(pk.location)}` : pk.resting ? "休息中" : shortLoc(pk.location)}</>}{pk.inTime ? ` · ${timeOf(pk.inTime)} 上班` : ""}
                   </div>
                   {game && game.pets && game.pets[pk.id] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>🐾 寵物：{game.pets[pk.id].name || "（未命名）"}</div>}
                   {game && game.mounts && MOUNT_INFO[game.mounts[pk.id]] && <div style={{ fontSize: 11, color: "#a07b3a", marginTop: 2 }}>{MOUNT_INFO[game.mounts[pk.id]].icon} 坐騎：{MOUNT_INFO[game.mounts[pk.id]].name}</div>}
@@ -432,6 +472,9 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
               </div>
               {String(pk.id) === String(user.id) && (
                 <div style={{ marginTop: 8, fontSize: 12, color: "#8a6a4a", background: "#fff3d6", borderRadius: 8, padding: "6px 9px" }}>🚶 點畫面上的地面，你的小人就會走過去（走動時這張名片會收起來，再點自己就會出現；停 3 分鐘後回到工作位置）</div>
+              )}
+              {!demo && String(pk.id) === String(user.id) && (
+                <button onClick={() => meDuty ? setRevMsg({ ok: false, text: "上班中先專心工作，下班再來運動喔 💪" }) : setActOpen(true)} style={{ marginTop: 8, width: "100%", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#eafaf1", color: "#1e8449", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 去運動（不限次數）</button>
               )}
               {!demo && isMgr && String(pk.id) === String(user.id) && (
                 <button onClick={() => setGoOpen(true)} style={{ marginTop: 8, width: "100%", border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>📍 前往…（視察、回休息區）</button>
@@ -454,7 +497,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
             </div>
           </div>
         )}
-        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點隊員拉近看名片 · 點地面你的小人就會走過去 · ⛶ 全螢幕可單指拖曳移動</div>
+        <div style={{ fontSize: 10, color: C.light, marginTop: 6 }}>雙指縮放、旋轉 · 左右拖曳旋轉 · 點隊員拉近看名片 · 點地面你的小人就會走過去 · 點看板可以放大 · 📍我 找到自己 · ⛶ 全螢幕可單指拖曳移動</div>
       </div>
 
       {/* v1.39 即時營業額 PK：不強迫、次數不限，顯示回報時間；全部隊員看得到 */}
@@ -480,15 +523,31 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         )}
       </div>
 
+      {actOpen && createPortal(
+        <div onClick={() => setActOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1500, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "0 0 20px 20px", padding: "calc(16px + env(safe-area-inset-top)) 16px 18px", boxShadow: "0 8px 24px rgba(0,0,0,.18)", animation: "rhDropIn .22s ease-out" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 4 }}>💪 想做什麼運動？</div>
+            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 12 }}>你的小人會走到運動室動 3 分鐘，不限次數</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {ACTS.map(([k, ic, n]) => <button key={k} onClick={() => doAct(k)} style={{ border: `1.5px solid ${C.border}`, background: C.card, borderRadius: 12, padding: "12px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: C.text }}>{ic} {n}</button>)}
+            </div>
+            <button onClick={() => setActOpen(false)} style={{ ...s.btn("ghost"), marginTop: 12 }}>關閉</button>
+          </div>
+        </div>, document.body
+      )}
+      {board && <BoardModal41 k={board} onClose={() => setBoard(null)} C={C} s={s} liveRev={liveRev} opsMap={opsMap} short={short} game={game} onDuty={onDuty}
+        onGo={k => { setBoard(null); setView(tabOf(k)); }} />}
+
       {goOpen && createPortal(
         <div onClick={() => setGoOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1500, display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto" }}>
           <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "0 0 20px 20px", padding: "calc(16px + env(safe-area-inset-top)) 16px 18px", boxShadow: "0 8px 24px rgba(0,0,0,.18)", animation: "rhDropIn .22s ease-out" }}>
             <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 4 }}>📍 {isMeBoss ? "大隊長" : "你"}要去哪裡？</div>
-            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 12 }}>今天有效。去櫃位時，在班隊員會收到「來看你了 👀」</div>
+            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 12 }}>今天有效。去櫃位時，在班隊員會收到「來看你了 👀」{canMeet ? "；選「辦公區」會召開 5 分鐘會議" : ""}</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {goPlaces.map(n => {
-                const on = (myVisit && myVisit.loc === n) || (n === "辦公室" && !myVisit);
-                return <button key={n} onClick={() => goTo(n)} style={{ border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.text, textAlign: "left" }}>{n === "辦公室" ? "💼 辦公室沙發區" : `${SCENES[sceneOf(n)].icon} ${n}`}</button>;
+                const on = (myVisit && (myVisit.loc === n || (n === "辦公室" && myVisit.loc === "辦公區"))) || (n === "休息區" && !myVisit);
+                if (n === "辦公室" && canMeet) return <button key={n} onClick={callMeeting} style={{ border: `1.5px solid ${C.accent}`, background: "#fff3e0", borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.text, textAlign: "left" }}>📋 辦公區（召開會議）</button>;
+                return <button key={n} onClick={() => goTo(n === "辦公室" ? "辦公區" : n)} style={{ border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, borderRadius: 12, padding: "10px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 13, color: C.text, textAlign: "left" }}>{n === "辦公室" ? "💼 辦公區" : `${SCENES[sceneOf(n)].icon} ${n}`}</button>;
               })}
             </div>
             <button onClick={() => setGoOpen(false)} style={{ ...s.btn("ghost"), marginTop: 12 }}>關閉</button>
