@@ -30,7 +30,7 @@ export function sceneOf(loc = "") {
   if (/音樂廳|兩廳院/.test(loc)) return "hall";
   if (/南港/.test(loc)) return "nangang";
   if (/竹北/.test(loc)) return "zhubei";
-  if (/工廠|中央廚房/.test(loc)) return "factory";
+  if (/工廠|中央廚房|倉庫/.test(loc)) return "factory";   // v1.39 倉庫也放工廠場景
   if (/辦公/.test(loc)) return "office";
   if (/商店街/.test(loc)) return "street";
   if (/美麗華/.test(loc)) return "meili";
@@ -1749,13 +1749,13 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
         crew.set(id, m);
         const slot = freeSlot(k, p); occupied[k].add(slot);
         // 還沒有場景 → 從該場景入口走進來
-        route(m, k, slot, () => { settle(m); if (!p.resting && !p.isBoss) say(m.c, "上班囉！💪", 3200); });
+        route(m, k, slot, () => { settle(m); if (p.visiting) say(m.c, "大隊長視察中 👀", 4000); else if (!p.resting && !p.isBoss) say(m.c, "上班囉！💪", 3200); });
         m.scene = k; m.slot = slot;
         if (!p.resting && !p.isBoss && fresh(p)) playEntry(m);
       } else if (m.scene !== k || wasRest !== !!p.resting || (k === "seats" && m.slot !== SEAT_IDX[id])) {
         occupied[m.scene].delete(m.slot);
         const slot = freeSlot(k, p); occupied[k].add(slot);
-        route(m, k, slot, () => settle(m));
+        route(m, k, slot, () => { settle(m); if (p.visiting) say(m.c, "大隊長視察中 👀", 4000); });   // v1.39 大隊長前往
         m.scene = k; m.slot = slot;
       }
       m.p = p;
@@ -1872,9 +1872,10 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     c.path = [{ x, z }];
     c.onArrive = () => {
       c.anim = "idle"; c.g.rotation.y = Math.atan2(sx + (SCENES[m.scene].focus ? SCENES[m.scene].focus.x || 0 : 0) - c.g.position.x, 6 - c.g.position.z);
-      setTimeout(() => { if (m.manualId === id && !m.leaving && crew.get(String(opts.selfId)) === m) route(m, m.scene, m.slot, () => settle(m)); }, 60000);
+      setTimeout(() => { if (m.manualId === id && !m.leaving && crew.get(String(opts.selfId)) === m) route(m, m.scene, m.slot, () => settle(m)); }, 180000);   // v1.39 停 3 分鐘再回工作位置
     };
     marker.position.set(x, 0.03, z); marker.visible = true; markerT = 1.2;
+    opts.onPick && opts.onPick(null);   // v1.39 走動時收起名片（不擋地圖），再點自己才出現
     opts.onMove && opts.onMove();
   }
   function pickAt(cx, cy) {
@@ -1894,6 +1895,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     if (hit) focusCrew(String(hit.p.id));
     else if (follow && opts.selfId && follow === String(opts.selfId)) moveSelf(cx, cy, r);   // v1.33 選了自己 → 點地面走過去
     else if (follow) { follow = null; opts.onPick && opts.onPick(null); }
+    else { const me = opts.selfId && crew.get(String(opts.selfId)); if (me && !me.leaving && me.scene === view) moveSelf(cx, cy, r); }   // v1.39 沒選人時，點地面就是自己走過去
   }
   function focusCrew(id) {
     const m = id && crew.get(String(id));

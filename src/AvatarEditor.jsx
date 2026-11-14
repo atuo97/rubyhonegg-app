@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
+import { PeoplePicker } from "./People39.jsx";
 import {
   SKINS, HAIR_STYLES, HAIR_COLORS, TOPS, PANTS, FACES, HATS, MASCOTS, ACCS, OUTFITS, FRAMES,
   defaultCfg, sanitize, hatUnlocked, hatLockText, SAYING_MAX,
@@ -152,7 +153,7 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
   const grant = async () => {
     setGMsg("");
     const r = await apiPost({ action: "grantItem", empId: user.id, target: gTarget.trim(), item: gItem }, 0);
-    setGMsg(r && r.success ? `已發放給 ${gTarget.trim()}` : (r && r.error) || "發放失敗");
+    setGMsg(r && r.success ? "✅ 已發放" : (r && r.error) || "發放失敗"); if (r && r.success) setGTarget("");
   };
 
   const Title = ({ children }) => <div style={{ ...s.sectionTitle, marginTop: 16, marginBottom: 8 }}>{children}</div>;
@@ -229,9 +230,9 @@ export default function AvatarEditor({ user, apiGet, apiPost, todayStr, C, s, on
       {user.role >= 3 && (
         <div style={{ ...s.card, marginTop: 16 }}>
           <div style={s.sectionTitle}>發放限定造型（管理者）</div>
+          <PeoplePicker apiGet={apiGet} C={C} s={s} value={gTarget} onChange={setGTarget} />
           <div style={{ display: "flex", gap: 8 }}>
-            <input value={gTarget} onChange={e => setGTarget(e.target.value)} placeholder="夥伴員工編號" style={{ ...s.input, flex: 1 }} />
-            <select value={gItem} onChange={e => setGItem(e.target.value)} style={{ ...s.input, width: "auto" }}>
+            <select value={gItem} onChange={e => setGItem(e.target.value)} style={{ ...s.input, flex: 1 }}>
               {HATS.filter(h => h.kind === "limited").map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
             </select>
           </div>

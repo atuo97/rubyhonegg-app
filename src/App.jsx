@@ -11,7 +11,9 @@ import CoinShop from "./CoinShop.jsx";
 import { QuotePage } from "./Quote30.jsx";
 import { EquipPage } from "./Equip35.jsx";
 import { HeartsPage, HeartsCard } from "./Hearts36.jsx";
-import { bgm, BGM_OF_TAB, BgmAsk, BgmSettings } from "./Bgm36.jsx";
+import { bgm, BGM_OF_TAB, BgmAsk, BgmSettings, BgmToggle } from "./Bgm36.jsx";
+import MiniGames from "./MiniGames.jsx";
+import { GrantPage } from "./People39.jsx";
 import { CalendarPage } from "./Cal28.jsx";
 import { AcPage } from "./Ac29.jsx";
 import { useFsMeta, FridgeInputs, fridgesFilled, fridgePayload, GroomChecks, GROOM, AuditPage, HealthPage, FoodSafetyAdmin, SopPage } from "./FoodSafety.jsx";
@@ -182,6 +184,7 @@ function useTime(){ const [t,setT]=useState(timeNow()); useEffect(()=>{const i=s
 // 共用 UI:線條圖示、全域樣式、離線偵測、時間卡
 // ─────────────────────────────────────────────
 const ICONS = {
+  game:'<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="15.5" cy="12" r=".8"/><circle cx="17.5" cy="14" r=".8"/>',
   home:'<path d="M4 11l8-7 8 7"/><path d="M6 10v9h12v-9"/>',
   clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
   user:'<circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1-3.5 4-5 7-5s6 1.5 7 5"/>',
@@ -212,6 +215,7 @@ function Ic({ n, size=22, color="currentColor", sw=1.6, style }) {
 const GLOBAL_CSS = `
 html,body{background:#efe9e0;margin:0}
 *{-webkit-tap-highlight-color:transparent}
+@keyframes rhDropIn{from{opacity:0;transform:translateY(-24px)}to{opacity:1;transform:none}}
 @keyframes rhFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes rhShimmer{0%{background-position:-300px 0}100%{background-position:300px 0}}
 .rh-page{animation:rhFade .28s ease both}
@@ -646,6 +650,12 @@ export default function App(){
     if (r && r.success) { setAnnouncements(r.data || []); cacheSet("ann", r.data || []); return; }
     return apiGet({ action:"getAnnouncements" }).then(r2 => { if (r2 && r2.success) { const d = r2.data || []; setAnnouncements(d); cacheSet("ann", d); } });
   });
+  // v1.39：在辦公室、工廠、倉庫上班不用開店盤點，視為已完成
+  useEffect(() => {
+    if (activeSeg && locations && (locations[activeSeg.location] || {}).kind === "內部" && !checklistDone.open) setChecklistDone(p => ({ ...p, open:true }));
+  }, [activeSeg && activeSeg.location, locations, checklistDone.open]);
+  // v1.39：發公告頁下架／恢復後，首頁與「我的」立刻重新讀公告
+  useEffect(() => { const f = () => loadAnn(); window.addEventListener("rh-ann-changed", f); return () => window.removeEventListener("rh-ann-changed", f); }, [user && user.id]);
   const loadAllData = async () => {
     setLoading(true);
     // 每個請求一回來就先更新畫面,不必等最慢的那一個
@@ -704,8 +714,8 @@ export default function App(){
   // v1.26 底部選單：首頁｜出勤｜我的｜樂園｜管理（管理 Lv.2 以上）
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
-    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"info", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
-    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage" };
+    universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"home", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
   const franchiseOwner = user.role < 3 && !!(opsMe && opsMe.franchiseLocs && opsMe.franchiseLocs.length);
@@ -725,7 +735,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", arena:"對戰", tower:"百貨櫃位塔防戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "夥伴的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"夥伴投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"夥伴資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"夥伴商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "夥伴的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -756,10 +766,11 @@ export default function App(){
             </span>
           </div>
         </div>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           {loading && <div style={{ fontSize:11, color:C.muted }}>同步中…</div>}
           {game.me && !partner && avatarCfg && <button onClick={openMePet} aria-label="我和寵物" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"0 8px", height:30, cursor:"pointer", display:"flex", alignItems:"center", overflow:"hidden" }}><MeBuddy cfg={avatarCfg} pet={game.me.pet} scale={1} /></button>}
           {game.me && !partner && <button onClick={()=>openGame("home")} aria-label="我的錢包" style={{ border:`1px solid ${C.border}`, background:C.card, borderRadius:999, padding:"4px 10px", fontSize:12.5, cursor:"pointer", fontFamily:"inherit", color:C.text }}><Coin n={game.me.balance} size={12}/></button>}
+          {!partner && <BgmToggle C={C} />}
           <div style={{ width:38, height:38, borderRadius:19, background:C.accentBg, color:C.accent,
                         border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center",
                         fontSize:15, fontWeight:600 }}>{user.avatar}</div>
@@ -789,6 +800,11 @@ export default function App(){
                                      {!homeTodo && user.role>=2 && rpCnt?.pending > 0 && <button onClick={()=>setTab("rp")} style={{ ...s.card, width:"100%", display:"flex", alignItems:"center", gap:10, cursor:"pointer", fontFamily:"inherit", textAlign:"left", color:C.text, border: rpCnt.urgent ? `1px solid ${C.red}` : s.card.border, background: rpCnt.urgent ? C.redBg : C.card }}><span style={{ fontSize:22 }}>{rpCnt.urgent ? "🚨" : "🔧"}</span><span style={{ flex:1 }}><b style={{ fontSize:14 }}>門市回報待處理 {rpCnt.pending} 件</b>{rpCnt.urgent ? <span style={{ display:"block", fontSize:12, color:C.red }}>其中 {rpCnt.urgent} 件緊急</span> : null}</span><Ic n="chev" size={18} color={C.light}/></button>}
                                      {user.role>=2 && <OnboardCard user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compact />}
                                    </>} />)}
+        {!partner && tab==="home" && <div style={{ marginTop:18 }}>
+          {/* v1.39：音樂設定與「關於紅玉滿」放在首頁最下面 */}
+          <BgmSettings C={C} s={s} />
+          <ListItem icon="home" title="關於紅玉滿" desc="品牌精神、名字的由來、品牌故事" onClick={()=>setTab("about")}/>
+        </div>}
         {!partner && tab==="punch" && <PunchTab user={user} activeSeg={activeSeg} todaySchedule={todaySchedule}
                                    locations={locations} workLoc={workLoc} setWorkLoc={setWorkLoc}
                                    checklistDone={checklistDone} setChecklistDone={setChecklistDone}
@@ -813,52 +829,62 @@ export default function App(){
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
                                      <ListItem icon="vote" title="夥伴投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
-                                     <BgmSettings C={C} s={s} />
-                                     <ListItem icon="home" title="關於紅玉滿" desc="品牌精神、名字的由來、品牌故事" onClick={()=>setTab("about")}/>
                                    </>} />}
         {!partner && tab==="park" && (
           <div>
+            {/* v1.39：無敵8心放樂園最上方；選單標題與說明照隊長 11/14；小遊戲獨立一格，我的錢包移到下面 */}
+            <HeartsCard apiGet={apiGet} C={C} s={s} onOpen={()=>{ setHeartsWho(null); setTab("hearts"); }} />
             <BgmAsk C={C} s={s} />
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:8 }}>
-              <GameTile title="我和寵物" sub="造型・寵物・商店・小遊戲・徽章" art={<MeBuddy cfg={avatarCfg} pet={game.me && game.me.pet} scale={1.25} />} onClick={openMePet}/>
-              <GameTile title="宇宙辦公室" sub="看看夥伴在哪個櫃位" icon="cube" onClick={()=>setTab("universe")}/>
-              <GameTile title="對戰" sub="和夥伴切磋" icon="sword" onClick={()=>setTab("arena")}/>
-              <GameTile title="櫃位塔防戰" sub="升級塔・營業額排行" icon="tower" onClick={()=>setTab("tower")}/>
-              <GameTile title="夥伴商店街" sub="逛店・開店・扭蛋機" icon="home" onClick={()=>setTab("street")}/>
-              <GameTile title="我的錢包" sub="赤心幣餘額與明細" icon="coin" onClick={()=>openGame("home")}/>
+              <GameTile title="我和寵物的更衣間" sub="造型・寵物・商店・小遊戲・徽章" art={<MeBuddy cfg={avatarCfg} pet={game.me && game.me.pet} scale={1.25} />} onClick={openMePet}/>
+              <GameTile title="宇宙辦公室" sub="在浩瀚宇宙遇見好夥伴" icon="cube" onClick={()=>setTab("universe")}/>
+              <GameTile title="切磋對戰" sub="你或許可以一次打 10 個！" icon="sword" onClick={()=>setTab("arena")}/>
+              <GameTile title="櫃位爭霸戰" sub="最強櫃位包括營業以及不斷升級" icon="tower" onClick={()=>setTab("tower")}/>
+              <GameTile title="夥伴商店街" sub="逛逛夥伴的店換你當 Boss" icon="home" onClick={()=>setTab("street")}/>
+              <GameTile title="小遊戲" sub="心體技合一，逐步學習「赤心流」之最高奧義" icon="game" onClick={()=>setTab("minigame")}/>
             </div>
             <ListItem icon="coin" title="赤心幣商店" desc="造型・寵物・座位・稱號特效・對戰裝備・扭蛋・大魔王・兌換，點商品可以先試穿" onClick={()=>setTab("spend")}/>
-            <HeartsCard apiGet={apiGet} C={C} s={s} onOpen={()=>{ setHeartsWho(null); setTab("hearts"); }} />
+            <ListItem icon="coin" title="我的錢包" desc="赤心幣餘額與明細" onClick={()=>openGame("home")}/>
             <ListItem icon="book" title="赤心幣規則" desc="怎麼賺、加倍怎麼算、怎麼用、你現在套用中的加倍" onClick={()=>setTab("rules")}/>
           </div>
         )}
         {!partner && tab==="manage" && user.role>=2 && (
           <div>
-            <div style={s.sectionTitle}>排班與營運</div>
-            <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
+            {/* v1.39：依隊長 11/14 分成 公司、櫃位、人員、活動、大隊長 */}
+            <div style={s.sectionTitle}>公司</div>
             <ListItem icon="cal" title="行事曆" desc={user.role>=3 ? "新增進撤櫃、快閃、活動、會議，同步 Google 日曆" : "進撤櫃、快閃、活動、會議"} onClick={()=>setTab("calendar")}/>
-            <ListItem icon="chart" title="管理儀表板" onClick={()=>setTab("admin")}/>
+            {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
+            <ListItem icon="chart" title="管理儀表板" desc="今日即時、各櫃位累積、夥伴出勤" onClick={()=>setTab("admin")}/>
+            {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>櫃位</div>
+            <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
             <ListItem icon="order" title="麵糊用量" desc="平日／假日用量、還夠幾天、建議叫貨、活動預估" onClick={()=>setTab("batter")}/>
             <ListItem icon="tool" title="門市回報處理" desc="機器報修、水電場地、人力支援…" badge={rpCnt?.pending || null} badgeRed={rpCnt?.urgent > 0} onClick={()=>setTab("rp")}/>
-            <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
-            {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
-            <ListItem icon="tool" title="設備檢查清單" desc={user.role>=3 ? "活動、設櫃、出國：建清單、打包到點收、待補購" : "活動、設櫃、出國：打包、到場、點收打勾"} onClick={()=>setTab("equip")}/>
             <ListItem icon="shield" title="食安管理" desc={user.role>=3 ? "冰箱溫度紀錄、櫃位證照、體檢確認" : "冰箱溫度紀錄"} onClick={()=>setTab("foodsafe")}/>
+            {opsMe?.franchiseLocs?.length > 0 && <ListItem icon="chart" title="門市損益" desc="加盟店營收、成本、薪資、淨利（每月結帳）" onClick={()=>setTab("pnl")}/>}
+            {user.role>=3 && <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、常用物料、加盟店應收" onClick={()=>setTab("price")}/>}
+            {user.role>=3 && <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位（含辦公室、工廠、倉庫）" onClick={()=>setTab("locs")}/>}
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>人員</div>
+            <ListItem icon="cal" title="排班管理" desc="依個人或櫃位排班、核准換班、打卡對帳" onClick={()=>setTab("schedule_mgr")}/>
+            {user.role>=3 && <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>}
+            {user.role>=3 && <ListItem icon="user" title="無敵8心頒發" desc="看夥伴的 8 心、頒發愛心與善心" onClick={()=>{ setHeartsWho(null); setTab("hearts"); }}/>}
+            {user.role>=3 && user.role<5 && <ListItem icon="coin" title="發放限定造型" desc="直接選夥伴、合作品牌或加盟店" onClick={()=>setTab("grant")}/>}
+
+            <div style={{ ...s.sectionTitle, marginTop:16 }}>活動</div>
             {user.role>=3 && <ListItem icon="order" title="報價單" desc="活動報價、存成 Word＋PDF 到雲端、報價紀錄" onClick={()=>setTab("quote")}/>}
-            {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
-            {!franchiseOwner && user.role>=(opsMe?.annMinRole || 3) && <ListItem icon="vote" title="發公告／LINE 推播" desc="發布公告，同步推到 LINE 群組" onClick={()=>setTab("ann")}/>}
+            <ListItem icon="tool" title="設備檢查清單" desc={user.role>=3 ? "活動、設櫃、出國：建清單、打包到點收、待補購" : "活動、設櫃、出國：打包、到場、點收打勾"} onClick={()=>setTab("equip")}/>
+
             {user.role>=5 && <>
               <div style={{ ...s.sectionTitle, marginTop:16 }}>大隊長</div>
               <ListItem icon="chart" title="內帳" desc="記一筆、損益看板、匯出營收總表 Excel（只有你看得到）" onClick={()=>setTab("ledger")}/>
-            </>}
-            {user.role>=3 && <>
-              <div style={{ ...s.sectionTitle, marginTop:16 }}>人員與設定</div>
-              <ListItem icon="user" title="夥伴資料" desc="新增夥伴、改權限與負責櫃位、到職檢查" badge={opsMe?.onboardPending || null} onClick={()=>setTab("staff")}/>
-              <ListItem icon="home" title="櫃位管理" desc="新增、改名、開關、停用櫃位" onClick={()=>setTab("locs")}/>
-              <ListItem icon="coin" title="供貨價格與應收" desc="物料單價、常用物料、加盟店應收" onClick={()=>setTab("price")}/>
+              <ListItem icon="coin" title="發幣與限定造型" desc="補發／扣回赤心幣、頒徽章、發限定造型：直接選人" onClick={()=>setTab("grant")}/>
             </>}
           </div>
         )}
+        {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} />}
+        {tab==="grant" && user.role>=3 && <GrantPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEquip={q => { setEqQuote(q); setTab("equip"); }} />}
         {tab==="hearts" && <HeartsPage key={heartsWho || "me"} who={heartsWho} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="equip" && <EquipPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} openId={eqOpen} onOpened={() => setEqOpen(null)} quote={eqQuote} onQuoteUsed={() => setEqQuote(null)} />}
@@ -1316,6 +1342,8 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
   }, [schedLoc, locations, activeSeg]);
   const inSegment = !!activeSeg; // 目前是否有進行中的上班段
   const isActivity = locations?.[workLoc]?.kind === "活動";
+  // v1.39：辦公室、工廠、倉庫（場所性質＝內部）不用開店盤點與零用金
+  const isInnerLoc = n => (locations?.[n]?.kind || "") === "內部";
 
   useEffect(() => {
     if (!inSegment) return;
@@ -1423,7 +1451,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
               <option value="">請選擇地點</option>
               {Object.entries(locations||{}).map(([name,info]) => (
                 <option key={name} value={name}>
-                  {info.kind==="活動" ? "🎪 " : "🏪 "}{name}{info.kind==="活動" ? "(活動 +$500)" : ""}
+                  {info.kind==="活動" ? "🎪 " : info.kind==="內部" ? "🏢 " : "🏪 "}{name}{info.kind==="活動" ? "(活動 +$500)" : ""}
                 </option>
               ))}
             </select>
@@ -1473,7 +1501,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
       )}
 
       {/* 已打卡，尚未完成開店盤點 → 補資料 */}
-      {inSegment && !checklistDone.open && (
+      {inSegment && !checklistDone.open && !isInnerLoc(activeSeg.location) && (
         <>
           {handover && (handover.note || handover.cash!=="") && (
             <div style={{ ...s.card, marginBottom:12, background:C.blueBg, border:`1px solid ${C.blue}44` }}>
@@ -1519,7 +1547,7 @@ function WorkTab({ user, activeSeg, todaySchedule, locations, workLoc, setWorkLo
         </>
       )}
 
-      {inSegment && checklistDone.open && (
+      {inSegment && (checklistDone.open || isInnerLoc(activeSeg.location)) && (
         <div style={{ ...s.card, textAlign:"center", padding:30, background:C.greenBg }}>
           <div style={{ fontSize:40, marginBottom:10 }}>✅</div>
           <div style={{ fontSize:15, fontWeight:600, color:C.green }}>「{activeSeg.location}」上班程序已完成</div>
@@ -1558,6 +1586,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   const flavors = ["原味","可可","紅玉","抹茶","黑糖","芝麻"];
   const locInfo = activeSeg ? (locations||{})[activeSeg.location] || {} : {};
   const isCount = locInfo.type === "C份數";
+  const isInner = locInfo.kind === "內部";   // v1.39：辦公室、工廠、倉庫不用收店盤點、交接零用金
   const revItems = locInfo.items && locInfo.items.length ? locInfo.items : ["雞蛋糕"];
   const revenueAllFilled = isCount
     ? (itemRevenue["雞蛋糕"] !== undefined && itemRevenue["雞蛋糕"] !== "")
@@ -1591,18 +1620,18 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
   // 完整流程（最晚下班者）：全部欄位皆須填寫
   const fullAllFilled = flavors.every(f => closeAmounts[f] !== "") && revenueAllFilled &&
     cashHandover !== "" && ovenPhotos.length>0 && envPhotos.length>0;
-  const allFilled = (isLast ? fullAllFilled : simpleAllFilled) && tempsOk;
+  const allFilled = isInner ? tempsOk : (isLast ? fullAllFilled : simpleAllFilled) && tempsOk;
 
   const doPunchOut = async () => {
     if (!tempsOk) { setErr("請填寫每台冰箱的溫度"); return; }
-    if (!allFilled) { setErr(isLast ? "請完整填寫剩餘量、營業額、零用金並上傳兩組照片" : "請填寫交接零用金"); return; }
+    if (!allFilled) { setErr(isInner ? "請填寫冰箱溫度" : isLast ? "請完整填寫剩餘量、營業額、零用金並上傳兩組照片" : "請填寫交接零用金"); return; }
     setLoading(true); setErr(""); setMsg("");
     try {
       const coords = await getGPS();
       const now = new Date();
       const timeStr = now.toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});
 
-      if (isLast) {
+      if (isLast && !isInner) {
         setMsg("清潔照片上傳中…");
         const ovenUrls = [];
         for (const p of ovenPhotos) {
@@ -1637,7 +1666,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
         note: getVenue(user.id, activeSeg.location) ? "活動:" + getVenue(user.id, activeSeg.location) : "",
       });
       if (!res.success) { setErr(res.error || "打卡失敗，請重試"); setLoading(false); return; }
-      await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
+      if (!isInner) await apiPost({ action:"punchExtra", date:todayStr(), empId:user.id, location:activeSeg.location,
         type:"下班", cashHandover });
       await apiPost({ action:"fsLog", loc: activeSeg.location, type:"下班", temps: fridgePayload(fsMeta, activeSeg.location, temps) }, 1).catch(() => null);
       setTemps({});
@@ -1672,17 +1701,31 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
         </div>
       )}
 
-      {activeSeg && !checklistDone.open && (
+      {activeSeg && isInner && (
+        <>
+          <div style={{ ...s.card, marginBottom:12, background:C.blueBg }}>
+            <div style={{ fontSize:13, color:C.blue, fontWeight:700 }}>🏢 {activeSeg.location}</div>
+            <div style={{ fontSize:12, color:C.muted, marginTop:4 }}>辦公室、工廠、倉庫不用收店盤點和交接零用金，直接打下班卡</div>
+          </div>
+          <FridgeInputs meta={fsMeta} loc={activeSeg.location} values={temps} setValues={setTemps} C={C} s={s} />
+          <button disabled={!allFilled || loading} onClick={doPunchOut}
+            style={{ ...s.btn("blue"), opacity:(!allFilled||loading)?.5:1 }}>
+            {loading ? (msg || "處理中…") : "⬇ 下班打卡"}
+          </button>
+        </>
+      )}
+
+      {activeSeg && !isInner && !checklistDone.open && (
         <div style={{ ...s.card, textAlign:"center", color:C.gold, fontSize:13, padding:20 }}>
           ⚠️ 請先切換到上方「上班資料」完成開店盤點，才能進行下班結算
         </div>
       )}
 
-      {activeSeg && checklistDone.open && isLast === null && (
+      {activeSeg && !isInner && checklistDone.open && isLast === null && (
         <div style={{ textAlign:"center", color:C.muted, fontSize:13, padding:20 }}>查詢中…</div>
       )}
 
-      {activeSeg && checklistDone.open && isLast === false && (
+      {activeSeg && !isInner && checklistDone.open && isLast === false && (
         <>
           <div style={{ ...s.card, marginBottom:12, background:C.blueBg }}>
             <div style={{ fontSize:13, color:C.blue, fontWeight:700 }}>還有其他夥伴在班上</div>
@@ -1701,7 +1744,7 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
         </>
       )}
 
-      {activeSeg && checklistDone.open && isLast === true && (
+      {activeSeg && !isInner && checklistDone.open && isLast === true && (
         <>
           <div style={{ ...s.card, marginBottom:12, background:C.goldBg }}>
             <div style={{ fontSize:13, color:C.gold, fontWeight:700 }}>您是今日最後下班者</div>
@@ -1841,6 +1884,9 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
 
   return (
     <div>
+      {/* v1.39：公告放在「我的」最上面（未讀排前面） */}
+      <AllAnnCard announcements={announcements} />
+
       <div style={{ ...s.card, display:"flex", gap:16, alignItems:"center" }}>
         <div style={{ width:56, height:56, borderRadius:28, flexShrink:0,
                       background:C.accentBg, color:C.accent, border:`1px solid ${C.border}`,
@@ -1937,21 +1983,29 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
 
       <ChangePasswordCard user={user} onChanged={onPwChanged} />
 
-      <div style={s.card}>
-        <div style={s.sectionTitle}>所有公告</div>
-        {announcements.length === 0
-          ? <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:12 }}>目前無公告</div>
-          : announcements.map(a => (
-            <div key={a.id} style={{ padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
-              <div style={{ fontSize:13, fontWeight:700, color:a.urgent?C.accent:C.text }}>{a.title}</div>
-              <div style={{ fontSize:12, color:C.muted, marginTop:4, lineHeight:1.6 }}>{a.body}</div>
-              <div style={{ fontSize:10, color:C.light, marginTop:4 }}>{a.date}</div>
-            </div>
-          ))
-        }
-      </div>
       {onLogout && <button onClick={() => { if (confirm("登出後，下次要重新輸入帳號密碼。確定登出？")) onLogout(); }} style={{ ...s.btn("ghost"), marginTop:4 }}>登出</button>}
       <div style={{ fontSize:11, color:C.light, textAlign:"center", marginTop:10 }}>這支手機會記住登入 30 天；借別人手機登入，用完記得登出</div>
+    </div>
+  );
+}
+
+function AllAnnCard({ announcements }) {
+  const [all, setAll] = useState(false);
+  const list = [...(announcements || [])].sort((a, b) => (a.read === false ? 0 : 1) - (b.read === false ? 0 : 1));
+  const shown = all ? list : list.slice(0, 3);
+  return (
+    <div style={s.card}>
+      <div style={{ ...s.sectionTitle, display:"flex", justifyContent:"space-between" }}><span>公告</span>{list.some(a => a.read === false) && <span style={{ color:C.red, letterSpacing:0 }}>● {list.filter(a => a.read === false).length} 則未讀</span>}</div>
+      {list.length === 0
+        ? <div style={{ fontSize:13, color:C.muted, textAlign:"center", padding:12 }}>目前無公告</div>
+        : shown.map(a => (
+          <div key={a.id} style={{ padding:"10px 0", borderBottom:`1px solid ${C.border}` }}>
+            <div style={{ fontSize:13, fontWeight:700, color:a.urgent?C.accent:C.text }}>{a.read === false && <span style={{ color:C.red }}>● </span>}{a.title}</div>
+            <div style={{ fontSize:12, color:C.muted, marginTop:4, lineHeight:1.6, whiteSpace:"pre-wrap" }}>{a.body}</div>
+            <div style={{ fontSize:10, color:C.light, marginTop:4 }}>{String(a.date || a.time || "").slice(0, 16)}</div>
+          </div>
+        ))}
+      {list.length > 3 && <button onClick={() => setAll(!all)} style={{ ...s.btn("ghost"), marginTop:8 }}>{all ? "收起" : `看全部 ${list.length} 則`}</button>}
     </div>
   );
 }

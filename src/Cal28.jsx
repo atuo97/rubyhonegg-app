@@ -37,6 +37,11 @@ export function CalendarPage({ user, apiGet, apiPost, C, s, todayStr }) {
         <label style={{ flex: 1, fontSize: 12, color: C.muted }}>開始日<input type="date" value={edit.date} onChange={e => setEdit({ ...edit, date: e.target.value, end: edit.end < e.target.value ? e.target.value : edit.end })} style={s.input} /></label>
         <label style={{ flex: 1, fontSize: 12, color: C.muted }}>結束日<input type="date" value={edit.end} min={edit.date} onChange={e => setEdit({ ...edit, end: e.target.value })} style={s.input} /></label>
       </div>
+      {edit.end && edit.date && edit.end > edit.date && <div style={{ display: "flex", alignItems: "center", gap: 8, background: C.goldBg || "#fff6e0", borderRadius: 10, padding: "7px 10px", marginBottom: 8, fontSize: 12.5, lineHeight: 1.5 }}>
+        {/* v1.39：跨天行程提醒（點其中一天改日期，其實改的是同一筆） */}
+        <span style={{ flex: 1 }}>這是跨 {Math.round((new Date(edit.end) - new Date(edit.date)) / 86400000) + 1} 天的行程（{edit.date.slice(5).replace("-", "/")}～{edit.end.slice(5).replace("-", "/")}），每一天都會顯示。</span>
+        <button onClick={() => setEdit({ ...edit, end: edit.date })} style={{ border: `1px solid ${C.border}`, background: C.card, borderRadius: 999, padding: "4px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>只留 {edit.date.slice(5).replace("-", "/")} 一天</button>
+      </div>}
       <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
         <label style={{ flex: 1, fontSize: 12, color: C.muted }}>開始時間<input type="time" value={edit.start} onChange={e => setEdit({ ...edit, start: e.target.value })} style={s.input} /></label>
         <label style={{ flex: 1, fontSize: 12, color: C.muted }}>結束時間<input type="time" value={edit.endTime} onChange={e => setEdit({ ...edit, endTime: e.target.value })} style={s.input} /></label>

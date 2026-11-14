@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────
-// 百貨櫃位塔防戰 v1.27。後端:tdMe / tdGive
+// 櫃位爭霸戰（原百貨櫃位塔防戰 v1.27；v1.39 改名、只列營業中櫃位＋活動）。後端:tdMe / tdGive
 // 本週積分＝營業額 1 元 1 分＋捐獻 1 枚 100 分；每週一結算，冠軍櫃位依時數分獎勵；累積總分每 50 萬分升 1 級
 // ─────────────────────────────────────────────
 import { useEffect, useState } from "react";
@@ -65,7 +65,8 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
     <div>
       <div style={{ ...s.card, textAlign: "center" }}>
         <div style={{ fontSize: 30 }}>🏰⚔️🏰</div>
-        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>百貨櫃位塔防戰</div>
+        <div style={{ fontSize: 15, fontWeight: 600, marginTop: 4 }}>櫃位爭霸戰</div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 2 }}>只列營業中的櫃位；進行中的活動也算一個櫃位，休賽、撤櫃期間先隱藏（等級保留）</div>
         <div style={{ fontSize: 12, color: C.muted, marginTop: 4, lineHeight: 1.7 }}>
           本週積分＝營業額 1 元 {rule.rev} 分＋捐獻 1 枚 {fmt(rule.give)} 分<br />每週一結算，冠軍櫃位的夥伴依上班時數分 {rule.pool} 枚<br />累積總分每 {wan(rule.step)} 分升 1 級，只升不降
         </div>
@@ -73,7 +74,7 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
 
       <div style={s.card}>
         <div style={s.sectionTitle}>本週排名（{d.week.from.slice(5).replace("-", "/")}～{d.week.to.slice(5).replace("-", "/")}）</div>
-        {d.standings.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有百貨櫃位</div>}
+        {d.standings.length === 0 && <div style={{ fontSize: 13, color: C.muted, textAlign: "center", padding: 8 }}>目前沒有營業中的櫃位</div>}
         {d.standings.map((t, i) => (
           <div key={t.loc} style={{ padding: "9px 6px", borderBottom: `1px solid ${C.border}`, background: mine.includes(t.loc) ? C.accentBg : "transparent", borderRadius: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -94,9 +95,9 @@ export default function TowerTab({ user, apiGet, apiPost, C, s }) {
 
       <div style={s.card}>
         <div style={s.sectionTitle}>捐赤心幣幫櫃位衝分</div>
-        {mine.length === 0 && <div style={{ fontSize: 13, color: C.muted }}>最近 30 天沒有在百貨櫃位上班，暫時不能捐，但可以看戰況。</div>}
+        {mine.length === 0 && <div style={{ fontSize: 13, color: C.muted }}>最近 30 天沒有在營業中的櫃位或活動上班，暫時不能捐，但可以看戰況。</div>}
         {mine.length > 0 && <>
-          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>只能捐給最近 30 天上過班的百貨櫃位；1 枚 ＝ {fmt(rule.give)} 分，捐了不退回</div>
+          <div style={{ fontSize: 12, color: C.muted, marginBottom: 8 }}>只能捐給最近 30 天上過班的櫃位（含活動）；1 枚 ＝ {fmt(rule.give)} 分，捐了不退回</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
             {mine.map(l => <button key={l} onClick={() => setLoc(l)} style={{ border: `1.5px solid ${loc === l ? C.accent : C.border}`, background: loc === l ? C.accentBg : C.card, color: loc === l ? C.accent : C.text, borderRadius: 999, padding: "6px 12px", fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>{short(l)}</button>)}
           </div>

@@ -158,7 +158,7 @@ export const bgm = {
 if (typeof window !== "undefined") window.rhBgm = bgm;
 
 // 頁面對應的曲子（App 換頁時呼叫）
-export const BGM_OF_TAB = { park: "park", avatar: "park", game: "park", street: "park", spend: "park", rules: "park", hearts: "park", universe: "office", arena: "battle", tower: "battle" };
+export const BGM_OF_TAB = { park: "park", avatar: "park", game: "park", street: "park", spend: "park", rules: "park", hearts: "park", universe: "office", arena: "battle", tower: "battle", minigame: "battle" };
 
 // 第一次進樂園時詢問
 export function BgmAsk({ C, s }) {
@@ -168,14 +168,27 @@ export function BgmAsk({ C, s }) {
   return (
     <div style={{ ...s.card, display: "flex", alignItems: "center", gap: 10, background: "#fff7e6", border: `1px solid ${C.goldBg}` }}>
       <span style={{ fontSize: 24 }}>🎵</span>
-      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}><b>要開背景音樂嗎？</b><br /><span style={{ color: C.muted, fontSize: 12 }}>只在樂園、宇宙辦公室和遊戲播放；之後可以在「我的」調整</span></div>
+      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}><b>要開背景音樂嗎？</b><br /><span style={{ color: C.muted, fontSize: 12 }}>只在樂園、宇宙辦公室和遊戲播放；之後隨時按右上角 🔊 開關，音量在首頁最下面調</span></div>
       <button onClick={() => bgm.set({ on: true })} style={{ ...s.btn("primary"), width: "auto", padding: "8px 12px", fontSize: 13 }}>開</button>
       <button onClick={() => bgm.set({ on: false })} style={{ ...s.btn("ghost"), width: "auto", padding: "8px 10px", fontSize: 13 }}>不用</button>
     </div>
   );
 }
 
-// 「我的」裡的設定
+// v1.39：頂端列的一鍵開關（隨時能關）
+export function BgmToggle({ C }) {
+  const [st, setSt] = useState(bgm.get());
+  useEffect(() => { const f = () => setSt(bgm.get()); window.addEventListener("rh-bgm", f); return () => window.removeEventListener("rh-bgm", f); }, []);
+  const on = !!st.on;
+  return (
+    <button onClick={() => bgm.set({ on: !on })} aria-label={on ? "關閉背景音樂" : "開啟背景音樂"} title={on ? "關閉背景音樂" : "開啟背景音樂"}
+      style={{ width: 38, height: 38, borderRadius: 19, border: `1px solid ${C.border}`, background: on ? C.accentBg : C.card, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
+      {on ? "🔊" : "🔇"}
+    </button>
+  );
+}
+
+// 首頁最下面的設定（v1.39 從「我的」移過來）
 export function BgmSettings({ C, s }) {
   const [st, setSt] = useState(bgm.get());
   useEffect(() => { const f = () => setSt(bgm.get()); window.addEventListener("rh-bgm", f); return () => window.removeEventListener("rh-bgm", f); }, []);

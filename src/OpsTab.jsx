@@ -508,6 +508,7 @@ export function AnnouncePage({ user, apiGet, apiPost, C, s }) {
   const [groups, setGroups] = useState(null);
   const [quota, setQuota] = useState(null);
   const [f, setF] = useState({ title:"", body:"", urgent:false, ack:false, groups:[], target:[] });
+  const [showOff, setShowOff] = useState(false);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState(null);
@@ -588,7 +589,9 @@ export function AnnouncePage({ user, apiGet, apiPost, C, s }) {
         </div>
       )}
       {view === "list" && list && !list.length && <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>還沒有發布過公告</div>}
-      {view === "list" && (list === null ? <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>載入中…</div> : list.map(a => (
+      {view === "list" && <Msg C={C} m={msg}/>}
+      {view === "list" && list && list.some(a => a.status === "停用") && <button onClick={() => setShowOff(!showOff)} style={{ ...s.btn("ghost"), marginBottom:10 }}>{showOff ? "收起已下架的公告" : `看已下架的公告（${list.filter(a => a.status === "停用").length}）`}</button>}
+      {view === "list" && (list === null ? <div style={{ ...s.card, textAlign:"center", color:C.muted, fontSize:13 }}>載入中…</div> : list.filter(a => showOff || a.status !== "停用").map(a => (
         <div key={a.id} style={{ ...s.card, opacity: a.status === "停用" ? .55 : 1 }}>
           <div style={{ display:"flex", justifyContent:"space-between" }}><b style={{ fontSize:14, fontWeight:600, color: a.urgent ? C.accent : C.text }}>{a.urgent ? "🚨 " : ""}{a.title}</b><span style={{ fontSize:11.5, color:C.muted }}>{a.status}</span></div>
           <div style={{ fontSize:12.5, color:C.muted, marginTop:4, whiteSpace:"pre-wrap", lineHeight:1.6 }}>{a.body.length > 120 ? a.body.slice(0, 120) + "…" : a.body}</div>
@@ -597,7 +600,15 @@ export function AnnouncePage({ user, apiGet, apiPost, C, s }) {
           </button>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:6 }}>
             <span style={{ fontSize:11, color:C.light }}>{a.by}・{String(a.time).slice(0, 16)}・{a.target && a.target.length ? a.target.map(short).join("、") : "全員"}{a.groups ? `・推 ${a.groups} 群` : ""}</span>
-            <button onClick={async () => { await apiPost({ action:"annStop", ...tk, id:a.id, on: a.status === "停用" }, 0); setList(list.map(x => x.id === a.id ? { ...x, status: a.status === "停用" ? "發布" : "停用" } : x)); }}
+            <button onClick={async () => {
+              // v1.39：確認後端成功才改畫面，並通知首頁／我的重新讀公告（原本下架後要重開 App 才會消失）
+              const on = a.status === "停用";
+              const r = await apiPost({ action:"annStop", ...tk, id:a.id, on }, 0);
+              if (!(r && r.success)) { setMsg({ text:(r && r.error) || "下架失敗，請再試一次" }); return; }
+              setList(list.map(x => x.id === a.id ? { ...x, status: on ? "發布" : "停用" } : x));
+              setMsg({ ok:true, text: on ? "✅ 已恢復公告" : "✅ 已下架，夥伴那邊不會再看到" });
+              window.dispatchEvent(new Event("rh-ann-changed"));
+            }}
               style={{ ...s.btn("ghost"), width:"auto", padding:"5px 10px", fontSize:12 }}>{a.status === "停用" ? "恢復" : "下架"}</button>
           </div>
         </div>

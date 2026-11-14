@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
 import MiniGames from "./MiniGames.jsx";
+import { PeoplePicker } from "./People39.jsx";
 import { PetTeam, PetMarket } from "./PetTeam.jsx";
 import { Doll } from "./AvatarEditor.jsx";
 import { defaultCfg, sanitize } from "./universe/avatarCatalog.js";
@@ -431,7 +432,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
   const Admin = () => (
     <Card>
       <Title>大隊長工具</Title>
-      <input value={adm.target} onChange={e => setAdm(a => ({ ...a, target: e.target.value }))} placeholder="夥伴員工編號（例：E003）" style={{ ...s.input, marginBottom: 8 }} />
+      <PeoplePicker apiGet={apiGet} C={C} s={s} value={adm.target} onChange={v => setAdm(a => ({ ...a, target: v }))} />
       <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
         <select value={adm.badge} onChange={e => setAdm(a => ({ ...a, badge: e.target.value }))} style={{ ...s.input, flex: 1 }}>
           <option value="">補發／扣回赤心幣</option><option value="mentor">頒發「好導師」徽章（+50）</option><option value="special">頒發「特別貢獻」徽章</option><option value="debugger">頒發「除錯大師」徽章（+20，每人最多 5 次）</option>

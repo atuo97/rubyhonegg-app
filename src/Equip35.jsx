@@ -131,8 +131,9 @@ function Detail({ id, onBack, user, apiGet, apiPost, C, s, chip, admin, meta, se
   };
   const toCal = async () => {
     if (!confirm(`把「${L.name}」${range(L.from, L.to)} 加進公司行事曆？`)) return;
-    const r = await apiPost({ action: "calSave", title: `${TYPE_ICON[L.type] || ""}${L.name}`, date: L.from, end: L.to, cat: CAL_CAT[L.type] || "活動", loc: L.loc || "", desc: "設備檢查清單 " + L.name }, 0);
-    setMsg(r && r.success ? "✅ 已加進公司行事曆" : (r && r.error) || "加入失敗");
+    // v1.39：清單和行程綁在一起（之後改日期、取消清單，行事曆會跟著改；重按不會重複建立）
+    const r = await apiPost({ action: "eqCal", id: L.id, icon: TYPE_ICON[L.type] || "", cat: CAL_CAT[L.type] || "活動" }, 0);
+    setMsg(r && r.success ? (r.updated ? "✅ 行事曆已更新成 " + range(L.from, L.to) : "✅ 已加進公司行事曆") : (r && r.error) || "加入失敗");
   };
   const fix = async (it, on) => { const r = await apiPost({ action: "eqFix", id, items: JSON.stringify([it.id]), on }, 0); if (r && r.success) setL(r.data); else setMsg((r && r.error) || "更新失敗"); };
 
@@ -286,7 +287,7 @@ function Create({ apiGet, apiPost, C, s, chip, meta, setMsg, todayStr, quote, on
     const r = await apiPost({ action: "eqCreate", tpl: T.name, name: f.name, from: f.from, to: f.to || f.from, loc: f.loc, people: f.people, cakes: f.cakes,
       days: JSON.stringify(dlist.map(d => ({ d, n: Number(days[d]) || 0 }))), info: JSON.stringify(info), crew: JSON.stringify(crew), quote: quote ? quote.id : "" }, 0);
     if (r && r.success) {
-      if (cal) { const L = r.data; await apiPost({ action: "calSave", title: `${TYPE_ICON[L.type] || ""}${L.name}`, date: L.from, end: L.to, cat: CAL_CAT[L.type] || "活動", loc: L.loc || "", desc: "設備檢查清單 " + L.name }, 0); }
+      if (cal) { const L = r.data; await apiPost({ action: "eqCal", id: L.id || r.id, icon: TYPE_ICON[L.type] || "", cat: CAL_CAT[L.type] || "活動" }, 0); }
       setBusy(false); setMsg(`✅ 已建立「${r.data.name}」`); onDone(r.id);
     } else { setBusy(false); setMsg((r && r.error) || "建立失敗"); }
   };
