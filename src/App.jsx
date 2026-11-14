@@ -1302,10 +1302,10 @@ function HomeTab({ user, staffInfo, announcements, activeSeg, checklistDone, tod
       )}
 
       {/* Quick stats（v1.25 縮成一列；加盟主、總經理以上不顯示） */}
-      {showStats && <div style={{ ...s.card, display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:4, padding:"10px 6px" }}>
+      {/* v1.43：特休先不顯示（隊長 11/14：明年才開始） */}
+      {showStats && <div style={{ ...s.card, display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:4, padding:"10px 6px" }}>
         {[
           { label:"累計工時", value: staffInfo ? `${staffInfo.accumulated}h` : "—", color:C.gold },
-          { label:"特休剩餘", value: staffInfo ? `${staffInfo.leaveBalance ?? "—"}天` : "—", color:C.green },
           { label:"技能津貼", value: user.skillLevel !== undefined ? `+$${user.skillLevel}` : "—", color:C.blue },
           { label:"貢獻津貼", value: user.contribLevel !== undefined ? `+$${user.contribLevel}` : "—", color:C.gold },
         ].map(st => (
@@ -1891,6 +1891,33 @@ function LeaveTab({ user, activeSeg, locations, checklistDone, setChecklistDone,
 // ─────────────────────────────────────────────
 // OPS TAB
 // ─────────────────────────────────────────────
+// ── v1.43 勞健保卡片：自付額＋公司為你負擔（只對有投保的人顯示）──
+function InsCard({ user }) {
+  const [d, setD] = useState(null);
+  useEffect(() => { let ok = true; apiGet({ action:"getMyIns", empId:user.id }).then(r => { if (ok && r && r.success) setD(r.data); }); return () => { ok = false; }; }, [user.id]);
+  const lab = Number(d ? d.labor : user.labor) || 0, hea = Number(d ? d.health : user.health) || 0;
+  const le = Number(d?.laborEmp) || 0, he = Number(d?.healthEmp) || 0, pe = Number(d?.pensionEmp) || 0;
+  const row = (l, v, color) => (
+    <div key={l} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
+      <span style={{ fontSize:13, color:C.muted }}>{l}</span>
+      <span style={{ fontSize:13, fontWeight:700, color }}>{v}</span>
+    </div>);
+  const emp = [le > 0 && ["勞保（含就保、職災）", le], he > 0 && ["健保", he], pe > 0 && ["勞退（提撥到你的個人帳戶）", pe]].filter(Boolean);
+  return (
+    <div style={s.card}>
+      <div style={s.sectionTitle}>勞健保</div>
+      <div style={{ fontSize:12, color:C.muted, margin:"2px 0 2px" }}>你每月自付</div>
+      {lab > 0 && row("勞保自付", `NT$ ${lab.toLocaleString()}`)}
+      {hea > 0 && row("健保自付", `NT$ ${hea.toLocaleString()}`)}
+      {emp.length > 0 && <>
+        <div style={{ fontSize:12, color:C.muted, margin:"12px 0 2px" }}>公司每月為你負擔</div>
+        {emp.map(([l, v]) => row(l, `NT$ ${v.toLocaleString()}`, C.green))}
+        {row("公司負擔合計", `NT$ ${(le + he + pe).toLocaleString()}`, C.green)}
+        <div style={{ fontSize:11, color:C.light, marginTop:6, lineHeight:1.6 }}>以投保級距估算，實際以勞保局、健保署帳單為準。</div>
+      </>}
+    </div>);
+}
+
 function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, onPwChanged, onLogout, viewAs, links }) {
   const checkupDays = staffInfo?.checkupExpiry ? daysUntil(staffInfo.checkupExpiry) : 999;
   const latestSalary = salary.sort((a,b)=>String(b["年月"]).localeCompare(String(a["年月"])))[0];
@@ -1953,7 +1980,6 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
         <div style={s.sectionTitle}>出勤統計</div>
         {[
           ["累計工時", staffInfo ? `${staffInfo.accumulated} 小時` : "—"],
-          ["特休剩餘", staffInfo?.leaveBalance !== undefined ? `${staffInfo.leaveBalance} 天` : "—"],
           ["本月排班", `${schedule.length} 天`],
           ["體檢到期", staffInfo?.checkupExpiry || user.checkupExpiry || "—"],
         ].map(([l,v]) => (
@@ -1979,20 +2005,8 @@ function InfoTab({ user, staffInfo, salary, schedule, announcements, onRefresh, 
         ))}
       </div>
 
-      <div style={s.card}>
-        <div style={s.sectionTitle}>勞健保自付額</div>
-        {[
-          ["勞保自付", `NT$ ${user.labor ?? 0}`],
-          ["健保自付", `NT$ ${user.health ?? 0}`],
-          ["未投保補貼", user.noInsure > 0 ? `+NT$ ${user.noInsure}` : "已投保"],
-        ].map(([l,v]) => (
-          <div key={l} style={{ display:"flex", justifyContent:"space-between",
-                                padding:"8px 0", borderBottom:`1px solid ${C.border}` }}>
-            <span style={{ fontSize:13, color:C.muted }}>{l}</span>
-            <span style={{ fontSize:13, fontWeight:700 }}>{v}</span>
-          </div>
-        ))}
-      </div>
+      {/* v1.43：有投保才顯示，只列有投保的項目；另列公司負擔（隊長 11/14） */}
+      {(Number(user.labor) > 0 || Number(user.health) > 0) && <InsCard user={user} />}
 
       <NoteSettings C={C} s={s} />
       <ChangePasswordCard user={user} onChanged={onPwChanged} />
