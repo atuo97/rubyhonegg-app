@@ -161,7 +161,7 @@ export default function ArenaTab({ user, apiGet, apiPost, C, s }) {
         <div style={{ marginTop: 12 }}>
           <label style={s.label}>卡片（最多帶 3 張，每張一場用一次）</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {inv2.filter(i => i.cat === "card").length === 0 && <span style={{ fontSize: 12.5, color: C.light }}>還沒有卡片，可到赤心幣商店、扭蛋或小店取得</span>}
+            {inv2.filter(i => i.cat === "card").length === 0 && <span style={{ fontSize: 12.5, color: C.light }}>還沒有卡片，可到官方商店、扭蛋或小店取得</span>}
             {inv2.filter(i => i.cat === "card").map(i => { const on = (eq.cards || []).includes(i.id); return (
               <button key={i.id} disabled={busy} onClick={() => setEq({ cards: JSON.stringify(on ? eq.cards.filter(x => x !== i.id) : [...(eq.cards || []), i.id].slice(-3)) })}
                 style={{ border: `1px solid ${on ? C.accent : C.border}`, background: on ? C.accentBg : C.card, borderRadius: 12, padding: "6px 10px", fontSize: 12, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>

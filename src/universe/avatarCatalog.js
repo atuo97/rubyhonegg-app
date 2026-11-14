@@ -18,7 +18,7 @@ export const HAIR_COLORS = [
   { id: "brown", name: "咖啡", c: 0x5a3825 }, { id: "chestnut", name: "栗色", c: 0x8a5a2b },
   { id: "blonde", name: "亞麻金", c: 0xd9b45a }, { id: "red", name: "赤紅", c: 0xb83227 },
   { id: "pink", name: "櫻粉", c: 0xe58fb0 }, { id: "blue", name: "靛藍", c: 0x3d5a9a },
-  // 以下為赤心幣商店款(要先買)
+  // 以下為官方商店款(要先買)
   { id: "hc_mint", name: "薄荷綠", c: 0x7fd8be, shop: true }, { id: "hc_purple", name: "夢幻紫", c: 0x9b7fd8, shop: true },
   { id: "hc_silver", name: "銀白", c: 0xd9dde3, shop: true },
 ];
@@ -53,7 +53,7 @@ export const HATS = [
   { id: "c_ingot", name: "元寶頭飾", kind: "shop" }, { id: "c_lion", name: "舞獅頭", kind: "shop" },
   { id: "og_cap", name: "OG 紅帽", kind: "og", note: "測試版創始隊員" },   // v1.31 正式版時發給測試期隊員
 ];
-// 赤心幣商店／扭蛋:配件、服裝、名牌框(要先擁有才能穿,價格與來源以後端「商品目錄」為準)
+// 官方商店／扭蛋:配件、服裝、名牌框(要先擁有才能穿,價格與來源以後端「商品目錄」為準)
 export const ACCS = [
   { id: "none", name: "無" }, { id: "bowtie", name: "領結" }, { id: "scarf", name: "圍巾" }, { id: "backpack", name: "背包" },
   { id: "wings", name: "小翅膀" }, { id: "cape", name: "紅玉披風" }, { id: "halo", name: "光環" },

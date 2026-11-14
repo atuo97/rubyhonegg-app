@@ -2,6 +2,7 @@
 // 赤心幣(紅玉滿宇宙遊戲化)
 // 分頁:總覽、商店、扭蛋、寵物、徽章、團隊。資料來源:後端 gmMe(一次拿齊),各動作 gmBuy/gmGacha/…
 // ─────────────────────────────────────────────
+import { BagButtons } from "./Bag47.jsx";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
@@ -192,6 +193,7 @@ export default function GameTab({ user, apiGet, apiPost, C, s, initialTab, onEdi
             <div style={{ fontSize: 12, color: TIER_COLOR[gres.tier], fontWeight: 600 }}>{gres.tier}{gres.tier !== "普通" ? "！" : ""}</div>
             <div style={{ fontSize: 17, fontWeight: 600, marginTop: 2 }}>{ITEM_ICON[gres.item.cat] || "🎁"} {gres.item.name}</div>
             <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{gres.duplicate ? `已經有了，自動分解退回 ${gres.refund} 枚` : "已放進你的衣櫃"}</div>
+            {!gres.duplicate && <BagButtons kind={gres.item.cat === "petacc" ? "pet" : "look"} item={gres.item.id} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
           </div>}
           <div style={{ fontSize: 11, color: C.light, marginTop: 12, lineHeight: 1.6 }}>
             機率：普通 {100 - P["扭蛋機率_稀有"] - P["扭蛋機率_傳說"]}%、稀有 {P["扭蛋機率_稀有"]}%、傳說 {P["扭蛋機率_傳說"]}%<br />

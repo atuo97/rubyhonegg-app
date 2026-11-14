@@ -5,8 +5,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const FACES = ["", "😢", "😟", "😐", "🙂", "😄"];
-const LABEL = ["", "很低落", "有點累", "普通", "不錯", "很棒"];
+export const FACES = ["", "😢", "😟", "😐", "🙂", "😄"];
+export const LABEL = ["", "很低落", "有點累", "普通", "不錯", "很棒"];
 
 export default function MoodCard({ user, apiGet, apiPost, C, s }) {
   const [today, setToday] = useState(undefined), [pick, setPick] = useState(0), [note, setNote] = useState(""), [msg, setMsg] = useState(""), [team, setTeam] = useState(null), [edit, setEdit] = useState(false);

@@ -4,11 +4,12 @@
 // ─────────────────────────────────────────────
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { BagButtons } from "./Bag47.jsx";
 
 const W = 320, H = 400, FLOOR = 330, TOP = 40, CHUTE = 46;
 const TOYS = [["🪙", 80], ["🦖", 125], ["💰", 170], ["🧸", 215], ["🪙", 255], ["🪴", 105], ["🎟️", 190], ["🪙", 238]];
 
-export default function Claw42({ apiPost, C, s, onClose }) {
+export default function Claw42({ apiPost, apiGet, C, s, onClose }) {
   const cv = useRef(null), st = useRef({ x: 160, y: TOP, phase: "idle", open: 1, carry: null, dir: 0, t: 0 });
   const [busy, setBusy] = useState(false), [msg, setMsg] = useState("用 ◀ ▶ 移動夾子，對準了再按「夾！」"), [info, setInfo] = useState(null);
   const toys = useRef(TOYS.map(([e, x], i) => ({ e, x, y: FLOOR - (i >= 5 ? 34 : 4), alive: true })));
@@ -56,14 +57,14 @@ export default function Claw42({ apiPost, C, s, onClose }) {
     setBusy(true); setMsg("夾…夾…");
     const r = await apiPost({ action: "v42Claw", align }, 0);
     if (!(r && r.success)) { setBusy(false); setMsg((r && r.error) || "失敗了，再試一次"); return; }
-    const d = r.data; setInfo(d);
+    const d = r.data; setInfo({ ...d, show: false });
     S.win = d.win; S.toy = near && Math.abs(near.x - S.x) < 40 ? near : null;
     S.target = S.toy ? S.toy.y - 52 : FLOOR - 52; S.dropAt = TOP + 60 + Math.random() * 120;
     if (d.win && !S.toy) S.toy = near;
     if (d.win && S.toy && d.emoji) S.toy.e = d.emoji;   // 夾起來的就是抽中的那個小配件
     S.phase = "down";
     S.done = () => {
-      setBusy(false);
+      setBusy(false); setInfo(x => x ? { ...x, show: true } : x);
       setMsg(d.win ? `🎉 夾到了！${d.emoji || ""} ${d.prize}` : d.miss >= d.pity - 3 ? `差一點！再 ${d.pity - d.miss} 次一定夾得到` : ["差一點點！", "滑掉了…再來一次？", "好可惜！"][Math.floor(Math.random() * 3)]);
       if (d.win && toys.current.filter(t => t.alive).length < 3) toys.current = TOYS.map(([e, x], i) => ({ e, x, y: FLOOR - (i >= 5 ? 34 : 4), alive: true }));
     };
@@ -75,6 +76,7 @@ export default function Claw42({ apiPost, C, s, onClose }) {
       <div style={{ width: "100%", maxWidth: 360, background: "#fff7fb", borderRadius: 20, padding: 12, boxShadow: "0 10px 30px rgba(0,0,0,.4)" }}>
         <canvas ref={cv} width={W} height={H} style={{ width: "100%", borderRadius: 12, display: "block" }} />
         <div style={{ fontSize: 13.5, textAlign: "center", margin: "8px 0", minHeight: 20, color: "#7a2a4a", fontWeight: 600 }}>{msg}</div>
+        {info && info.show && info.win && (info.item || /扭蛋券/.test(info.prize || "")) && <div style={{ marginBottom: 8 }}><BagButtons kind={info.item ? "deco" : "ticket"} item={info.item} apiGet={apiGet || ((q, n) => apiPost(q, n))} apiPost={apiPost} C={C} s={s} onDone={onClose} /></div>}
         <div style={{ display: "flex", gap: 8 }}>
           <button style={{ ...btn, background: "#ffd1e3" }} onPointerDown={hold(-1)} onPointerUp={release} onPointerLeave={release} onPointerCancel={release}>◀</button>
           <button disabled={busy} onClick={grab} style={{ ...btn, flex: 1.4, background: busy ? "#ccc" : "#ff6fa8", color: "#fff" }}>夾！<span style={{ display: "block", fontSize: 11, fontWeight: 400 }}>1 枚</span></button>

@@ -5,7 +5,7 @@
 //   birthday 生日派對（有人生日時，宇宙辦公室改播這首）
 // 只在樂園、宇宙辦公室、遊戲頁播放；工作頁（首頁、打卡、叫貨…）不播。第一次進樂園會問要不要開，之後在「我的」可以調音量或關掉
 // 其他遊戲要換曲：window.rhBgm.push("battle") 開始、window.rhBgm.pop() 結束（回到原本那一首）
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const KEY = "rh_bgm";
 const load = () => { try { return Object.assign({ on: null, vol: 0.5 }, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch (e) { return { on: null, vol: 0.5 }; } };
@@ -168,7 +168,7 @@ export function BgmAsk({ C, s }) {
   return (
     <div style={{ ...s.card, display: "flex", alignItems: "center", gap: 10, background: "#fff7e6", border: `1px solid ${C.goldBg}` }}>
       <span style={{ fontSize: 24 }}>🎵</span>
-      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}><b>要開背景音樂嗎？</b><br /><span style={{ color: C.muted, fontSize: 12 }}>只在樂園、宇宙辦公室和遊戲播放；之後隨時按右上角 🔊 開關，音量在首頁最下面調</span></div>
+      <div style={{ flex: 1, fontSize: 13, lineHeight: 1.5 }}><b>要開背景音樂嗎？</b><br /><span style={{ color: C.muted, fontSize: 12 }}>只在樂園、宇宙辦公室和遊戲播放；之後隨時按右上角 🔊 開關；長按 🔊 可以調音量、選曲</span></div>
       <button onClick={() => bgm.set({ on: true })} style={{ ...s.btn("primary"), width: "auto", padding: "8px 12px", fontSize: 13 }}>開</button>
       <button onClick={() => bgm.set({ on: false })} style={{ ...s.btn("ghost"), width: "auto", padding: "8px 10px", fontSize: 13 }}>不用</button>
     </div>
@@ -176,12 +176,16 @@ export function BgmAsk({ C, s }) {
 }
 
 // v1.39：頂端列的一鍵開關（隨時能關）
-export function BgmToggle({ C }) {
+export function BgmToggle({ C, onLong }) {   // v1.47 長按開音樂設定
   const [st, setSt] = useState(bgm.get());
+  const lp = useRef({ t: null, fired: false });
+  const down = () => { lp.current.fired = false; clearTimeout(lp.current.t); if (onLong) lp.current.t = setTimeout(() => { lp.current.fired = true; onLong(); }, 550); };
+  const up = () => clearTimeout(lp.current.t);
   useEffect(() => { const f = () => setSt(bgm.get()); window.addEventListener("rh-bgm", f); return () => window.removeEventListener("rh-bgm", f); }, []);
   const on = !!st.on;
   return (
-    <button onClick={() => bgm.set({ on: !on })} aria-label={on ? "關閉背景音樂" : "開啟背景音樂"} title={on ? "關閉背景音樂" : "開啟背景音樂"}
+    <button onPointerDown={down} onPointerUp={up} onPointerLeave={up} onPointerCancel={up} onContextMenu={e => e.preventDefault()}
+      onClick={() => { if (lp.current.fired) { lp.current.fired = false; return; } bgm.set({ on: !on }); }} aria-label={on ? "關閉背景音樂" : "開啟背景音樂"} title={on ? "關閉背景音樂" : "開啟背景音樂"}
       style={{ width: 38, height: 38, borderRadius: 19, border: `1px solid ${C.border}`, background: on ? C.accentBg : C.card, fontSize: 17, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, flexShrink: 0 }}>
       {on ? "🔊" : "🔇"}
     </button>

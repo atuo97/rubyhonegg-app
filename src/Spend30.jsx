@@ -1,4 +1,5 @@
 // v1.30 赤心幣新花費：我的座位、進場特效、稱號、寵物進階、裝備強化、季節扭蛋＋扭蛋券、全員大魔王、和隊長吃飯
+import { BagButtons } from "./Bag47.jsx";
 import { useState, useEffect } from "react";
 import { Flash } from "./TopToast.jsx";
 import { PetSprite, PET_SKINS } from "./pets/petSprites.jsx";
@@ -11,7 +12,7 @@ const BOSS_ICON = { "燒焦怪": "🔥", "麵糊黏黏怪": "🫠", "停電魔�
 const STAT = { atk: "攻擊", def: "防禦", hp: "體力", spd: "速度" };
 const statTxt = o => Object.keys(o || {}).map(k => (STAT[k] || k) + " +" + o[k]).join("、");
 
-export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, only, hideBalance }) {   // v1.33 only：只顯示某一類（給赤心幣商店用）
+export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, only, hideBalance }) {   // v1.33 only：只顯示某一類（給官方商店用）
   const [d, setD] = useState(null), [tab, setTab] = useState(only || initial || "seat"), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
   const [hit, setHit] = useState(""), [gres, setGres] = useState(null), [mealNote, setMealNote] = useState(""), [mealDate, setMealDate] = useState({}), [demo, setDemo] = useState("");
   const load = () => apiGet({ action: "s30Me" }, 0).then(r => setD(r && r.success ? r.data : { error: (r && r.error) || "讀取失敗" }));
@@ -168,6 +169,7 @@ export function SpendPage({ user, apiGet, apiPost, C, s, initial, onChanged, onl
           <div style={{ fontSize: 12, color: TIER[gres.tier], fontWeight: 600 }}>{gres.tier}{gres.tier !== "普通" ? "！" : ""}</div>
           <div style={{ fontSize: 17, fontWeight: 600, marginTop: 2 }}>{ICON[gres.item.cat] || "🎁"} {gres.item.name}</div>
           <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>{gres.duplicate ? `已經有了，自動分解退回 ${gres.refund} 枚` : "已放進你的衣櫃，到換裝頁穿上"}</div>
+          {!gres.duplicate && <BagButtons kind={gres.item.cat === "petacc" ? "pet" : "look"} item={gres.item.id} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         </div>}
       </div>
       {d.season.list.map(x => { const list = d.items.filter(i => i.where === "季節扭蛋" && i.series === x.series), have = list.filter(i => i.owned).length; return <div key={x.series} style={s.card}>

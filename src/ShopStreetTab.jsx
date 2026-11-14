@@ -1,6 +1,7 @@
 // ─────────────────────────────────────────────
 // 隊員小店(商店街)。累計工時達門檻可開店;收入店主 80%、系統 20%。後端:spList / spOpen / spUpdate / spBuy / spGiftRead
 // ─────────────────────────────────────────────
+import { BagButtons } from "./Bag47.jsx";
 import { useEffect, useState } from "react";
 import { Flash } from "./TopToast.jsx";
 import { Coin, Heart } from "./Coin.jsx";
@@ -9,7 +10,7 @@ import { TryOn } from "./GameTab.jsx";   // v1.33 點商品看詳細
 const TYPE_ICON = { "咖啡店": "☕", "甜點店": "🧁", "花店": "💐", "武器鋪": "⚔️", "卡片屋": "🃏", "雜貨店": "🧸",
   "服飾店": "👕", "陀螺對戰店": "🌀", "寵物用品店": "🐾", "書店": "📚", "照相館": "📸", "家具行": "🛋️", "冰店": "🍧", "玩具店": "🧸", "坐騎改裝店": "🔧" };   // v1.40 新店種
 const CAT_LABEL = { gift: "禮物（送同事）", petsnack: "寵物零食", decor: "收藏", weapon: "武器", armor: "防具", card: "對戰卡片", wear: "造型（買了就能穿）" };
-const effectText = e => { const a = String(e || "").split(":"); if (a[0] === "wear") return /^macc_/.test(a[1]) ? "坐騎配件，到「赤心幣商店 → 坐騎」裝上" : "到「我的造型」換上"; if (a[0] === "petsnack") return `寵物成長 +${a[1]} 小時`; if (a[0] === "card") return { heal: "補血", power: "增強攻擊", shield: "護盾" }[a[1]] + " " + a[2]; if (a[0] === "gift" || a[0] === "decor") return a[1]; return String(e || "").replace(/atk/g, "攻").replace(/def/g, "防").replace(/hp/g, "血").replace(/spd/g, "速").replace(/:/g, "+"); };
+const effectText = e => { const a = String(e || "").split(":"); if (a[0] === "wear") return /^macc_/.test(a[1]) ? "坐騎配件，到「官方商店 → 坐騎」裝上" : "到「我的造型」換上"; if (a[0] === "petsnack") return `寵物成長 +${a[1]} 小時`; if (a[0] === "card") return { heal: "補血", power: "增強攻擊", shield: "護盾" }[a[1]] + " " + a[2]; if (a[0] === "gift" || a[0] === "decor") return a[1]; return String(e || "").replace(/atk/g, "攻").replace(/def/g, "防").replace(/hp/g, "血").replace(/spd/g, "速").replace(/:/g, "+"); };
 
 export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
   const [peek, setPeek] = useState(null);
@@ -25,10 +26,16 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
   const [editKey, setEditKey] = useState("");       // v1.40 正在管理哪一家
   const [topup, setTopup] = useState("");
   const [prop, setProp] = useState({ name: "", idea: "" });
+  const [got, setGot] = useState(null);             // v1.47 買到可裝備的東西：顯示「立刻裝上」「去背包看」
   const load = async () => { const r = await apiGet({ action: "spList", empId: user.id }, 1); if (r && r.success) { setD(r.data); setErr(""); } else setErr((r && r.error) || "小店功能尚未開通"); };
   useEffect(() => { load(); }, []);
   const flash = t => { setToast(t); setTimeout(() => setToast(""), 2600); };
   const post = async (payload, ok) => { setBusy(true); const r = await apiPost({ empId: user.id, ...payload }, 0); setBusy(false); if (r && r.success) { ok && flash(ok); await load(); return true; } flash((r && r.error) || "失敗"); return false; };
+  const buyIt = async (shop, it) => {   // v1.47
+    const ok = await post({ action: "spBuy", owner: shop.key || shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！");
+    const w = /^wear:/.test(it.effect || "") ? String(it.effect).slice(5) : "";
+    if (ok && w) setGot({ kind: /^macc_/.test(w) ? "macc" : /^pet_/.test(w) ? "pet" : "look", item: w, name: it.name });
+  };
   if (err) return <div style={{ ...s.card, textAlign: "center", color: C.muted }}>{err}</div>;
   if (!d) return <div className="rh-skel" style={{ height: 160, borderRadius: 18 }} />;
   const people = d.people || (staff || []).filter(p => String(p.id) !== String(user.id));
@@ -52,12 +59,13 @@ export default function ShopStreetTab({ user, apiGet, apiPost, C, s, staff }) {
             <div style={{ flex: 1, cursor: "pointer" }} onClick={() => setPeek(it)}><div style={{ fontSize: 14, fontWeight: 600 }}>{it.name} <span style={{ fontSize: 10.5, color: C.accent, fontWeight: 500 }}>看看</span></div><div style={{ fontSize: 11.5, color: C.muted }}>{CAT_LABEL[it.cat]}・{effectText(it.effect)}</div></div>
             {it.cat === "gift" && <select value={giftTo} onChange={e => setGiftTo(e.target.value)} style={{ ...s.input, width: 100, padding: "7px 8px", fontSize: 12.5 }}>
               <option value="">送給…</option>{people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
-            <button disabled={busy || shop.owner === user.id || (it.cat === "gift" && !giftTo)} onClick={() => post({ action: "spBuy", owner: shop.key || shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！")}
+            <button disabled={busy || shop.owner === user.id || (it.cat === "gift" && !giftTo)} onClick={() => buyIt(shop, it)}
               style={{ ...s.btn("primary"), width: "auto", padding: "7px 12px", fontSize: 12.5, opacity: busy || shop.owner === user.id || (it.cat === "gift" && !giftTo) ? .5 : 1 }}><Coin n={it.price} size={12} /></button>
           </div>))}
         {peek && <TryOn item={{ ...peek, note: CAT_LABEL[peek.cat] + "・" + effectText(peek.effect), price: peek.cat === "gift" && !giftTo ? 0 : peek.price, where: peek.cat === "gift" && !giftTo ? "先在清單選「送給…」" : "" }}
           user={user} apiGet={apiGet} balance={d.balance} busy={busy} C={C} s={s} onClose={() => setPeek(null)}
-          onBuy={async () => { const it = peek; setPeek(null); await post({ action: "spBuy", owner: shop.key || shop.owner, item: it.id, to: giftTo }, it.cat === "gift" ? "禮物送出了！" : "買到了！"); }} />}
+          onBuy={async () => { const it = peek; setPeek(null); await buyIt(shop, it); }} />}
+        {got && <div style={{ ...s.card, background: C.accentBg }}><div style={{ fontSize: 14, fontWeight: 600 }}>🎉 買到「{got.name}」了</div><BagButtons kind={got.kind} item={got.item} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onDone={() => setGot(null)} /></div>}
         {toast && <Flash text={toast} />}
       </div>
     );

@@ -249,7 +249,7 @@ export default function PhotoBooth44({ apiPost, s, onClose, onSaved, engine, me 
 }
 
 // 我的相簿（我的 → 我的相簿）
-export function AlbumPage({ apiPost, C, s }) {
+export function AlbumPage({ apiPost, C, s, onShoot }) {
   const [list, setList] = useState(null), [view, setView] = useState(null), [err, setErr] = useState("");
   const load = async () => { const r = await apiPost({ action: "v44Photos" }, 0); if (r && r.success) setList(r.data || []); else { setList([]); setErr((r && r.error) || "讀取失敗"); } };
   useEffect(() => { load(); }, []);
@@ -269,10 +269,11 @@ export function AlbumPage({ apiPost, C, s }) {
       <div style={s.card}>
         <div style={s.sectionTitle}>📸 我的相簿</div>
         <div style={{ fontSize: 12.5, color: C.muted }}>在宇宙辦公室「遊戲室」的拍貼機拍的照片都在這裡，只有你自己看得到。</div>
+        {onShoot && <button onClick={onShoot} style={{ ...s.btn("primary"), marginTop: 10 }}>📸 去拍一張</button>}
       </div>
       {list === null && <div style={{ textAlign: "center", color: C.muted, padding: 20 }}>讀取中…</div>}
       {err && <div style={{ color: C.red, fontSize: 13, padding: 8 }}>{err}</div>}
-      {list && !list.length && !err && <div style={{ ...s.card, textAlign: "center", color: C.muted }}>還沒有照片。到宇宙辦公室 → 遊戲室，點「拍貼機」拍一張吧！</div>}
+      {list && !list.length && !err && <div style={{ ...s.card, textAlign: "center", color: C.muted }}>還沒有照片。按上面「📸 去拍一張」吧！</div>}
       {list && list.length > 0 && <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
         {list.map(x => (
           <button key={x.id} onClick={() => open(x)} style={{ padding: 0, border: "none", background: "#fff", borderRadius: 10, overflow: "hidden", cursor: "pointer", boxShadow: "0 1px 4px rgba(0,0,0,.12)" }}>
