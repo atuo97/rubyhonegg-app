@@ -15,6 +15,7 @@ export const SCENES = {
   canteen: { x: 40,  name: "飯堂",         short: "飯堂",   icon: "🍱", aisle: 4.6, bld: true, w: 16 },
   gameroom:{ x: 56,  name: "遊戲室",       short: "遊戲室", icon: "🎮", aisle: 4.6, bld: true, w: 16 },
   gym:     { x: 72,  name: "運動室",       short: "運動室", icon: "💪", aisle: 4.6, bld: true, w: 16 },
+  study:   { x: 88,  name: "學習室",       short: "學習室", icon: "📚", aisle: 4.6, bld: true, w: 16 },   // v1.42 證照、課程、SOP
   factory: { x: 120, name: "工廠",         short: "工廠",   icon: "🏭", aisle: 2.6 },
   xinyi:   { x: 160, name: "遠百信義",     short: "信義",   icon: "🏙️", aisle: -2.8, store: true, focus: { x: 0.5, z: -0.8, zoom: 1.7 } },
   hall:    { x: 200, name: "國家音樂廳",   short: "音樂廳", icon: "🎻", aisle: -2.8, store: true, focus: { x: 0.2, z: -1.2, zoom: 1.6 } },
@@ -46,6 +47,7 @@ export function sceneOf(loc = "") {
   if (/飯堂|餐廳/.test(loc)) return "canteen";
   if (/遊戲室/.test(loc)) return "gameroom";
   if (/運動室|健身/.test(loc)) return "gym";
+  if (/學習室/.test(loc)) return "study";
   if (/辦公/.test(loc)) return "office";
   if (/商店街/.test(loc)) return "street";
   if (/美麗華/.test(loc)) return "meili";
@@ -724,8 +726,17 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     drawList("status", "🏪 櫃位狀態", "#2e6da4", rows, "目前沒有櫃位營業");
   }
   function drawAttend(list) {
-    const on = (list || []).filter(p => !p.resting && !p.isBoss);
-    drawList("attend", "☀️ 今日出勤 " + on.length + " 人", "#e67e22", on.map(p => [p.name, shortLoc(p.location || "").slice(0, 6), "#1e8449"]), "大家早安！今天也加油");
+    const on = (list || []).filter(p => !p.resting && !p.isBoss), lb = GAME.lobby || {};
+    const top = [...(lb.welcome || []).map(x => ["🎉 歡迎 " + x.name, "新隊員", "#c0392b"]), ...(lb.anniv || []).map(x => ["🎂 " + x.name, "到職 " + x.years + " 週年", "#c0392b"])];
+    drawList("attend", "☀️ 今日出勤 " + on.length + " 人", "#e67e22", [...top, ...on.map(p => [p.name, shortLoc(p.location || "").slice(0, 6), "#1e8449"])], "大家早安！今天也加油");
+  }
+  // v1.42 感謝牆、證照榮譽牆、運動室（比賽公告＋完賽榮譽牆）
+  function drawWalls() {
+    drawList("thanks", "💌 感謝牆", "#e84393", (GAME.thanks || []).slice(0, 6).map(t => [t.fromName + " → " + t.toName, t.text.slice(0, 9), "#7a2a4a"]), "點隊員 →「💌 謝謝」貼一張");
+    const w = GAME.bfWall || {};
+    drawList("cert", "🎓 證照榮譽牆", "#2e86c1", (w.cert || []).map(x => [x.name, x.title.slice(0, 9), "#2e6da4"]), "考取證照，學費補 50%");
+    const ev = (GAME.events || []).slice(0, 3).map(x => ["🏃 " + x.name, x.date.slice(5).replace("-", "/"), "#27ae60"]);
+    drawList("sport", "🏃 比賽公告・完賽榜", "#27ae60", [...ev, ...(w.sport || []).slice(0, 6 - ev.length).map(x => ["🏅 " + x.name, x.title.slice(0, 8), "#c0392b"])], "到大廳服務台貼比賽，一起報名！");
   }
   // 小型雙軸烤爐（攤車、櫃屋用）：一組三台，中間那台有人就三台一起開
   function miniOvens(P, xs, y, z) {
@@ -1727,6 +1738,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     bldRoom(P, 24, 0xe9d6b6, 0x8a5a3b, 0xc0392b, "glass", [0xe2c9a1, 0xefdcbc]);
     put(P, textPlane("休息區 · 隊員座位", 6, 0.9, { bg: "#c0392b", color: "#fff3e0", size: 46 }), -5.5, 3.5, -5.95);
     put(P, textPlane("休息區 LOUNGE", 6, 1.4), 6.5, 0.03, 4.7, 0, -Math.PI / 2);
+    REVB.thanks = wallBoard(P, "thanks", 6.0, 1.9, -6.0, 3.3, 2.27);   // v1.42 感謝牆
     // 右半：三排長沙發（每排 8 位）＋茶几
     const SOFA = [0x2e86c1, 0x27ae60, 0xe67e22];
     [-4.3, -1.7, 0.9].forEach((z, r) => [3.6, 8.4].forEach(cx => {
@@ -1747,7 +1759,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     SLOTS.seats = PUBLIC_SEATS_INIT();
   }
   function PUBLIC_SEATS_INIT() { return new Array(12).fill(null).concat(PUBLIC.map(x => ({ ...x }))); }   // 0～11 是買來的座位（syncSeats 填），12 起是公用座位
-  function seatXZ(i) { return { x: -10.2 + (i % 4) * 3.0, z: -4.7 + Math.floor(i / 4) * 2.45 }; }
+  function seatXZ(i) { return { x: -10.2 + (i % 4) * 3.0, z: -3.9 + Math.floor(i / 4) * 2.45 }; }   // v1.42 桌子轉向，人坐在桌子後面
   function seatDesk(P, x, z, kind) {
     const top = { desk_white: 0xf4f1ea, desk_game: 0x23232b, desk_boss: 0xa93226 }[kind] || 0x9b6b43;
     const leg = { desk_white: 0xd0d0d0, desk_game: 0x111111, desk_boss: 0x7b241c }[kind] || 0x5d3a1f;
@@ -1791,13 +1803,15 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const P = seatsG = new THREE.Group(); GROUP_OF.seats.add(P);
     (GAME.seats || []).slice(0, 12).forEach((st, i) => {
       const { x, z } = seatXZ(i);
-      const fx = seatDesk(P, x, z, st.desk); fx.seat = true;
-      seatChair(P, x, z + 0.9, st.chair);
-      (st.deco || []).slice(0, 3).forEach((d, j) => seatDeco(P, x + [-0.7, 0.72, -0.42][j], z + [0.2, 0.15, -0.2][j], d));
-      if (st.den) seatDen(P, x - 1.3, z + 1.45, st.den);
+      // v1.42 桌子面向鏡頭：桌子、椅子、擺飾畫在轉 180° 的小群組裡，人坐在桌子後面、臉朝畫面
+      const D = new THREE.Group(); D.position.set(x, 0, z); D.rotation.y = Math.PI; P.add(D);
+      const fx = seatDesk(D, 0, 0, st.desk); fx.seat = true;
+      seatChair(D, 0, 0.9, st.chair);
+      (st.deco || []).slice(0, 3).forEach((d, j) => seatDeco(D, [-0.7, 0.72, -0.42][j], [0.2, 0.15, -0.2][j], d));
+      if (st.den) seatDen(P, x - 1.3, z - 0.9, st.den);
       put(P, textPlane(st.name, 1.1, 0.26, { bg: "#fff3e0", color: "#7a2a1a", size: 40 }), x, 0.72, z + 0.565);
       SEAT_IDX[String(st.id)] = i;
-      SLOTS.seats[i] = { x, z: z + 0.9, rotY: Math.PI, sit: st.chair !== "chair_bean", anim: "type", fx, via: [{ x: x + 1.5, z: z + 0.9 }] };
+      SLOTS.seats[i] = { x, z: z - 0.9, rotY: 0, sit: st.chair !== "chair_bean", anim: "type", fx, via: [{ x: x + 1.5, z: z - 0.9 }] };
     });
   }
 
@@ -1819,6 +1833,14 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     box(1.6, 0.4, 0.8, 0x6e4b2a, 4.4, 0.2, 0.6, P); box(0.4, 0.06, 0.3, 0xffffff, 4.2, 0.43, 0.6, P);
     plant(P, -7.3, -5.3); plant(P, 7.2, -5.3); plant(P, -7.3, 2.0);
     put(P, textPlane("歡迎光臨 WELCOME", 5, 1.2), -1.5, 0.03, 3.2, 0, -Math.PI / 2);
+    // v1.42 福利櫃檯（點一下申請補助）＋意見箱
+    box(2.6, 1.1, 0.8, 0x2e86c1, -5.4, 0.55, -0.6, P); box(2.8, 0.08, 1.0, 0xdfe6ec, -5.4, 1.12, -0.6, P);
+    const bfSign = put(P, textPlane("🎁 福利櫃檯", 2.6, 0.6, { bg: "#2e86c1", color: "#fff", size: 64 }), -5.4, 1.8, -0.6);
+    const bfFront = put(P, textPlane("點我申請補助", 2.4, 0.45, { bg: "#fff", color: "#2e86c1", size: 52 }), -5.4, 0.6, -0.19);
+    BOARD_HIT.push({ mesh: bfSign, key: "benefit" }, { mesh: bfFront, key: "benefit" });
+    box(0.7, 1.1, 0.6, 0xc0392b, -5.4, 0.55, 1.6, P); box(0.4, 0.06, 0.1, 0x222222, -5.4, 1.0, 1.91, P);
+    const ideaSign = put(P, textPlane("📮 意見箱", 1.4, 0.4, { bg: "#c0392b", color: "#fff", size: 60 }), -5.4, 1.4, 1.92);
+    BOARD_HIT.push({ mesh: ideaSign, key: "idea" });
     SLOTS.lobby = [
       { x: -2.0, z: -3.4, rotY: 0, anim: "stand" },
       { x: 3.6, z: -0.6, rotY: 0, sit: true, anim: "sit" }, { x: 5.2, z: -0.6, rotY: 0, sit: true, anim: "sit" },
@@ -1867,7 +1889,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const cg = glassBox(1.5, 1.5, 1.5, 0xffffff, 0.22); cg.position.set(0.8, 1.75, -4.6); P.add(cg); box(1.6, 0.3, 1.6, 0xff6fa8, 0.8, 2.65, -4.6, P);
     [[0.5, -4.9, 0xf1c40f], [1.0, -4.4, 0xe74c3c], [0.6, -4.3, 0x3498db], [1.1, -4.9, 0x2ecc71]].forEach(q => box(0.3, 0.3, 0.3, q[2], q[0], 1.16, q[1], P));
     box(0.05, 0.5, 0.05, 0xcccccc, 0.8, 2.25, -4.6, P); box(0.3, 0.08, 0.3, 0xcccccc, 0.8, 1.98, -4.6, P);
-    put(P, textPlane("夾娃娃機", 1.5, 0.3, { bg: "#ff6fa8", color: "#fff", size: 60 }), 0.8, 2.65, -3.78);
+    const clawSign = put(P, textPlane("夾娃娃機", 1.5, 0.3, { bg: "#ff6fa8", color: "#fff", size: 60 }), 0.8, 2.65, -3.78);
+    BOARD_HIT.push({ mesh: clawSign, key: "claw" }, { mesh: cg, key: "claw" });   // v1.42 點夾娃娃機就能玩
     // 扭蛋機
     box(0.9, 0.8, 0.9, 0xc0392b, 2.6, 0.4, -5.0, P); const gb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); gb.position.set(2.6, 1.3, -5.0); P.add(gb);
     [[2.4, 1.2, -5.0, 0xf1c40f], [2.8, 1.25, -4.9, 0x3498db], [2.6, 1.05, -4.8, 0xe74c3c]].forEach(q => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mat(q[3])); b.position.set(q[0], q[1], q[2]); P.add(b); });
@@ -1915,6 +1938,28 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     [-5.6, -4.0, -2.4].forEach(x => G.push({ x, z: 0.8, rotY: Math.PI / 4, anim: "stretch", act: "stretch" }));
     plant(P, 7.2, 2.6);
     SLOTS.gym = G;
+  }
+  // ── v1.42 學習室：課程與證照公告、證照榮譽牆、白板、讀書桌、SOP 教學螢幕 ──
+  {
+    const P = group("study");
+    bldRoom(P, 16, 0xe6dccb, 0x6e5a48, 0x2e86c1, "door", [0xddd2bf, 0xece3d3]);
+    put(P, textPlane("學習室 · 一起變更強", 5, 0.8, { bg: "#2e86c1", color: "#fff", size: 46 }), -4.5, 3.55, -5.95);
+    REVB.cert = wallBoard(P, "cert", 4.4, 1.9, -6.0, 3.3, 2.27);
+    box(3.6, 2.0, 0.08, 0xffffff, -4.6, 1.9, -5.92, P); box(3.7, 0.08, 0.2, 0x95a5a6, -4.6, 0.86, -5.85, P);
+    put(P, textPlane("烘焙・中餐・衛生・管理", 3.3, 0.5, { color: "#2e6da4", size: 54 }), -4.6, 2.4, -5.86);
+    put(P, textPlane("證照考取 → 學費補 50%", 3.3, 0.45, { color: "#c0392b", size: 50 }), -4.6, 1.7, -5.86);
+    shelf(P, 7.3, -2.5, -Math.PI / 2, "book"); shelf(P, 7.3, 0.5, -Math.PI / 2, "book");
+    const ST = [];
+    [[-4.6, -2.4], [-1.4, -2.4], [-4.6, 0.4], [-1.4, 0.4]].forEach(([x, z]) => {
+      box(2.2, 0.1, 1.0, 0xc49a6c, x, 0.85, z, P); [[-1, -0.4], [1, -0.4], [-1, 0.4], [1, 0.4]].forEach(q => box(0.08, 0.82, 0.08, 0x6e4b2a, x + q[0], 0.41, z + q[1], P));
+      box(0.5, 0.08, 0.36, [0xe74c3c, 0x3498db, 0x27ae60][ST.length % 3], x - 0.5, 0.94, z, P); box(0.36, 0.05, 0.26, 0xffffff, x + 0.4, 0.92, z, P);
+      [-0.5, 0.5].forEach(dx => { box(0.6, 0.1, 0.55, 0x34495e, x + dx, 0.55, z + 0.85, P); ST.push({ x: x + dx, z: z + 0.85, rotY: Math.PI, sit: true, anim: "type" }); });
+    });
+    // SOP 教學螢幕
+    box(2.4, 1.4, 0.12, 0x1b2631, 2.6, 2.0, -5.9, P);
+    put(P, textPlane("▶ SOP 教學", 2.2, 1.2, { bg: "#2c3e50", color: "#ffe066", size: 70 }), 2.6, 2.0, -5.83);
+    plant(P, 7.2, 2.6); plant(P, -7.3, 2.6);
+    SLOTS.study = ST;
   }
   // 會議桌和大廳共用辦公區的座標系
   SLOTS.meet = SLOTS.meet || [];
@@ -2353,7 +2398,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     ray.setFromCamera(ndc, camera);
     if (!ray.ray.intersectPlane(ground, gp)) return;
     const bld = SCENES[m.scene].bld, sx = SCENES[m.scene].x, hw = (SCENES[m.scene].w || 16) / 2 - 0.6;
-    const x = bld ? Math.max(-23.4, Math.min(79.4, gp.x)) : Math.max(sx - hw, Math.min(sx + hw, gp.x)), z = Math.max(-5.2, Math.min(5.2, gp.z));
+    const x = bld ? Math.max(-23.4, Math.min(95.4, gp.x)) : Math.max(sx - hw, Math.min(sx + hw, gp.x)), z = Math.max(-5.2, Math.min(5.2, gp.z));
     const c = m.c, id = (m.manualId = (m.manualId || 0) + 1);
     c.sit = false; c.anim = "walk"; m.arrived = false; c.baseY = 0;
     const roomAt = X => SCENE_KEYS.find(k => SCENES[k].bld && !SCENES[k].virtual && Math.abs(X - SCENES[k].x) <= SCENES[k].w / 2);
@@ -2841,8 +2886,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
   }
   drawRevOffice([]); drawOpsBoards({}); drawStatus({}); drawAttend([]);
   drawList("menu", "🍱 今日菜單", "#c0392b", [["主廚推薦", "敬請期待"], ["飯後甜點", "現烤雞蛋糕"]], "");
-  drawList("rank", "🏆 遊戲排行榜", "#8e44ad", [["消消樂", "即將開放"], ["疊疊樂", "即將開放"], ["麵糊大作戰", "即將開放"]], "");
-  drawList("sport", "🏃 運動室", "#27ae60", [["跑步機", "🏃"], ["大魔王沙包", "👊"], ["瑜伽", "🧘"], ["重訓", "🏋️"], ["伸展", "🙆"]], "點自己 →「💪 去運動」，不限次數");
+  drawList("rank", "🏆 遊戲室", "#8e44ad", [["🧸 夾娃娃機", "點機台就能玩"], ["消消樂排行", "即將開放"], ["疊疊樂排行", "即將開放"], ["麵糊大作戰排行", "即將開放"]], "");
+  drawWalls();
   size(); raf = requestAnimationFrame(loop);
 
   return {
@@ -2885,6 +2930,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (ch("shops")) syncShops(GAME.shops);
       if (ch("mounts")) syncMounts();
       if (ch("boards")) drawOpsBoards(GAME.boards);
+      if (ch("thanks") || ch("bfWall") || ch("events")) drawWalls();
+      if (ch("lobby")) drawAttend(lastList);
     },
     // v1.40 即時營業額：辦公室布告欄排名＋各櫃位看板
     setRev(list) {

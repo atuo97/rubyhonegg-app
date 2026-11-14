@@ -1,4 +1,5 @@
 // v1.26 食安稽查：冰箱溫度、儀容勾選、稽查資料、體檢表、食安管理、SOP 教學
+import { BenefitForm } from "./Benefit42.jsx";
 import { useState, useEffect } from "react";
 import { Flash } from "./TopToast.jsx";
 
@@ -133,6 +134,11 @@ export function HealthPage({ user, apiGet, apiPost, C, s, compressPhoto, todaySt
         {d && !d.error && <div style={{ fontSize: 15 }}>狀態：<b style={{ color: ST_COLOR(C, d.status) }}>{d.status}</b>{d.exp ? `，到期日 ${d.exp}` : ""}
           {d.status === "即將到期" && <div style={{ fontSize: 12.5, color: C.gold, marginTop: 4 }}>快到期了，記得去做新的健康檢查</div>}</div>}
         <div style={{ fontSize: 12, color: C.light, marginTop: 8 }}>🔒 體檢表只有你自己和管理者看得到，稽查時同事只會看到「有效／過期」</div>
+      </div>
+      {/* v1.42 體檢費：另外報帳，和福利補助共用同一張報帳清單 */}
+      <div style={s.card}>
+        <div style={s.sectionTitle}>🧾 申請體檢費</div>
+        <BenefitForm user={user} apiPost={apiPost} compressPhoto={compressPhoto} C={C} s={s} todayStr={todayStr} cats={[]} fixedCat="checkup" />
       </div>
       <div style={s.card}>
         <div style={s.sectionTitle}>上傳新的體檢表</div>

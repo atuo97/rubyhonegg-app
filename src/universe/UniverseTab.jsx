@@ -9,6 +9,7 @@ import { Flash } from "../TopToast.jsx";
 import { MOUNT_INFO } from "../Mount40.jsx";
 import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc, tabOf } from "./officeScene.js";
 import BoardModal41 from "./BoardModal41.jsx";
+import Claw42 from "../Claw42.jsx";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
 import { HeartDots } from "../Hearts36.jsx";
 import { bgm, BgmAsk } from "../Bgm36.jsx";
@@ -82,11 +83,15 @@ const QUICK_DEFAULT = ["原味麵糊", "口味麵糊", "紙袋", "紙盒", "竹�
 const batter2 = rem => { if (!rem) return null; let o = 0, any = false; Object.keys(rem).forEach(k => { if (k !== "原味" && rem[k] != null) { o += +rem[k] || 0; any = true; } }); return { 原味: rem["原味"] == null ? null : rem["原味"], 其他口味: any ? Math.round(o * 100) / 100 : null }; };
 const fcLow = f => !!(f && f.days !== null && f.days !== undefined && f.days < 2);
 const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
-export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials, onOpenHearts }) {
+export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials, onOpenHearts, onOpenBenefit }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
   const [board, setBoard] = useState(null);         // v1.41 點看板放大
+  const [claw, setClaw] = useState(false);          // v1.42 夾娃娃機
+  const [thx, setThx] = useState(null);             // v1.42 感謝牆：要謝謝的人
+  const [thxText, setThxText] = useState("");
+  const openBf = useRef(() => {}); openBf.current = t => onOpenBenefit ? onOpenBenefit(t) : null;
   const [nowT, setNowT] = useState(Date.now());     // v1.41 開會、運動到期用
   const [myAct, setMyAct] = useState(null);         // v1.41 自己按的運動（先在畫面上動，不等後端）
   const [actOpen, setActOpen] = useState(false);
@@ -144,7 +149,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   };
 
   useEffect(() => {
-    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null), onBoard: k => setBoard(k), onMeetEnd: () => setNowT(Date.now()) });
+    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null), onBoard: k => (k === "claw" ? setClaw(true) : (k === "benefit" || k === "idea") ? openBf.current(k === "idea" ? "idea" : "apply") : setBoard(k)), onMeetEnd: () => setNowT(Date.now()) });
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
@@ -252,7 +257,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
     engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, hearts: d.hearts || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary),
-      mounts: d.mounts || {}, boards: d.boards || null });
+      mounts: d.mounts || {}, boards: d.boards || null, thanks: d.thanks || [], bfWall: d.bfWall || null, events: d.events || [], lobby: d.lobby || null });
     engine.current.setRev && engine.current.setRev(d.liveRev || []);
     // v1.40 營業額里程碑：沒看過的就放一次煙火
     try {
@@ -339,7 +344,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     const stores = SCENE_KEYS.filter(k => SCENES[k].store && (k === "other" ? count(k) > 0 || view === k : !openScenes || openScenes[k] || count(k) || view === k));
     const n = k => (locNo[k] != null ? locNo[k] : 900 + SCENE_KEYS.indexOf(k));
     stores.sort((a, b) => n(a) - n(b));
-    return ["office", "lobby", "canteen", "gameroom", "gym", ...stores, "street", "factory", "warehouse"];   // v1.41 大樓（辦公室含休息區）→ 櫃位 → 商店街 → 工廠、倉庫
+    return ["office", "lobby", "canteen", "gameroom", "gym", "study", ...stores, "street", "factory", "warehouse"];   // v1.42 加學習室   // v1.41 大樓（辦公室含休息區）→ 櫃位 → 商店街 → 工廠、倉庫
   })();
   // 營業狀態：有人在班＝營業中；今天已有收店盤點＝已打烊；其餘＝準備中
   const opsMap = (() => {
@@ -365,7 +370,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   const isMeBoss = !!(game && game.boss && String(game.boss.id) === String(user.id));
   const isMgr = isMeBoss || user.role >= 3;   // v1.40 Lv.3 以上都能視察
   const canMeet = isMeBoss || user.role >= 4;   // v1.41 Lv.4 以上選「辦公區」＝召開會議
-  const goPlaces = ["辦公室", "休息區", "大廳", "飯堂", "遊戲室", "運動室", ...Object.keys(locInfo).filter(n => !/辦公/.test(n) && (!locInfo[n].status || locInfo[n].status === "營運中"))];
+  const goPlaces = ["辦公室", "休息區", "大廳", "飯堂", "遊戲室", "運動室", "學習室", ...Object.keys(locInfo).filter(n => !/辦公/.test(n) && (!locInfo[n].status || locInfo[n].status === "營運中"))];
   const myVisit = (game && game.visits && game.visits[user.id]) || (isMeBoss && game && game.bossAt) || null;
   const callMeeting = async () => {
     setGoOpen(false);
@@ -387,7 +392,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     if (r && r.success) {
       setGame(g => { if (!g) return g; const v = { ...(g.visits || {}) }; if (r.data) v[user.id] = r.data; else delete v[user.id]; return { ...g, visits: v, bossAt: isMeBoss && r.data && r.data.loc !== "休息區" ? r.data : isMeBoss ? null : g.bossAt }; });
       setView(loc === "辦公室" ? "office" : tabOf(sceneOf(loc)));
-      setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公區" : loc === "休息區" ? "✅ 回到休息區" : /^(大廳|飯堂|遊戲室|運動室|辦公區)$/.test(loc) ? `✅ 前往${loc}` : `✅ 前往 ${loc}，在班隊員會收到「來看你了」` });
+      setRevMsg({ ok: true, text: loc === "辦公室" ? "✅ 回到辦公區" : loc === "休息區" ? "✅ 回到休息區" : /^(大廳|飯堂|遊戲室|運動室|學習室|辦公區)$/.test(loc) ? `✅ 前往${loc}` : `✅ 前往 ${loc}，在班隊員會收到「來看你了」` });
       loadGame();
     }
     else setRevMsg({ ok: false, text: (r && r.error) || (r && /未知的動作/.test(r.error || "") ? "後端更新到 v1.39 後才能用" : "前往失敗") });
@@ -482,6 +487,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
               {!demo && String(pk.id) !== String(user.id) && (
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <button onClick={() => { setTarget(pk); setImsg(""); }} style={{ flex: 2, border: "none", borderRadius: 10, padding: "8px 0", background: C.accent, color: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit" }}>💪 互動</button>
+                  <button onClick={() => { setThx(pk); setThxText(""); }} style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#fff0f6", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: "#b0466a" }}>💌 謝謝</button>
                   {pk.resting && <button disabled={smallBusy} onClick={() => smallAct({ action: "v40Coffee", to: pk.id }, r => { engine.current && engine.current.coffee(pk.id, user.nick || user.name); return `☕ 請 ${pk.name} 喝了一杯`; })} style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: C.text }}>☕ 請喝</button>}
                   {isMgr && !pk.resting && <button disabled={smallBusy} onClick={() => smallAct({ action: "v40Cheer", to: pk.id }, () => `👍 已跟 ${pk.name} 說辛苦了`)} style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 0", background: "#fff", fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", color: C.text }}>👍 辛苦了</button>}
                 </div>
@@ -532,6 +538,18 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
               {ACTS.map(([k, ic, n]) => <button key={k} onClick={() => doAct(k)} style={{ border: `1.5px solid ${C.border}`, background: C.card, borderRadius: 12, padding: "12px 8px", cursor: "pointer", fontFamily: "inherit", fontSize: 14, color: C.text }}>{ic} {n}</button>)}
             </div>
             <button onClick={() => setActOpen(false)} style={{ ...s.btn("ghost"), marginTop: 12 }}>關閉</button>
+          </div>
+        </div>, document.body
+      )}
+      {claw && <Claw42 apiPost={apiPost} C={C} s={s} onClose={() => setClaw(false)} />}
+      {thx && createPortal(
+        <div onClick={() => setThx(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1500, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: C.card, width: "100%", maxWidth: 480, borderRadius: "0 0 20px 20px", padding: "calc(16px + env(safe-area-inset-top)) 16px 18px", animation: "rhDropIn .22s ease-out" }}>
+            <div style={{ fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 4 }}>💌 謝謝 {thx.name}</div>
+            <div style={{ fontSize: 12, color: C.muted, textAlign: "center", marginBottom: 10 }}>貼到休息區的感謝牆，大家都看得到（每天 3 張）</div>
+            <input value={thxText} maxLength={40} onChange={e => setThxText(e.target.value)} placeholder="例：謝謝你今天幫我補貨！" style={{ ...s.input, marginBottom: 10 }} />
+            <button disabled={!thxText.trim() || smallBusy} onClick={async () => { await smallAct({ action: "v42Thank", to: thx.id, text: thxText }, () => `💌 已貼到感謝牆，${thx.name} 會收到提醒`); setThx(null); loadGame(); }} style={{ ...s.btn("primary"), opacity: thxText.trim() ? 1 : .5 }}>貼上感謝牆</button>
+            <button onClick={() => setThx(null)} style={{ ...s.btn("ghost"), marginTop: 8 }}>取消</button>
           </div>
         </div>, document.body
       )}

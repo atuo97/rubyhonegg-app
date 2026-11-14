@@ -9,7 +9,7 @@ const ST = { open: ["營業中", "#1e8449"], before: ["準備中", "#b9770e"], c
 
 export default function BoardModal41({ k, onClose, onGo, C, s, liveRev = [], opsMap = {}, short = [], game, onDuty = [] }) {
   const stores = SCENE_KEYS.filter(x => SCENES[x].store && opsMap[x] && (opsMap[x].state === "open" || liveRev.some(r => sceneOf(r.loc) === x) || short.some(y => y.scene === x)));
-  const keys = ["rev", "status", "attend", ...stores.map(x => "store:" + x), "factory", "warehouse", "menu", "rank", "sport"];
+  const keys = ["rev", "status", "attend", ...stores.map(x => "store:" + x), "factory", "warehouse", "thanks", "menu", "rank", "sport", "cert"];
   const [cur, setCur] = useState(keys.includes(k) ? k : k);
   const i = keys.indexOf(cur), step = d => setCur(keys[(Math.max(0, i) + d + keys.length) % keys.length]);
   let touchX = null;
@@ -56,11 +56,27 @@ export default function BoardModal41({ k, onClose, onGo, C, s, liveRev = [], ops
     title = "🍱 今日菜單"; go = "canteen";
     body = <><Row l="主廚推薦" v="敬請期待" /><Row l="飯後甜點" v="現烤雞蛋糕" /><div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>和隊長吃飯、請吃雞蛋糕、壽星蛋糕會在下一版上線</div></>;
   } else if (cur === "rank") {
-    title = "🏆 遊戲排行榜"; color = "#8e44ad"; go = "gameroom";
-    body = <><Row l="消消樂" v="即將開放" /><Row l="疊疊樂" v="即將開放" /><Row l="麵糊大作戰" v="即將開放" /><div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>夾娃娃機和各遊戲排行榜會在下一版上線</div></>;
-  } else if (cur === "sport") {
-    title = "🏃 運動室"; color = "#27ae60"; go = "gym";
-    body = <><Row l="🏃 跑步機" v="" /><Row l="👊 大魔王沙包" v="" /><Row l="🧘 瑜伽" v="" /><Row l="🏋️ 舉啞鈴" v="" /><Row l="🙆 伸展" v="" /><div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>點自己的小人 →「💪 去運動」，不限次數。比賽報名補助會在下一版上線</div></>;
+    title = "🏆 遊戲室"; color = "#8e44ad"; go = "gameroom";
+    body = <><Row l="🧸 夾娃娃機" v="點機台就能玩" c="#ff6fa8" /><Row l="消消樂排行" v="即將開放" /><Row l="疊疊樂排行" v="即將開放" /><Row l="麵糊大作戰排行" v="即將開放" /></>;
+  } else if (cur === "sport") {   // v1.42 比賽公告＋完賽榮譽牆
+    const ev = (game && game.events) || [], w = (game && game.bfWall && game.bfWall.sport) || [];
+    title = "🏃 比賽公告・完賽榜"; color = "#27ae60"; go = "gym";
+    body = <>
+      <div style={{ fontSize: 15, fontWeight: 700, margin: "10px 4px 2px" }}>近期比賽</div>
+      {ev.length ? ev.map(x => <Row key={x.id} l={x.link ? <a href={x.link} target="_blank" rel="noreferrer" style={{ color: "inherit" }}>{x.name} ↗</a> : x.name} sub={x.place} v={x.date.slice(5).replace("-", "/")} c="#27ae60" />) : empty("還沒有人貼比賽")}
+      <div style={{ fontSize: 15, fontWeight: 700, margin: "14px 4px 2px" }}>🏅 完賽榮譽牆</div>
+      {w.length ? w.map((x, i) => <Row key={i} l={x.name} sub={x.date} v={x.title} c="#c0392b" />) : empty("第一個完賽的就是你！")}
+      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>完賽後到大廳福利櫃檯申請報名費補助，累積 3 場還有購物金。點自己的小人 →「💪 去運動」不限次數。</div>
+    </>;
+  } else if (cur === "cert") {
+    const w = (game && game.bfWall && game.bfWall.cert) || [];
+    title = "🎓 證照榮譽牆"; color = "#2e86c1"; go = "study";
+    body = <>{w.length ? w.map((x, i) => <Row key={i} l={x.name} sub={x.date} v={x.title} c="#2e6da4" />) : empty("第一個考取證照的就是你！")}
+      <div style={{ fontSize: 12.5, color: C.muted, marginTop: 8 }}>烘焙、中餐、衛生、管理等專業證照：考照報名費全額補助；上課學費考取後補 50%（每年 2 個課程）。到大廳福利櫃檯申請。</div></>;
+  } else if (cur === "thanks") {
+    const t = (game && game.thanks) || [];
+    title = "💌 感謝牆"; color = "#e84393"; go = "office";
+    body = <>{t.length ? t.map((x, i) => <Row key={i} l={`${x.fromName} → ${x.toName}`} sub={x.time} v={x.text} c="#7a2a4a" />) : empty("還沒有人貼，點隊員 →「💌 謝謝」")}</>;
   }
 
   return createPortal(

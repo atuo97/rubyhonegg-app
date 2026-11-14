@@ -25,6 +25,7 @@ import { PetSprite } from "./pets/petSprites.jsx";
 import ArenaTab from "./ArenaTab.jsx";
 import TowerTab from "./TowerTab.jsx";
 import ShopStreetTab, { ShopProposals } from "./ShopStreetTab.jsx";
+import BenefitPage, { BenefitAdmin } from "./Benefit42.jsx";
 import OrdersTab from "./OrdersTab.jsx";
 import ScheduleManager, { MyShifts } from "./ScheduleTab.jsx";
 import MePet from "./MePet.jsx";
@@ -602,6 +603,7 @@ export default function App(){
   const [eqOpen, setEqOpen]   = useState(null);   // v1.35 從首頁提醒直接打開某張設備清單
   const [eqQuote, setEqQuote] = useState(null);   // v1.35 從成交報價單建立設備清單
   const [heartsWho, setHeartsWho] = useState(null); // v1.36 看別人的 8 心
+  const [bfTab, setBfTab] = useState("apply");      // v1.42 大廳服務台分頁
   useEffect(() => { bgm.setPage(BGM_OF_TAB[tab] || null); }, [tab]);   // v1.36 背景音樂：只在樂園、宇宙辦公室、遊戲頁播放
   const [activeSeg, setActiveSeg] = useState(null); // {location, inTime} 進行中的班,null=無
   const [segRefreshKey, setSegRefreshKey] = useState(0); // 用來觸發 WorkTab/LeaveTab 重新查詢
@@ -720,7 +722,7 @@ export default function App(){
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
     universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"home", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
-    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage" };
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
   const franchiseOwner = user.role < 3 && !!(opsMe && opsMe.franchiseLocs && opsMe.franchiseLocs.length);
@@ -740,7 +742,7 @@ export default function App(){
   if (SUB.includes(tab) && !navItems.some(n => n.id === lastMain.current)) lastMain.current = PARENT[tab];
   const navActive = partner ? tab : SUB.includes(tab) ? lastMain.current : tab;
   const goBack = () => setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
-  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", foodsafe:"食安管理", rules:"赤心幣規則", spend:"赤心幣商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -831,6 +833,7 @@ export default function App(){
                                      <ListItem icon="cal" title="我的班表" desc="查看班表、填下個月空檔、換班與認領空班" onClick={()=>setTab("myshift")}/>
                                      <ListItem icon="cal" title="行事曆" desc="進撤櫃、快閃、活動、會議" onClick={()=>setTab("calendar")}/>
                                      {user.role<2 && <ListItem icon="tool" title="設備檢查清單" desc="出攤、設櫃、出國：打包、到場、點收打勾" onClick={()=>setTab("equip")}/>}
+                                     <ListItem icon="shield" title="福利補助・意見箱" desc="運動、證照、比賽報名費補助申請；比賽公告；寫給隊長" onClick={()=>{ setBfTab("apply"); setTab("benefit"); }}/>
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
                                      <ListItem icon="vote" title="隊員投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
@@ -862,6 +865,7 @@ export default function App(){
             <ListItem icon="chart" title="管理儀表板" desc="今日即時、各櫃位累積、隊員出勤" onClick={()=>setTab("admin")}/>
             {user.role>=3 && <ListItem icon="coin" title="赤心幣加倍活動" desc="颱風照常營業、開幕、旺季…開一個加倍期間" onClick={()=>setTab("boost")}/>}
             {user.role>=3 && <ListItem icon="home" title="隊員商店街提案" desc="隊員想開的新店種，規劃後上架" onClick={()=>setTab("shopprop")}/>}
+            {user.role>=4 && <ListItem icon="shield" title="福利補助核准" desc={user.role>=5 ? "比賽、運動、證照、體檢費補助的核准與報帳；意見箱" : "比賽、運動、證照、體檢費補助的核准與報帳"} onClick={()=>setTab("bfadmin")}/>}
 
             <div style={{ ...s.sectionTitle, marginTop:16 }}>櫃位</div>
             <ListItem icon="order" title="叫貨單" desc="各櫃位物料需求" badge={user.role>=3 && opsMe?.matPending ? opsMe.matPending : null} onClick={()=>setTab("mat")}/>
@@ -891,6 +895,8 @@ export default function App(){
         )}
         {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} />}
         {tab==="shopprop" && user.role>=3 && <ShopProposals apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
+        {tab==="benefit" && <BenefitPage key={bfTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} initTab={bfTab} />}
+        {tab==="bfadmin" && user.role>=4 && <BenefitAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="grant" && user.role>=3 && <GrantPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="quote" && user.role>=3 && <QuotePage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onEquip={q => { setEqQuote(q); setTab("equip"); }} />}
         {tab==="hearts" && <HeartsPage key={heartsWho || "me"} who={heartsWho} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
@@ -912,7 +918,7 @@ export default function App(){
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
-            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onOpenMaterials={()=>setTab("mat")} onOpenHearts={id => { setHeartsWho(String(id) === String(user.id) ? null : id); setTab("hearts"); }} />
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onOpenMaterials={()=>setTab("mat")} onOpenHearts={id => { setHeartsWho(String(id) === String(user.id) ? null : id); setTab("hearts"); }} onOpenBenefit={t => { setBfTab(t || "apply"); setTab("benefit"); }} />
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}
