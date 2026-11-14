@@ -16,11 +16,13 @@ export function CalendarPage({ user, apiGet, apiPost, C, s, todayStr }) {
   const save = async () => {
     setBusy(true); const r = await apiPost({ action: "calSave", ...edit }, 0); setBusy(false);
     if (r && r.success) {
-      // v1.54 先把畫面上的這一筆換成剛改好的內容，再從 Google 日曆重讀（避免讀到舊資料，看起來像沒改到）
-      const x = { ...edit, id: r.id || edit.id, allDay: !edit.start, end: edit.end || edit.date };
-      setD(o => o && !o.error ? { ...o, data: [...o.data.filter(y => !(y.id === x.id && y.src === x.src)), x].sort((a, b) => (a.date + (a.start || "")) < (b.date + (b.start || "")) ? -1 : 1) } : o);
-      setMsg("✅ 已儲存，Google 日曆也同步了"); setEdit(null);
-      setTimeout(() => apiGet({ action: "calList", from, to }, 1).then(q => { if (q && q.success) setD(q); }), 1500);
+      // v1.55 以後端回傳的「Google 日曆實際日期」為準（r.date／r.end）；重讀時如果 Google 還回舊資料，這一筆仍用確認過的日期
+      const x = { ...edit, id: r.id || edit.id, allDay: !edit.start, date: r.date || edit.date, end: r.end || edit.end || edit.date };
+      const oldId = edit.id, put = (o, list) => o && !o.error ? { ...o, data: [...list.filter(y => !(y.src === x.src && (y.id === x.id || y.id === oldId))), x].sort((a, b) => (a.date + (a.start || "")) < (b.date + (b.start || "")) ? -1 : 1) } : o;
+      setD(o => put(o, (o && o.data) || []));
+      const ok = !r.date || (r.date === edit.date && r.end === (edit.end || edit.date));
+      setMsg(ok ? "✅ 已儲存，Google 日曆也同步了" : `⚠️ Google 日曆存成 ${r.date}～${r.end}，和你選的不一樣，請再改一次或用「回報問題」告訴我們`); setEdit(null);
+      setTimeout(() => apiGet({ action: "calList", from, to }, 1).then(q => { if (q && q.success) setD(put(q, q.data || [])); }), 2500);
     } else setMsg((r && r.error) || "儲存失敗");
   };
   const del = async () => {
