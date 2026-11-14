@@ -116,7 +116,7 @@ const TIMELINE = [
   ["2018", "開始進入百貨櫃位，跑遍各地快閃與活動"],
   ["造型系列", "從心形出發，推出火車、挖土機、三角龍、小暴龍"],
   ["十年", "參加超過 500 場活動，包含與政府單位的合作"],
-  ["2026", "成為光譜餐飲品牌集團的紅色品牌；開放加盟；啟用隊員 App"],
+  ["2026", "成為光譜餐飲品牌集團的紅色品牌；開放加盟；啟用夥伴 App"],
 ];
 export function BrandPage({ C, s, locations }) {
   const locs = Object.entries(locations || {}).filter(([n, v]) => !/^(00|66)/.test(n) && !(v && /結束|停/.test(v.status || "")));

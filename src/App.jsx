@@ -1015,8 +1015,8 @@ function InstallTip() {
   if (standalone) return null;
   const install = async () => { if (!RH_INSTALL_EVT) return; RH_INSTALL_EVT.prompt(); try { await RH_INSTALL_EVT.userChoice; } catch (e) {} RH_INSTALL_EVT = null; setCanOne(false); };
   const step = (n, t) => <div style={{ display:"flex", gap:8, alignItems:"flex-start", margin:"5px 0" }}><span style={{ flexShrink:0, width:18, height:18, borderRadius:9, background:C.accent, color:"#fff", fontSize:11, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", marginTop:1 }}>{n}</span><span>{t}</span></div>;
-  const IOS = <div><div style={{ fontWeight:600, marginBottom:2 }}>🍎 iPhone（請用 Safari 打開）</div>{step(1, <>點畫面下方的「分享」按鈕 <b>⬆︎</b>（方框加向上箭頭）</>)}{step(2, <>往下滑，點「<b>加入主畫面</b>」</>)}{step(3, <>右上角按「<b>加入</b>」，桌面就會出現「紅玉滿隊員」</>)}</div>;
-  const AND = <div><div style={{ fontWeight:600, marginBottom:2 }}>🤖 Android（請用 Chrome 打開）</div>{step(1, <>點右上角的 <b>⋮</b></>)}{step(2, <>點「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」</>)}{step(3, <>按「<b>安裝</b>」或「<b>新增</b>」，桌面就會出現「紅玉滿隊員」</>)}</div>;
+  const IOS = <div><div style={{ fontWeight:600, marginBottom:2 }}>🍎 iPhone（請用 Safari 打開）</div>{step(1, <>點畫面下方的「分享」按鈕 <b>⬆︎</b>（方框加向上箭頭）</>)}{step(2, <>往下滑，點「<b>加入主畫面</b>」</>)}{step(3, <>右上角按「<b>加入</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
+  const AND = <div><div style={{ fontWeight:600, marginBottom:2 }}>🤖 Android（請用 Chrome 打開）</div>{step(1, <>點右上角的 <b>⋮</b></>)}{step(2, <>點「<b>加到主畫面</b>」或「<b>安裝應用程式</b>」</>)}{step(3, <>按「<b>安裝</b>」或「<b>新增</b>」，桌面就會出現「紅玉滿夥伴」</>)}</div>;
   const INAPP = <div style={{ background:C.goldBg, borderRadius:10, padding:"8px 10px", marginBottom:8 }}>你現在是在 {line ? "LINE" : "社群軟體"} 裡面打開的，要先換到瀏覽器：點右上角（或右下角）的 <b>⋯</b>，選「<b>用預設瀏覽器開啟</b>」或「<b>在 {ios ? "Safari" : "Chrome"} 中開啟</b>」。</div>;
   return (
     <div style={{ ...s.card, marginTop:16, padding:"12px 16px", borderRadius:16 }}>
@@ -1078,7 +1078,7 @@ function LoginScreen({ onLogin, notice }) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", padding:"28px 28px 36px" }}>
         <div style={{ textAlign:"center", marginBottom:34 }}>
           <img src="/logo_ink.png" alt="紅玉滿赤心雞蛋糕" style={{ width:"74%", maxWidth:300, marginBottom:14 }}/>
-          <div style={{ fontSize:12, color:C.muted, letterSpacing:4 }}>隊員系統</div>
+          <div style={{ fontSize:12, color:C.muted, letterSpacing:4 }}>夥伴系統</div>
           <LoginSlogan C={C} />
         </div>
 

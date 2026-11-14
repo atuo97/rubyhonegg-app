@@ -238,7 +238,7 @@ export default function ScheduleManager({ user, apiGet, apiPost, C, s, todayStr 
       {publishing && (
         <Sheet C={C} title={publishing.busy ? "發布中…" : publishing.done ? "發布完成" : "未發布"} onClose={() => !publishing.busy && setPublishing(null)}>
           {publishing.busy && <div style={{ color:C.muted, fontSize:13 }}>正在寫入班表,請稍候</div>}
-          {publishing.done && <div style={{ color:C.green, fontSize:14 }}>✓ {publishing.done}。隊員 App 已看得到新班表。</div>}
+          {publishing.done && <div style={{ color:C.green, fontSize:14 }}>✓ {publishing.done}。夥伴 App 已看得到新班表。</div>}
           {publishing.error && <>
             <div style={{ color:C.red, fontSize:14, marginBottom:8 }}>{publishing.error}</div>
             {publishing.conflicts.map((t, i) => <div key={i} style={{ fontSize:12.5, padding:"6px 0", borderBottom:`1px solid ${C.border}` }}>{t}</div>)}
