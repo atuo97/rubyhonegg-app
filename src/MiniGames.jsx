@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Coin, Heart } from "./Coin.jsx";
 import { spriteCanvas } from "./pets/petSprites.jsx";
+import { createPortal } from "react-dom";
 
 const FL = [["原味", "#f3c66b"], ["可可", "#7b4a2e"], ["紅玉", "#d9534f"], ["抹茶", "#8bbf6a"]];
 const PETC = { "原味": "#f3c66b", "可可": "#7b4a2e", "紅玉": "#d9534f", "抹茶": "#8bbf6a" };
@@ -32,9 +33,10 @@ function ExtGame({ id, g, onEnd, onClose }) {
     return () => { window.removeEventListener("message", h); if (bgm) try { window.rhBgm.pop(EXT[id].bgm); } catch (e) {} document.body.style.overflow = ov; };
   }, []);
   const q = EXT[id].url(g);
-  return <div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#2b1a12" }}>
+  // v1.38 部署端：用 portal 掛到 body，避免外層 .rh-page 的 transform 讓 fixed 只蓋住頁面框（標題列、底部選單會露出來）
+  return createPortal(<div style={{ position: "fixed", inset: 0, zIndex: 9999, background: "#2b1a12" }}>
     <iframe ref={ref} title={g.name} src={`/games/${EXT[id].file}.html?embed=1${q ? "&" + q : ""}&v=${GV}`} style={{ width: "100%", height: "100%", border: 0, display: "block" }} allow="autoplay; fullscreen" />
-  </div>;
+  </div>, document.body);
 }
 const DESC = {
   catch: "左右拖動籃子，接住掉下來的雞蛋糕，金色加倍、燒焦的扣命",
