@@ -11,6 +11,7 @@ import { createOffice, SCENES, SCENE_KEYS, sceneOf, shortLoc, tabOf } from "./of
 import BoardModal41 from "./BoardModal41.jsx";
 import Claw42 from "../Claw42.jsx";
 import PhotoBooth44 from "../Photo44.jsx";
+import GameTab from "../GameTab.jsx";
 import { PetSprite, petLine } from "../pets/petSprites.jsx";
 import { HeartDots } from "../Hearts36.jsx";
 import { bgm, BgmAsk } from "../Bgm36.jsx";
@@ -84,13 +85,15 @@ const QUICK_DEFAULT = ["原味麵糊", "口味麵糊", "紙袋", "紙盒", "竹�
 const batter2 = rem => { if (!rem) return null; let o = 0, any = false; Object.keys(rem).forEach(k => { if (k !== "原味" && rem[k] != null) { o += +rem[k] || 0; any = true; } }); return { 原味: rem["原味"] == null ? null : rem["原味"], 其他口味: any ? Math.round(o * 100) / 100 : null }; };
 const fcLow = f => !!(f && f.days !== null && f.days !== undefined && f.days < 2);
 const fcDays = f => !f || f.days === null || f.days === undefined ? "—" : f.days >= 60 ? "60 天以上" : `${f.days} 天`;
-export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials, onOpenHearts, onOpenBenefit }) {
+export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onEditAvatar, onOpenMaterials, onOpenHearts, onOpenBenefit, onOpenGame }) {
   const boxRef = useRef(null);
   const engine = useRef(null);
   const [view, setView] = useState("office");
   const [board, setBoard] = useState(null);         // v1.41 點看板放大
   const [claw, setClaw] = useState(false);          // v1.42 夾娃娃機
   const [photo, setPhoto] = useState(false);        // v1.44 v3 拍貼機
+  const [gacha, setGacha] = useState(false);        // v1.46 點扭蛋機直接轉
+  const openGame = useRef(() => {}); openGame.current = id => onOpenGame && onOpenGame(id);   // v1.46 桌機 → 那款小遊戲
   const [thx, setThx] = useState(null);             // v1.42 感謝牆：要謝謝的人
   const [knock, setKnock] = useState(null);         // v1.44 隊長室敲門（null＝沒開）
   const [thxText, setThxText] = useState("");
@@ -152,7 +155,7 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
   };
 
   useEffect(() => {
-    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null), onBoard: k => (k === "claw" ? setClaw(true) : k === "photo" ? setPhoto(true) : k === "knock" ? setKnock("") : (k === "benefit" || k === "idea") ? openBf.current(k === "idea" ? "idea" : "apply") : setBoard(k)), onMeetEnd: () => setNowT(Date.now()) });
+    engine.current = createOffice(boxRef.current, { selfId: user.id, onPick: p => setPicked(p ? { ...p } : null), onBoard: k => (k === "claw" ? setClaw(true) : k === "photo" ? setPhoto(true) : k === "gacha" ? setGacha(true) : /^arcade:/.test(k) ? openGame.current(k.slice(7)) : k === "knock" ? setKnock("") : (k === "benefit" || k === "idea") ? openBf.current(k === "idea" ? "idea" : "apply") : setBoard(k)), onMeetEnd: () => setNowT(Date.now()) });
     return () => engine.current && engine.current.dispose();
   }, []);
   useEffect(() => { engine.current && engine.current.setView(view); }, [view]);
@@ -576,6 +579,14 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
         </div>, document.body
       )}
       {claw && <Claw42 apiPost={apiPost} C={C} s={s} onClose={() => setClaw(false)} />}
+      {gacha && createPortal(
+        <div onClick={() => setGacha(false)} style={{ position: "fixed", inset: 0, zIndex: 1700, background: "rgba(20,10,20,.85)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "calc(14px + env(safe-area-inset-top)) 10px calc(14px + env(safe-area-inset-bottom))" }}>
+          <div onClick={e => e.stopPropagation()} style={{ width: "100%", maxWidth: 420, background: C.bg, borderRadius: 20, padding: 12 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, textAlign: "center", color: C.accent, margin: "4px 0 8px" }}>🎰 紅玉滿扭蛋機</div>
+            <GameTab user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onlyTab="gacha" />
+            <button onClick={() => setGacha(false)} style={{ ...s.btn("ghost"), marginTop: 8 }}>離開</button>
+          </div>
+        </div>, document.body)}
       {photo && <PhotoBooth44 apiPost={apiPost} s={s} engine={engine.current} me={{ id: user.id, name: user.nick || user.name }} onClose={() => setPhoto(false)} />}
       {knock !== null && createPortal(
         <div onClick={() => setKnock(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.35)", zIndex: 1500, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>

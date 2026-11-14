@@ -1895,13 +1895,28 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     bldRoom(P, 16, 0x3b3456, 0x2c2440, 0x9b59b6, "door", [0x342d4d, 0x433a63]);
     put(P, textPlane("遊戲室 GAME ROOM", 5, 0.8, { bg: "#8e44ad", color: "#fff", size: 46 }), -4.5, 3.55, -5.95);
     REVB.rank = wallBoard(P, "rank", 4.4, 1.9, -6.0, 3.3, 2.27);
-    const SCR = [];
-    [["消消樂", 0xe74c3c], ["疊疊樂", 0x3498db], ["麵糊大作戰", 0xf39c12]].forEach(([n, c], i) => {
-      const x = -6.4 + i * 2.2;
-      box(1.5, 2.4, 1.1, c, x, 1.2, -5.2, P); box(1.3, 0.5, 0.2, 0x1a1a1a, x, 1.15, -4.6, P);
-      const sc = put(P, new THREE.Mesh(new THREE.PlaneGeometry(1.1, 0.8), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), x, 1.85, -4.64);
-      put(P, textPlane(n, 1.4, 0.35, { bg: "#111", color: "#ffe066", size: 60 }), x, 2.62, -4.64);
+    // v1.46 8 台搖桿桌機（老式坐著玩的電玩桌），一台對應一款小遊戲；點機台就開那款遊戲
+    const SCR = [], ARC = [["catch", "🧺 接雞蛋糕", 0xe74c3c], ["memory", "🃏 翻翻樂", 0x3498db], ["breakout", "🧱 打磚塊", 0xf39c12], ["oven", "🔥 烤爐挑戰", 0x9b59b6],
+      ["runner", "🏃 寵物跑酷", 0x27ae60], ["match", "🧇 消消樂", 0xe67e22], ["stack", "🍰 疊疊樂", 0xff6fa8], ["batter1", "⚔️ 麵糊大作戰", 0xc0392b]];
+    ARC.forEach(([gid, n, c], i) => {
+      const x = -6.6 + (i % 4) * 1.75, z = i < 4 ? -3.4 : -0.6;
+      box(0.95, 0.68, 0.78, c, x, 0.34, z, P);                                   // 機身
+      box(1.02, 0.06, 0.86, 0x1a1a22, x, 0.71, z, P);                            // 桌面框
+      const sc = put(P, new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.62), new THREE.MeshBasicMaterial({ color: 0x2a2f45 })), x, 0.745, z, 0, -Math.PI / 2);
+      put(P, textPlane(n, 0.8, 0.3, { color: "#ffe066", size: 62 }), x, 0.75, z, 0, -Math.PI / 2);
+      const glass = glassBox(0.84, 0.02, 0.66, 0xbfe7ff, 0.18); glass.position.set(x, 0.76, z); P.add(glass);
+      [-1, 1].forEach(sd => {                                                    // 兩側操作台：搖桿＋按鈕
+        box(0.9, 0.1, 0.2, 0x2c2c34, x, 0.66, z + sd * 0.48, P);
+        box(0.03, 0.16, 0.03, 0x888888, x - 0.22, 0.79, z + sd * 0.5, P);
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), mat(0xe74c3c)); ball.position.set(x - 0.22, 0.88, z + sd * 0.5); P.add(ball);
+        [0.08, 0.24].forEach(dx => { const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.04, 10), mat(dx > 0.1 ? 0x3498db : 0xf1c40f)); bt.position.set(x + dx, 0.73, z + sd * 0.5); P.add(bt); });
+        const st = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.08, 14), mat(0xc0392b)); st.position.set(x, 0.46, z + sd * 0.95); P.add(st);   // 圓凳
+        box(0.06, 0.42, 0.06, 0x555555, x, 0.21, z + sd * 0.95, P);
+      });
       const fx = { kind: "screen", mesh: sc, on: false }; FX.push(fx); SCR.push(fx);
+      const sign = put(P, textPlane(n, 1.3, 0.3, { bg: "#" + c.toString(16).padStart(6, "0"), color: "#fff", size: 58 }), x, 1.12, z - 0.3, Math.PI / 4);   // 遊戲名牌（朝鏡頭）
+      box(0.04, 0.36, 0.04, 0x555555, x, 0.92, z - 0.3, P);
+      BOARD_HIT.push({ mesh: sc, key: "arcade:" + gid }, { mesh: sign, key: "arcade:" + gid });
     });
     // 夾娃娃機
     box(1.6, 1.0, 1.6, 0xff6fa8, 0.8, 0.5, -4.6, P);
@@ -1911,7 +1926,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const clawSign = put(P, textPlane("夾娃娃機", 1.5, 0.3, { bg: "#ff6fa8", color: "#fff", size: 60 }), 0.8, 2.65, -3.78);
     BOARD_HIT.push({ mesh: clawSign, key: "claw" }, { mesh: cg, key: "claw" });   // v1.42 點夾娃娃機就能玩
     // 扭蛋機
-    box(0.9, 0.8, 0.9, 0xc0392b, 2.6, 0.4, -5.0, P); const gb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); gb.position.set(2.6, 1.3, -5.0); P.add(gb);
+    box(0.9, 0.8, 0.9, 0xc0392b, 2.6, 0.4, -5.0, P); const gb = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 12), new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 })); gb.position.set(2.6, 1.3, -5.0); P.add(gb); BOARD_HIT.push({ mesh: gb, key: "gacha" });   // v1.46 點扭蛋機就能轉
     [[2.4, 1.2, -5.0, 0xf1c40f], [2.8, 1.25, -4.9, 0x3498db], [2.6, 1.05, -4.8, 0xe74c3c]].forEach(q => { const b = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), mat(q[3])); b.position.set(q[0], q[1], q[2]); P.add(b); });
     // v1.44 v3 拍貼機（左前方，布簾朝房間中間；點了就能拍）
     {
@@ -1924,16 +1939,16 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       BOARD_HIT.push({ mesh: sign, key: "photo" }, { mesh: cur, key: "photo" });
     }
     // 對戰桌
-    box(2.0, 0.1, 1.2, 0x16a085, -2.0, 0.85, 0.4, P); box(0.3, 0.8, 0.3, 0x2c3e50, -2.0, 0.4, 0.4, P);
-    put(P, textPlane("VS", 0.8, 0.5, { color: "#fff", size: 90 }), -2.0, 0.91, 0.4, 0, -Math.PI / 2);
+    box(2.0, 0.1, 1.2, 0x16a085, 1.2, 0.85, 2.7, P); box(0.3, 0.8, 0.3, 0x2c3e50, 1.2, 0.4, 2.7, P);
+    put(P, textPlane("VS", 0.8, 0.5, { color: "#fff", size: 90 }), 1.2, 0.91, 2.7, 0, -Math.PI / 2);
     // 陀螺台
     const arena = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.8, 0.5, 20), mat(0x7f8c8d)); arena.position.set(3.6, 0.25, 0.6); P.add(arena);
     const top = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.25, 8), mat(0xe74c3c)); top.position.set(3.4, 0.62, 0.5); top.rotation.x = Math.PI; P.add(top); FX.push({ kind: "spin", obj: top, on: true, always: true });
     plant(P, 7.2, 2.6);
     SLOTS.gameroom = [
-      { x: -6.4, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[0] }, { x: -4.2, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[1] }, { x: -2.0, z: -3.9, rotY: Math.PI, anim: "type", fx: SCR[2] },
+      ...ARC.map((a, i) => ({ x: -6.6 + (i % 4) * 1.75, z: (i < 4 ? -3.4 : -0.6) - 0.95, rotY: 0, sit: true, anim: "type", fx: SCR[i] })),   // 坐在桌機北側、臉朝鏡頭
       { x: 0.8, z: -3.3, rotY: Math.PI, anim: "type" }, { x: 2.6, z: -4.0, rotY: Math.PI, anim: "serve" },
-      { x: -3.4, z: 0.4, rotY: Math.PI / 2, anim: "cheer" }, { x: -0.6, z: 0.4, rotY: -Math.PI / 2, anim: "talk" },
+      { x: -0.2, z: 2.7, rotY: Math.PI / 2, anim: "cheer" }, { x: 2.6, z: 2.7, rotY: -Math.PI / 2, anim: "talk" },
       { x: 3.6, z: 2.0, rotY: Math.PI, anim: "cheer" }, { x: 5.4, z: -3.8, rotY: Math.PI, anim: "stand" },
     ];
   }

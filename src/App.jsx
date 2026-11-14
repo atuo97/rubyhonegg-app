@@ -609,6 +609,7 @@ export default function App(){
   const [eqQuote, setEqQuote] = useState(null);   // v1.35 從成交報價單建立設備清單
   const [heartsWho, setHeartsWho] = useState(null); // v1.36 看別人的 8 心
   const [bfTab, setBfTab] = useState("apply");      // v1.42 大廳服務台分頁
+  const [mgAuto, setMgAuto] = useState(null);       // v1.46 宇宙辦公室桌機 → 直接開那款遊戲
   useEffect(() => { bgm.setPage(BGM_OF_TAB[tab] || null); }, [tab]);   // v1.36 背景音樂：只在樂園、宇宙辦公室、遊戲頁播放
   const [activeSeg, setActiveSeg] = useState(null); // {location, inTime} 進行中的班,null=無
   const [segRefreshKey, setSegRefreshKey] = useState(0); // 用來觸發 WorkTab/LeaveTab 重新查詢
@@ -902,7 +903,7 @@ export default function App(){
             </>}
           </div>
         )}
-        {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} />}
+        {tab==="minigame" && <MiniGames user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onChanged={game.refresh} autoStart={mgAuto} onAutoDone={()=>setMgAuto(null)} />}
         {tab==="shopprop" && user.role>=3 && <ShopProposals apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="benefit" && <BenefitPage key={bfTab} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} initTab={bfTab} />}
         {tab==="bfadmin" && user.role>=4 && <BenefitAdmin user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
@@ -928,7 +929,7 @@ export default function App(){
         {tab==="myshift" && <MyShifts user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} todayStr={todayStr} />}
         {tab==="universe" && (
           <Suspense fallback={<div style={{ ...s.card, textAlign:"center", color:C.muted }}>宇宙辦公室載入中…</div>}>
-            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onOpenMaterials={()=>setTab("mat")} onOpenHearts={id => { setHeartsWho(String(id) === String(user.id) ? null : id); setTab("hearts"); }} onOpenBenefit={t => { setBfTab(t || "apply"); setTab("benefit"); }} />
+            <UniverseTab user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onEditAvatar={()=>openMe("avatar")} onOpenMaterials={()=>setTab("mat")} onOpenHearts={id => { setHeartsWho(String(id) === String(user.id) ? null : id); setTab("hearts"); }} onOpenBenefit={t => { setBfTab(t || "apply"); setTab("benefit"); }} onOpenGame={id => { setMgAuto(id); setTab("minigame"); }} />
           </Suspense>
         )}
         {tab==="orders" && <OrdersTab user={user} apiGet={apiGet} apiPost={apiPost} locations={locations} defaultLoc={effLoc} todayStr={todayStr} C={C} s={s} alerts={ord} />}

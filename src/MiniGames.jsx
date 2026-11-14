@@ -300,7 +300,7 @@ function BatterCard({ games, ch, start, C, s }) {
   </div>;
 }
 
-export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
+export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged, autoStart, onAutoDone }) {
   const [d, setD] = useState(null);
   const [err, setErr] = useState("");
   const [play, setPlay] = useState(null);    // {id, extra}
@@ -322,6 +322,15 @@ export default function MiniGames({ user, apiGet, apiPost, C, s, onChanged }) {
     if (r && r.success) { setResult(null); setPaused(false); pend.current = null; pend.closed = false; setPlay({ id, extra: r.data.extra }); } else alert((r && r.error) || "無法開始");
   };
   const pend = useRef(null);
+  // v1.46 從宇宙辦公室遊戲室的桌機進來：讀完資料就直接開那款
+  useEffect(() => {
+    if (!autoStart || !d) return;
+    const g = d.games.find(x => x.id === autoStart); onAutoDone && onAutoDone();
+    if (!d.pet) return;
+    if (!g) { alert("這台機台的遊戲還沒開放"); return; }
+    if (!g.unlocked) { alert(`「${g.name}」要寵物長到第 ${g.stage} 階段才能玩`); return; }
+    start(autoStart);
+  }, [autoStart, d]);
   const endExt = async (score, meta) => {   // 網頁遊戲結束：先送分數，等玩家按「回樂園」再顯示結果
     const id = play.id;
     pend.current = { id, score, meta, wait: true };
