@@ -13,6 +13,7 @@ import { FACES, LABEL } from "./Mood44.jsx";
 import AvatarEditor from "./AvatarEditor.jsx";
 import { MountShop } from "./Mount40.jsx";
 import { SpendPage } from "./Spend30.jsx";
+import { BugAdmin } from "./Vision51.jsx";
 
 // 房間 → 功能（和宇宙辦公室的房間功能列一樣）。how：quick＝直接開視窗；tab＝到某一頁；room＝進宇宙辦公室那間再打開（要看即時資料的看板）
 export const GUIDE = [
@@ -23,7 +24,7 @@ export const GUIDE = [
   ["gameroom", "🎮 遊戲室", [["games", "🕹️ 8 款小遊戲", "tab"], ["claw", "🧸 夾娃娃", "quick"], ["gacha", "🎰 扭蛋機", "quick"], ["photo", "📸 拍貼機", "room"], ["arena", "⚔️ 切磋對戰", "tab"], ["rank", "🏆 本週排行榜", "room"]]],
   ["gym", "🏋️ 運動室", [["exercise", "💪 去運動", "room"], ["sport", "🏃 比賽公告・完賽榜", "room"], ["boss", "👹 大魔王", "tab"]]],
   ["study", "📚 學習室", [["sop", "📖 SOP 教學", "tab"], ["cert", "🎓 證照榮譽牆", "room"]]],
-  ["captain", "👑 隊長室", [["knock", "🚪 敲門留言", "quick"]]],
+  ["captain", "👑 隊長室", [["vision", "🗺️ 願景白板", "tab"], ["partners", "🤝 合作夥伴牆", "tab"], ["knock", "🚪 敲門留言", "quick"], ["bug", "🐞 回報問題", "tab"]]],
 ];
 
 // 樂園「🏢 大樓導覽」：依房間列出功能，點了直接開（看板類才進 3D 房間）
@@ -74,7 +75,7 @@ export function QuickModal({ k, user, apiGet, apiPost, C, s, onClose, onChanged 
 // 管理 → 公司 →「💬 隊員的聲音」：意見箱（含敲門，只限大隊長）｜店種提案（Lv.3）｜隊員心情（Lv.3）
 export function VoicePage({ user, apiGet, apiPost, C, s, initial }) {
   const isBoss = user.role >= 5 || user.position === "大隊長";
-  const tabs = [...(isBoss ? [["idea", "📮 意見箱"]] : []), ["prop", "💡 店種提案"], ["mood", "💗 隊員心情"]];
+  const tabs = [...(isBoss ? [["idea", "📮 意見箱"], ["bug", "🐞 Bug"]] : []), ["prop", "💡 店種提案"], ["mood", "💗 隊員心情"]];
   const [t, setT] = useState(initial && tabs.some(x => x[0] === initial) ? initial : tabs[0][0]);
   const [ideas, setIdeas] = useState(null), [team, setTeam] = useState(null), [msg, setMsg] = useState(null);
   const loadIdeas = () => apiGet({ action: "v42Ideas" }, 0).then(r => setIdeas(r && r.success ? r.data : { error: (r && r.error) || "讀取失敗" }));
@@ -105,6 +106,7 @@ export function VoicePage({ user, apiGet, apiPost, C, s, initial }) {
           ))}
         </div>
       ))}
+      {t === "bug" && isBoss && <BugAdmin apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
       {t === "prop" && (user.role >= 3 ? <ShopProposals apiGet={apiGet} apiPost={apiPost} C={C} s={s} /> : <div style={{ ...s.card, color: C.muted }}>Lv.3 以上才看得到</div>)}
       {t === "mood" && (!team ? <div className="rh-skel" style={{ height: 120, borderRadius: 18 }} /> : team.error ? <div style={{ ...s.card, color: C.red }}>{team.error}</div> : (
         <div style={s.card}>
@@ -130,7 +132,8 @@ export function useVoiceCount(user, apiGet) {
     let alive = true;
     const run = async () => {
       let c = 0;
-      if (user.role >= 5 || user.position === "大隊長") { const r = await apiGet({ action: "v42Ideas" }, 1); if (r && r.success) c += (r.data || []).filter(x => !x.reply && !x.anon).length; }
+      if (user.role >= 5 || user.position === "大隊長") { const r = await apiGet({ action: "v42Ideas" }, 1); if (r && r.success) c += (r.data || []).filter(x => !x.reply && !x.anon).length;
+        const b = await apiGet({ action: "bugList" }, 1); if (b && b.success) c += ((b.data && b.data.list) || []).filter(x => x.status === "待處理").length; }
       const p = await apiGet({ action: "spProposals" }, 1); if (p && p.success) c += (p.data || []).filter(x => !x.status || x.status === "待規劃").length;
       if (alive) setN(c);
     };
@@ -164,7 +167,7 @@ export function BagPage({ user, apiGet, apiPost, todayStr, C, s, initial, onChan
 // ───────── 1-3 通知中心 ─────────
 // 頂端 🔔：最近 7 天的提醒都看得到（頂端跳出照舊）。未讀＝上次打開通知中心之後才來的
 const SEEN_KEY = "rh_notif_seen";
-export const NOTE_ICON = { coffee: "☕", thanks: "💌", cheer: "👍", visit: "👀", benefit: "🎁", claw: "🧸", care: "💗", shop: "💡", mount: "🛵", milestone: "🎆", overtake: "🏃" };
+export const NOTE_ICON = { coffee: "☕", thanks: "💌", cheer: "👍", visit: "👀", benefit: "🎁", claw: "🧸", care: "💗", shop: "💡", mount: "🛵", milestone: "🎆", overtake: "🏃", bug: "🐞", vision: "🗺️" };
 export function useNotifs(user, apiGet) {
   const [list, setList] = useState([]), [seen, setSeen] = useState(() => { try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (e) { return 0; } });
   const load = () => apiGet({ action: "v47Notes" }, 0).then(r => { if (r && r.success) setList(r.data || []); }).catch(() => {});
@@ -186,6 +189,8 @@ export function noteTarget(x) {
   if (x.type === "benefit") return { tab: "benefit", bf: /意見/.test(x.text) ? "idea" : "apply", back };
   if (x.type === "claw") return { tab: "game", back };
   if (x.type === "care") return { tab: "voice", voice: "mood", back };
+  if (x.type === "bug") return /^🐞 你/.test(x.text || "") ? { tab: "bug", back } : { tab: "voice", voice: "bug", back };
+  if (x.type === "vision") return { tab: "vision", back };
   if (x.type === "shop") return { tab: "street", back };
   if (x.type === "mount") return { tab: "bag", bag: "mount", back };
   if (x.type === "milestone" || x.type === "overtake") return { tab: "universe", room: "office", auto: "rev", back };

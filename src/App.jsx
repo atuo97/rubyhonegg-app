@@ -1,5 +1,7 @@
 import { AlbumPage } from "./Photo44.jsx";
 import { BuildingGuide, QuickModal, VoicePage, useVoiceCount, BagPage, useNotifs, BellButton, NotifCenter } from "./Hub47.jsx";
+import { VisionPage, BugPage } from "./Vision51.jsx";
+import { PartnerPage } from "./Partner51.jsx";
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from "react";
 import { Flash, TopToastHost } from "./TopToast.jsx";
@@ -619,6 +621,8 @@ export default function App(){
   const [spendCat, setSpendCat] = useState(null);   // 官方商店直接開某一類
   const [quick, setQuick] = useState(null);         // 不進 3D 的快速視窗（夾娃娃、扭蛋、敲門）
   const [voiceTab, setVoiceTab] = useState(null);   // 隊員的聲音分頁
+  const [visionB, setVisionB] = useState(null);     // v1.51 願景白板要開哪一塊
+  const [partnerCat, setPartnerCat] = useState(null); // v1.51 合作夥伴牆要開哪一類
   useEffect(() => { if (["home","punch","info","park","manage"].includes(tab)) setBackTo(null); }, [tab]);
   const [bagTab, setBagTab] = useState(null);       // 背包要開哪一頁
   const tabRef = useRef(tab); tabRef.current = tab;
@@ -630,6 +634,8 @@ export default function App(){
     if (t.tab === "universe") setUni({ room: t.room || null, auto: t.auto || null, key: Date.now() });
     if (t.tab === "spend") setSpendCat(t.cat || null);
     if (t.tab === "benefit") setBfTab(t.bf || "apply");
+    if (t.tab === "vision") setVisionB(t.vb || null);
+    if (t.tab === "partners") setPartnerCat(t.pc || null);
     setBackTo(t.back || null); setTab(t.tab);
   };
   useEffect(() => { bgm.setPage(BGM_OF_TAB[tab] || null); }, [tab]);   // v1.36 背景音樂：只在樂園、宇宙辦公室、遊戲頁播放
@@ -754,7 +760,7 @@ export default function App(){
   const PARENT = { orders:"punch", rp:"punch", mat:"punch", sop:"punch", audit:"punch",
     myshift:"info", guide:"info", vote:"info", health:"info",
     universe:"park", avatar:"park", game:"park", arena:"park", tower:"park", street:"park", rules:"park", spend:"park", about:"home", calendar:"home", ledger:"manage", quote:"manage", hearts:"park", equip: user.role>=2 ? "manage" : "info",
-    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage", voice:"manage", album:"info", bag:"info", notif:"home" };
+    schedule_mgr:"manage", admin:"manage", batter:"manage", locs:"manage", staff:"manage", ann:"manage", price:"manage", pnl:"manage", foodsafe:"manage", boost:"manage", grant:"manage", minigame:"park", shopprop:"manage", benefit:"info", bfadmin:"manage", voice:"manage", album:"info", bag:"info", notif:"home", vision:"park", bug:"info", partners:"park" };
   const SUB = Object.keys(PARENT);
   const partner = opsMe && opsMe.type === "合作夥伴";
   const ext = !!opsMe && user.role < 3 && (opsMe.type === "合作夥伴" || opsMe.type === "加盟店夥伴");   // v1.49 外部帳號：看不到總部營業額、爭霸戰、福利補助
@@ -779,7 +785,7 @@ export default function App(){
     if (backTo && backTo.tab !== tab) { const b = backTo; setBackTo(null); if (b.tab === "universe") setUni({ room: b.room || null, auto: null, key: Date.now() }); setTab(b.tab); return; }
     setBackTo(null); setTab(lastMain.current && lastMain.current !== tab ? lastMain.current : (PARENT[tab] || "home"));
   };
-  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", album:"我的相簿", voice:"隊員的聲音", bag:"我的背包", notif:"通知中心", foodsafe:"食安管理", rules:"赤心幣規則", spend:"官方商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
+  const subTitle = { vote:"隊員投票", guide:"薪資制度說明", schedule_mgr:"排班管理", myshift:"我的班表", admin:"管理儀表板", universe:"宇宙辦公室", avatar:"我和寵物", orders:"訂單", mat:"物料需求", pnl:"門市損益", locs:"櫃位管理", staff:"隊員資料", ann:"發公告／LINE 推播", price:"供貨價格與應收", batter:"麵糊用量", rp:"請總部處理", game:"我的錢包", tower:"櫃位爭霸戰", minigame:"小遊戲", shopprop:"隊員商店街提案", benefit:"大廳服務台", bfadmin:"福利補助核准", grant: user.role>=5 ? "發幣與限定造型" : "發放限定造型", arena:"切磋對戰", street:"隊員商店街", sop:"SOP 教學", audit:"稽查資料", health:"我的健康檢查", album:"我的相簿", voice:"隊員的聲音", vision:"隊長室・願景白板", partners:"隊長室・合作夥伴牆", bug:"回報問題", bag:"我的背包", notif:"通知中心", foodsafe:"食安管理", rules:"赤心幣規則", spend:"官方商店", boost:"赤心幣加倍活動", about:"關於紅玉滿", calendar:"行事曆", ledger:"內帳", quote:"報價單", equip:"設備檢查清單", hearts: heartsWho ? "隊員的 8 心" : "無敵8心" }[tab];
 
   const baseSchedule = schedule.find(s => s.date === todayStr());
   const effLoc = activeSeg?.location || workLoc || baseSchedule?.location || "";
@@ -881,6 +887,7 @@ export default function App(){
                                    bfLinks={<>
                                      {ext ? <ListItem icon="shield" title="意見箱" desc="寫給隊長" onClick={()=>{ setBfTab("idea"); setTab("benefit"); }}/>
                                        : <ListItem icon="shield" title="福利補助・意見箱" desc="運動、證照、比賽報名費補助申請；比賽公告；寫給隊長" onClick={()=>{ setBfTab("apply"); setTab("benefit"); }}/>}
+                                     <ListItem icon="shield" title="🐞 回報問題" desc="App 哪裡怪怪的告訴隊長，確認有效送赤心幣" onClick={()=>setTab("bug")}/>
                                      <ListItem icon="shield" title="我的健康檢查" desc="上傳體檢表、看到期日（只有你和管理者看得到）" onClick={()=>setTab("health")}/>
                                      <ListItem icon="book" title="薪資制度說明" onClick={()=>setTab("guide")}/>
                                      <ListItem icon="vote" title="隊員投票" desc="查看進行中的投票" onClick={()=>setTab("vote")}/>
@@ -908,7 +915,7 @@ export default function App(){
               const back = { tab:"park" };
               if (how === "quick") return setQuick(k);
               if (how === "room") return nav({ tab:"universe", room, auto:k });
-              const T = { benefit:{ tab:"benefit", bf:"apply" }, idea:{ tab:"benefit", bf:"idea" }, seat:{ tab:"spend", cat:"seat" }, boss:{ tab:"spend", cat:"boss" }, games:{ tab:"minigame" }, arena:{ tab:"arena" }, sop:{ tab:"sop" } }[k];
+              const T = { benefit:{ tab:"benefit", bf:"apply" }, idea:{ tab:"benefit", bf:"idea" }, seat:{ tab:"spend", cat:"seat" }, boss:{ tab:"spend", cat:"boss" }, games:{ tab:"minigame" }, arena:{ tab:"arena" }, sop:{ tab:"sop" }, vision:{ tab:"vision" }, bug:{ tab:"bug" }, partners:{ tab:"partners" } }[k];
               if (T) nav({ ...T, back });
             }} />
             <ListItem icon="game" title="我的背包" desc="造型、寵物、坐騎與配件、座位擺飾、扭蛋券，在這裡直接裝上" onClick={()=>{ setBagTab(null); nav({ tab:"bag", back:{ tab:"park" } }); }}/>
@@ -974,6 +981,9 @@ export default function App(){
         {tab==="album" && <AlbumPage apiPost={apiPost} C={C} s={s} onShoot={() => nav({ tab:"universe", room:"gameroom", auto:"photo", back:{ tab:"album" } })} />}
         {tab==="notif" && <NotifCenter C={C} s={s} notifs={notifs} onGo={t => { if (t.tab === "bag") setBagTab(t.bag || null); if (t.tab === "voice") setVoiceTab(t.voice || null); nav(t); }} />}
         {tab==="bag" && <BagPage key={"bag" + (bagTab || "")} initial={bagTab} user={user} apiGet={apiGet} apiPost={apiPost} todayStr={todayStr} C={C} s={s} onChanged={() => game.refresh && game.refresh()} onOpenShop={() => nav({ tab:"spend", back:{ tab:"bag" } })} />}
+        {tab==="vision" && <VisionPage key={visionB || "v"} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={visionB} />}
+        {tab==="partners" && <PartnerPage key={partnerCat || "p"} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={partnerCat} />}
+        {tab==="bug" && <BugPage user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} />}
         {tab==="voice" && user.role>=3 && <VoicePage key={voiceTab || "v"} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} initial={voiceTab} />}
         {quick && <QuickModal k={quick} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} onClose={() => setQuick(null)} onChanged={() => game.refresh && game.refresh()} />}
         {tab==="health" && <HealthPage noBenefit={ext} user={user} apiGet={apiGet} apiPost={apiPost} C={C} s={s} compressPhoto={compressPhoto} todayStr={todayStr} />}

@@ -243,9 +243,9 @@ export function createOffice(container, opts) {
   const REVB = {};   // v1.40 營業額布告欄（辦公室排名、工廠產線、倉庫庫存）
   // v1.41 看板：可以點一下放大（BOARD_HIT：mesh → 看板代號）
   const BOARD_HIT = [];
-  function wallBoard(P, key, x, y, z, w, h, ry) {
+  function wallBoard(P, key, x, y, z, w, h, ry, fc) {
     const bc = document.createElement("canvas"); bc.width = 512; bc.height = Math.round(512 * h / w);
-    if (ry) box(0.1, h + 0.2, w + 0.2, 0x6e4b2a, x, y, z, P); else box(w + 0.2, h + 0.2, 0.1, 0x6e4b2a, x, y, z, P);   // v1.44 左牆看板（ry＝π/2）
+    if (ry) box(0.1, h + 0.2, w + 0.2, fc || 0x6e4b2a, x, y, z, P); else box(w + 0.2, h + 0.2, 0.1, fc || 0x6e4b2a, x, y, z, P);   // v1.44 左牆看板（ry＝π/2）
     const bm = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(bc) }));
     if (ry) bm.position.set(x + 0.06, y, z); else bm.position.set(x, y, z + 0.06); if (ry) bm.rotation.y = ry; P.add(bm);
     BOARD_HIT.push({ mesh: bm, key }); return { canvas: bc, mesh: bm };
@@ -2018,29 +2018,57 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     plant(P, 7.2, 2.6); plant(P, -7.3, 2.6);
     SLOTS.study = ST;
   }
-  // ── v1.44 隊長室：大辦公桌、旗幟、獎盃櫃、沙發、門口「敲門留言」──
+  // ── 隊長室（v1.51 第 2 版：北歐風）──
+  // 淺橡木地板、米白牆、霧藍灰與鼠尾草綠點綴；後牆 6 塊願景白板、左牆合作夥伴牆、右邊寵物名人堂
+  const VISION = {}, PARTB = {};
   {
-    const P = group("captain");
-    bldRoom(P, 16, 0x8b5a2b, 0x5d3a1f, 0xf1c40f, "door", [0x7d4f26, 0x96633a]);
-    put(P, textPlane("隊長室", 4, 0.9, { bg: "#c0392b", color: "#ffd700", size: 64 }), -1, 3.5, -5.95);
-    // 大辦公桌＋大椅子
-    box(3.6, 0.14, 1.6, 0x4a2c1a, 0, 1.0, -3.2, P); box(3.6, 0.9, 0.1, 0x3a2010, 0, 0.5, -2.45, P); box(0.1, 0.9, 1.6, 0x3a2010, -1.75, 0.5, -3.2, P); box(0.1, 0.9, 1.6, 0x3a2010, 1.75, 0.5, -3.2, P);
-    box(1.0, 0.7, 0.08, 0x2c2c34, 0.6, 1.45, -3.6, P); box(0.36, 0.3, 0.3, 0xf1c40f, -1.2, 1.22, -3.2, P);
-    box(1.0, 0.14, 0.9, 0xc0392b, 0, 0.62, -4.4, P); box(1.0, 1.5, 0.14, 0xc0392b, 0, 1.3, -4.85, P); box(1.1, 0.12, 0.2, 0xf1c40f, 0, 2.08, -4.85, P);
-    // 旗幟、獎盃櫃
-    box(0.06, 2.6, 0.06, 0x999999, -3.2, 1.3, -5.4, P); put(P, textPlane("紅玉滿", 1.2, 0.8, { bg: "#c0392b", color: "#fff", size: 80 }), -2.55, 2.2, -5.4);
-    box(2.4, 2.4, 0.6, 0x5d3a1f, 4.6, 1.2, -5.5, P); [0.7, 1.4, 2.1].forEach(y => box(2.2, 0.06, 0.5, 0x8b5a2b, 4.6, y, -5.45, P));
-    [[3.9, 0.95], [4.6, 0.95], [5.3, 0.95], [4.2, 1.65], [5.0, 1.65]].forEach(q => box(0.26, 0.32, 0.26, 0xf1c40f, q[0], q[1], -5.4, P));
-    // 會客沙發
-    box(3.0, 0.45, 0.9, 0x6e2c00, -4.6, 0.3, 0.8, P); box(3.0, 0.8, 0.3, 0x6e2c00, -4.6, 0.7, 0.35, P); box(1.4, 0.4, 0.8, 0x4a2c1a, -4.6, 0.2, 2.0, P);
-    // 門口敲門牌
-    const knock = put(P, textPlane("🚪 敲門留言給隊長", 3.2, 0.6, { bg: "#fff3e0", color: "#7a2a1a", size: 56 }), -7.7, 1.8, 3.0, Math.PI / 2);
+    const P = group("captain"), OAK = 0xc9a97c, WHITE2 = 0xf3efe8, SAGE = 0x9caf88, BLUEG = 0x8fa3ad, LINEN = 0xc9c3b8;
+    bldRoom(P, 16, 0xbfa684, 0xefebe4, 0xd8d1c6, "door", [0xb9a07e, 0xc3ab8a]);
+    put(P, textPlane("隊長室・紅玉滿的未來", 4.6, 0.55, { bg: "#f5f1ea", color: "#4a5560", size: 40 }), 0, 3.66, -5.95);
+    const nplant = (x, z, tall) => { box(0.5, 0.55, 0.5, 0xf2efe9, x, 0.28, z, P); box(0.56, 0.06, 0.56, OAK, x, 0.58, z, P);
+      box(0.6, tall ? 0.9 : 0.5, 0.6, 0x7d9b76, x, tall ? 1.05 : 0.85, z, P); box(0.4, 0.5, 0.4, 0x6b8a65, x, tall ? 1.7 : 1.3, z, P); };
+    // 後牆：6 塊願景白板
+    [["spectrum", -6.25], ["newbiz", -3.75], ["rd", -1.25], ["ip", 1.25], ["merch", 3.75], ["candy", 6.25]].forEach(([k, x]) => {
+      box(2.3, 0.05, 0.14, 0xd8d1c6, x, 1.42, -5.85, P);   // 筆槽
+      VISION[k] = wallBoard(P, "vision:" + k, x, 2.22, -5.94, 2.24, 1.5, 0, OAK);
+    });
+    // 地毯
+    box(6.4, 0.02, 4.2, 0xd6cfc2, 0, 0.012, -2.5, P); box(6.0, 0.022, 0.12, 0xc9bfae, 0, 0.014, -0.65, P); box(6.0, 0.022, 0.12, 0xc9bfae, 0, 0.014, -4.35, P);
+    box(4.0, 0.02, 3.2, LINEN, -4.6, 0.012, 1.4, P);
+    // 辦公桌：白色桌面＋橡木腳
+    box(3.6, 0.1, 1.5, WHITE2, 0, 1.0, -2.6, P);
+    [[-1.65, -3.25], [1.65, -3.25], [-1.65, -1.95], [1.65, -1.95]].forEach(([x, z]) => box(0.1, 0.95, 0.1, OAK, x, 0.48, z, P));
+    box(1.2, 0.4, 1.3, OAK, 1.0, 0.75, -2.6, P);   // 抽屜櫃
+    box(1.0, 0.62, 0.06, 0x3b3f44, 0.5, 1.42, -3.05, P); box(0.12, 0.3, 0.12, 0x3b3f44, 0.5, 1.15, -3.05, P);
+    box(0.18, 0.3, 0.18, 0xf2efe9, -1.2, 1.2, -2.7, P); box(0.12, 0.25, 0.12, SAGE, -1.2, 1.45, -2.7, P);   // 小花瓶
+    box(0.5, 0.06, 0.35, 0xe8e1d4, -0.5, 1.08, -2.4, P);   // 筆記本
+    // 椅子：霧藍灰布面
+    box(1.0, 0.16, 0.9, BLUEG, 0, 0.6, -3.8, P); box(1.0, 1.1, 0.16, BLUEG, 0, 1.15, -4.25, P);
+    [[-0.4, -3.45], [0.4, -3.45], [-0.4, -4.15], [0.4, -4.15]].forEach(([x, z]) => box(0.07, 0.52, 0.07, OAK, x, 0.26, z, P));
+    // 吊燈（白色燈罩）
+    [-0.9, 0.9].forEach(x => { box(0.02, 0.9, 0.02, 0x555555, x, 3.55, -2.6, P); const l = box(0.5, 0.28, 0.5, 0xfaf6ee, x, 2.98, -2.6, P); l.material = new THREE.MeshBasicMaterial({ color: 0xfaf6ee }); });
+    // 會客區：淺灰沙發、抱枕、橡木圓几、落地燈
+    box(3.0, 0.42, 0.95, 0xbdb8b0, -4.6, 0.32, 0.8, P); box(3.0, 0.75, 0.28, 0xb0aaa1, -4.6, 0.72, 0.38, P);
+    box(0.25, 0.55, 0.95, 0xb0aaa1, -6.0, 0.5, 0.8, P); box(0.25, 0.55, 0.95, 0xb0aaa1, -3.2, 0.5, 0.8, P);
+    box(0.5, 0.45, 0.14, SAGE, -5.5, 0.8, 0.6, P); box(0.5, 0.45, 0.14, 0xd8b4a6, -3.8, 0.8, 0.6, P);
+    box(1.3, 0.08, 1.3, 0xd2b48c, -4.6, 0.45, 2.1, P); box(0.12, 0.42, 0.12, OAK, -4.6, 0.21, 2.1, P);
+    box(0.2, 0.06, 0.2, 0xf2efe9, -4.4, 0.52, 2.0, P);
+    box(0.05, 1.9, 0.05, 0x444444, -6.8, 0.95, 2.4, P); { const sh = box(0.55, 0.4, 0.55, 0xfaf6ee, -6.8, 2.0, 2.4, P); sh.material = new THREE.MeshBasicMaterial({ color: 0xfaf6ee }); }
+    // 左牆：合作夥伴牆（點一下打開）
+    put(P, textPlane("🤝 合作夥伴牆", 3.0, 0.5, { bg: "#f5f1ea", color: "#4a5560", size: 46 }), -7.95, 3.62, -2.2, Math.PI / 2);
+    PARTB.gov = wallBoard(P, "pt:central", -7.93, 2.15, -4.6, 2.5, 2.0, Math.PI / 2, OAK);
+    PARTB.brand = wallBoard(P, "pt:car", -7.93, 2.15, -1.55, 3.2, 2.0, Math.PI / 2, OAK);
+    PARTB.agency = wallBoard(P, "pt:agency", -7.93, 2.15, 1.05, 1.6, 2.0, Math.PI / 2, OAK);
+    // 門口敲門牌、Bug 回報牌
+    const knock = put(P, textPlane("🚪 敲門留言", 1.4, 0.42, { bg: "#fff8ee", color: "#7a5a3a", size: 56 }), -7.92, 2.25, 2.6, Math.PI / 2);
     BOARD_HIT.push({ mesh: knock, key: "knock" });
-    plant(P, 7.2, 2.6); plant(P, -7.3, -5.3);
+    const bug = put(P, textPlane("🐞 回報問題", 1.4, 0.42, { bg: "#eef4ef", color: "#3f5f4a", size: 56 }), -7.92, 1.7, 2.6, Math.PI / 2);
+    BOARD_HIT.push({ mesh: bug, key: "bug" });
+    nplant(-7.2, 5.0, true); nplant(7.3, -5.2, true); nplant(2.6, -5.2, false);
     SLOTS.captain = [
-      { x: 0, z: -4.2, rotY: 0, sit: true, anim: "type" },
+      { x: 0, z: -3.6, rotY: 0, sit: true, anim: "type" },
       { x: -5.4, z: 0.8, rotY: 0, sit: true, anim: "sit" }, { x: -3.8, z: 0.8, rotY: 0, sit: true, anim: "sit" },
-      { x: -0.8, z: -1.6, rotY: Math.PI, anim: "talk" }, { x: 0.8, z: -1.6, rotY: Math.PI, anim: "stand" },
+      { x: -0.8, z: -1.0, rotY: Math.PI, anim: "talk" }, { x: 0.8, z: -1.0, rotY: Math.PI, anim: "stand" },
     ];
   }
   // 會議桌和大廳共用辦公區的座標系
@@ -2649,6 +2677,97 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     const bubble = bubbleEl("uo-bubble uo-petsay");
     return { g, body, stage: st, type: pt.type, sparks, t: Math.random() * 5, sig: JSON.stringify(pt), top: top * PS, bubble, info: pt, talk: 6 + Math.random() * 10, n: 0 };
   }
+  // ── v1.51 願景白板內容：標題列＋前幾項（光譜板畫七色色條＋品牌名）──
+  const VB_TITLE = { spectrum: "🌈 光譜集團計劃", newbiz: "🚀 新事業", rd: "🛠️ 構想研發", ip: "🦖 紅玉滿 IP 宇宙", merch: "🎁 文創周邊", candy: "🍬 古早味糖果・伴手禮" };
+  const VB_SPEC = { red: "#d63031", orange: "#e67e22", yellow: "#f1c40f", green: "#27ae60", blue: "#2e86de", indigo: "#3f3d99", violet: "#8e44ad" };
+  function drawVision(d) {
+    const boards = (d && d.boards) || [];
+    Object.keys(VISION).forEach(k => {
+      const B = VISION[k], c = B.canvas, g = c.getContext("2d"), W = c.width, H = c.height, b = boards.find(x => x.id === k) || { items: [], sugg: [] };
+      const F = n => "bold " + n + 'px "PingFang TC","Noto Sans TC",sans-serif';
+      g.fillStyle = "#fbfbf7"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "#5b6b73"; g.fillRect(0, 0, W, 62); g.fillStyle = "#fff"; g.font = F(34); g.textBaseline = "middle"; g.textAlign = "left";
+      g.fillText(VB_TITLE[k] || k, 16, 32);
+      const clip = (t, w) => { let x = String(t || ""); while (x && g.measureText(x).width > w) x = x.slice(0, -1); return x === String(t || "") ? x : x.slice(0, -1) + "…"; };
+      if (k === "spectrum") {
+        const sp = (d && d.spec) || Object.keys(VB_SPEC).map(id => ({ id, name: "" })), rh = (H - 74) / 7;
+        sp.forEach((x, i) => {
+          const y = 70 + i * rh; g.fillStyle = VB_SPEC[x.id]; g.fillRect(14, y + 3, 28, rh - 6);
+          const n = b.items.filter(t => t.sec === x.id).length;
+          g.fillStyle = "#222"; g.font = F(24); g.fillText(clip(x.name || "（規劃中）", 380), 54, y + rh / 2);
+          if (n) { g.fillStyle = "#888"; g.font = F(20); g.textAlign = "right"; g.fillText(n + " 個想法", W - 14, y + rh / 2); g.textAlign = "left"; }
+        });
+      } else {
+        const its = b.items.slice(0, 5);
+        if (!its.length) { g.fillStyle = "#aaa"; g.font = F(28); g.textAlign = "center"; g.fillText("隊長構思中…", W / 2, H / 2 + 20); g.textAlign = "left"; }
+        its.forEach((t, i) => {
+          const y = 96 + i * 46, col = { 規劃中: "#2e86de", 進行中: "#e67e22", 已完成: "#27ae60" }[t.status] || "#95a5a6";
+          g.fillStyle = col; g.beginPath(); g.arc(26, y, 9, 0, Math.PI * 2); g.fill();
+          g.fillStyle = "#222"; g.font = F(26); g.fillText(clip(t.text, W - 60), 44, y);
+        });
+        if (b.items.length > 5) { g.fillStyle = "#888"; g.font = F(20); g.fillText("…還有 " + (b.items.length - 5) + " 項", 44, H - 22); }
+      }
+      if (b.sugg && b.sugg.length) { g.fillStyle = "#c0392b"; g.font = F(20); g.textAlign = "right"; g.fillText("💡 " + b.sugg.length, W - 12, 32); g.textAlign = "left"; }
+      B.mesh.material.map.needsUpdate = true;
+    });
+  }
+  drawVision(null);
+  // ── v1.51 合作夥伴牆：機關團體｜品牌｜行銷公關夥伴（分類＋筆數＋前幾名）──
+  const PT_C = { central: "#5b7c99", local: "#7a9e9f", assoc: "#8c9a7e", car: "#4a5560", tech: "#5d7a8c", med: "#7fa69a", social: "#b48b84", school: "#a58f6f", fashion: "#8e7f98", corp: "#6f7f8f", ip: "#c49a6c", travel: "#6b9a8b", retail: "#9b8576", sport: "#7b8fa6", agency: "#9a9a8a" };
+  function drawPartners(d) {
+    const cats = (d && d.cats) || [], by = (d && d.by) || {};
+    const F = n => "bold " + n + 'px "PingFang TC","Noto Sans TC",sans-serif';
+    const head = (g, W, t, n) => { g.fillStyle = "#fbfaf7"; g.fillRect(0, 0, W, 2000); g.fillStyle = "#5b6b73"; g.fillRect(0, 0, W, 58); g.fillStyle = "#fff"; g.font = F(32); g.textAlign = "left"; g.textBaseline = "middle"; g.fillText(t, 16, 30); if (n) { g.textAlign = "right"; g.font = F(22); g.fillText(n + " 個", W - 14, 30); g.textAlign = "left"; } };
+    const clip = (g, t, w) => { let x = String(t || ""); if (g.measureText(x).width <= w) return x; while (x && g.measureText(x + "…").width > w) x = x.slice(0, -1); return x + "…"; };
+    const tot = grp => cats.filter(c => c.group === grp).reduce((a, c) => a + (by[c.id] || []).length, 0);
+    [["gov", "機關團體"], ["brand", "品牌"], ["agency", "合作夥伴"]].forEach(([k, grp]) => {
+      const B = PARTB[k]; if (!B) return; const c = B.canvas, g = c.getContext("2d"), W = c.width, H = c.height;
+      head(g, W, grp === "合作夥伴" ? "公關行銷夥伴" : grp, tot(grp));
+      const list = cats.filter(x => x.group === grp);
+      if (!list.length) { g.fillStyle = "#aaa"; g.font = F(26); g.textAlign = "center"; g.fillText("載入中…", W / 2, H / 2); g.textAlign = "left"; }
+      if (k === "brand") {
+        const rh = (H - 70) / Math.ceil(list.length / 2), cw = W / 2;
+        list.forEach((x, i) => { const cx = (i % 2) * cw + 10, y = 66 + Math.floor(i / 2) * rh, n = (by[x.id] || []).length;
+          g.fillStyle = PT_C[x.id] || "#888"; g.fillRect(cx, y + 4, 8, rh - 8);
+          g.fillStyle = "#333"; g.font = F(19); g.fillText(clip(g, x.name, cw - 70), cx + 16, y + rh * 0.34);
+          g.fillStyle = "#999"; g.textAlign = "right"; g.fillText(String(n), cx + cw - 22, y + rh * 0.34); g.textAlign = "left";
+          g.fillStyle = "#777"; g.font = F(15); g.fillText(clip(g, (by[x.id] || []).slice(0, 3).join("・"), cw - 36), cx + 16, y + rh * 0.74); });
+      } else if (k === "gov") {
+        const rh = (H - 70) / Math.max(1, list.length);
+        list.forEach((x, i) => { const y = 66 + i * rh, n = (by[x.id] || []).length;
+          g.fillStyle = PT_C[x.id] || "#888"; g.fillRect(12, y + 6, 10, rh - 12);
+          g.fillStyle = "#333"; g.font = F(26); g.fillText(x.name, 34, y + 26); g.fillStyle = "#999"; g.textAlign = "right"; g.fillText(String(n), W - 16, y + 26); g.textAlign = "left";
+          g.fillStyle = "#666"; g.font = F(18); (by[x.id] || []).slice(0, 3).forEach((t, j) => g.fillText(clip(g, t, W - 50), 34, y + 56 + j * 24)); });
+      } else {
+        const names = by.agency || []; g.fillStyle = "#555"; g.font = F(24);
+        names.slice(0, Math.floor((H - 80) / 36)).forEach((t, j) => g.fillText(clip(g, t, W - 30), 18, 92 + j * 36));
+      }
+      B.mesh.material.map.needsUpdate = true;
+    });
+  }
+  drawPartners(null);
+  // ── v1.51 隊長室寵物名人堂：六種寵物的完全體排成兩排（後排高台、前排低台）──
+  const SHOWCASE = [];
+  {
+    const P = GROUP_OF.captain;
+    if (P) {
+      const ROWS = [[["chicken", "雞", "原味"], ["trex", "暴龍", "紅玉"], ["digger", "挖土機", "黑糖"]], [["train", "火車", "可可"], ["trice", "三角龍", "抹茶"], ["robot", "機器人", "芝麻"]]];
+      ROWS.forEach((row, ri) => {
+        const z = ri === 0 ? -0.9 : 1.1, h = ri === 0 ? 0.9 : 0.45;
+        box(5.0, h, 1.3, ri === 0 ? 0xf3f1ed : 0xd9c3a0, 5.0, h / 2, z, P); box(5.0, 0.05, 1.3, 0xe9e4da, 5.0, h + 0.025, z, P); box(5.04, 0.05, 0.05, 0xc8a96a, 5.0, h - 0.02, z + 0.65, P);
+        row.forEach(([type, name, flv], i) => {
+          const x = 3.4 + i * 1.6, [b, d, l] = PET_COL[flv] || PET_COL["原味"];
+          const g = new THREE.Group(), inner = new THREE.Group(); g.add(inner);
+          petModel(type, inner, b, d, l); inner.scale.setScalar(1.95); g.position.set(x, h + 0.06, z); P.add(g);
+          const plate = textPlane(name + "・完全體", 1.4, 0.3, { bg: "#f5f1ea", color: "#4a5560", size: 64 });
+          plate.position.set(x, h * 0.55, z + 0.66); P.add(plate);
+          SHOWCASE.push({ g: inner, t: ri * 1.3 + i * 0.7 });
+        });
+      });
+      const sign = textPlane("🏆 寵物名人堂", 2.6, 0.42, { bg: "#8fa3ad", color: "#ffffff", size: 60 });
+      sign.position.set(5.0, 0.22, 1.77); P.add(sign);
+    }
+  }
   function removeTeam(m) { (m.team || []).forEach(f => { scene.remove(f.g); f.bubble.remove(); }); m.team = null; m.teamSig = ""; }
   function removePet(m) { if (m.pet) { scene.remove(m.pet.g); m.pet.bubble.remove(); m.pet = null; } removeTeam(m); }
   function syncPets() {
@@ -2877,6 +2996,7 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
     for (const m of crew.values()) { tickPet(m, dt); tickTeam(m, dt); }
     tickPlay(dt);
     tickParty(dt); tickFireworks(dt); tickRain(dt);
+    if (view === "captain") SHOWCASE.forEach(p => { p.t += dt; p.g.rotation.y = Math.sin(p.t * 0.6) * 0.5; p.g.position.y = Math.abs(Math.sin(p.t * 2.2)) * 0.06; });   // v1.51 名人堂寵物輕輕擺動
   }
 
   let raf, last = performance.now(), guestClock = 3; const talkUntil = {};
@@ -3062,6 +3182,8 @@ box(0.18, 0.04, 0.02, 0xb03a2e, 0, 1.64, 0.315, g);
       if (ch("thanks") || ch("bfWall") || ch("events")) drawWalls();
       if (ch("lobby")) drawAttend(lastList);
       if (ch("rank") || ch("canteen") || ch("praise") || ch("birthdays")) drawV44();
+      if (ch("vision")) drawVision(GAME.vision);
+      if (ch("partners")) drawPartners(GAME.partners);
       if (ch("holiday")) syncHolidayL();
     },
     // v1.40 即時營業額：辦公室布告欄排名＋各櫃位看板

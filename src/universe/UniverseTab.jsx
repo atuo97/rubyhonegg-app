@@ -66,7 +66,7 @@ export const ROOM_FUNCS = {
   gameroom: [["games", "🕹️ 8 款小遊戲"], ["claw", "🧸 夾娃娃"], ["gacha", "🎰 扭蛋機"], ["photo", "📸 拍貼機"], ["arena", "⚔️ 切磋對戰"], ["rank", "🏆 本週排行榜"]],
   gym: [["exercise", "💪 去運動"], ["sport", "🏃 比賽公告・完賽榜"], ["boss", "👹 大魔王"]],
   study: [["sop", "📖 SOP 教學"], ["cert", "🎓 證照榮譽牆"]],
-  captain: [["knock", "🚪 敲門留言"]],
+  captain: [["vision", "🗺️ 願景白板"], ["partners", "🤝 合作夥伴牆"], ["knock", "🚪 敲門留言"], ["bug", "🐞 回報問題"]],
 };
 export const ARCADE_GAMES = [["catch", "🧺", "接雞蛋糕"], ["memory", "🃏", "翻翻樂"], ["breakout", "🧱", "打磚塊"], ["oven", "🔥", "烤爐大挑戰"], ["runner", "🏃", "寵物跑酷"], ["match", "🧇", "消消樂"], ["stack", "🍰", "疊疊樂"], ["batter1", "⚔️", "麵糊大作戰"]];
 const INTERACTIONS = [["cheer", "💪", "加油打氣"], ["like", "👍", "按讚"], ["nod", "🙇", "點頭致意"], ["smile", "😊", "微笑"]];
@@ -286,6 +286,8 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     // v1.19:互動動態＋寵物動態(孵化、交換、收進圖鑑)合併,依時間排序
     setFeed([...(d.feed || []), ...(d.petFeed || []).map(x => ({ ...x, pet: true }))].sort((a, b) => String(b.time).localeCompare(String(a.time))));
     apiGet({ action: "spScene" }, 0).then(x => { if (x && x.success && engine.current) engine.current.setGame({ shops: x.data || [] }); });
+    apiGet({ action: "visionList" }, 1).then(x => { if (x && x.success && engine.current) engine.current.setGame({ vision: x.data }); }).catch(() => {});   // v1.51 隊長室願景白板
+    apiGet({ action: "ptList", lite: 1 }, 1).then(x => { if (!(x && x.success && engine.current)) return; const by = {}; (x.data.list || []).forEach(p => { (by[p.cat] = by[p.cat] || []).push(p.name); }); engine.current.setGame({ partners: { cats: x.data.cats, by, total: (x.data.list || []).length } }); }).catch(() => {});
     engine.current.setGame({ pets: d.pets || {}, teams: d.teams || {}, worn: d.worn || {}, titles: d.titles || {}, hearts: d.hearts || {}, fx: d.fx || {}, seats: d.seats || [], boss: d.boss || null, birthdays: d.birthdays || [], champion: d.champion || "",
       fireworks: !!d.champion && +today.slice(8, 10) <= 3, unlocks: d.unlocks || [], holiday: holidayOf(today, d.anniversary),
       mounts: d.mounts || {}, macc: d.macc || {}, scope: d.scope || "",  boards: d.boards || null, thanks: d.thanks || [], bfWall: d.bfWall || null, events: d.events || [], lobby: d.lobby || null, rank: d.rank || [], canteen: d.canteen || null, praise: d.praise || [] });
@@ -493,6 +495,9 @@ export default function UniverseTab({ user, apiGet, apiPost, todayStr, C, s, onE
     if (k === "sop") return onNav && onNav({ tab: "sop", room: view });
     if (k === "boss") return onNav && onNav({ tab: "spend", cat: "boss", room: view });
     if (k === "seat") return onNav && onNav({ tab: "spend", cat: "seat", room: view });
+    if (k === "vision" || /^vision:/.test(k)) return onNav && onNav({ tab: "vision", vb: k.slice(7) || null, room: "captain" });   // v1.51 願景白板
+    if (k === "bug") return onNav && onNav({ tab: "bug", room: view });
+    if (k === "partners" || /^pt:/.test(k)) return onNav && onNav({ tab: "partners", pc: k.slice(3) || null, room: "captain" });   // v1.51 合作夥伴牆
     setBoard(k);
   };
   const ticker = (game && game.ticker) || [];
